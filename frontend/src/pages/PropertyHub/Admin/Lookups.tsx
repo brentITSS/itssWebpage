@@ -1,0 +1,287 @@
+import React, { useState, useEffect } from 'react';
+import { propertyAdminService, JournalTypeDto, ContactLogTypeDto, TagTypeResponseDto, CreateTagTypeRequest, UpdateTagTypeRequest } from '../../../services/propertyAdminService';
+
+const Lookups: React.FC = () => {
+  const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
+  const [contactLogTypes, setContactLogTypes] = useState<ContactLogTypeDto[]>([]);
+  const [tagTypes, setTagTypes] = useState<TagTypeResponseDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'journal' | 'contact' | 'tag'>('journal');
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [editingTagType, setEditingTagType] = useState<TagTypeResponseDto | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [journalData, contactData, tagData] = await Promise.all([
+        propertyAdminService.getJournalTypes(),
+        propertyAdminService.getContactLogTypes(),
+        propertyAdminService.getTagTypes(),
+      ]);
+      setJournalTypes(journalData);
+      setContactLogTypes(contactData);
+      setTagTypes(tagData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load lookup data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateTagType = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const request: CreateTagTypeRequest = {
+      tagTypeName: formData.get('tagTypeName') as string,
+      color: formData.get('color') as string || undefined,
+      description: formData.get('description') as string || undefined,
+    };
+
+    try {
+      await propertyAdminService.createTagType(request);
+      setShowTagModal(false);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create tag type');
+    }
+  };
+
+  const handleUpdateTagType = async (id: number, e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const request: UpdateTagTypeRequest = {
+      tagTypeName: formData.get('tagTypeName') as string || undefined,
+      color: formData.get('color') as string || undefined,
+      description: formData.get('description') as string || undefined,
+    };
+
+    try {
+      await propertyAdminService.updateTagType(id, request);
+      setEditingTagType(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update tag type');
+    }
+  };
+
+  const handleDeleteTagType = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this tag type?')) return;
+
+    try {
+      await propertyAdminService.deleteTagType(id);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete tag type');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-8">Loading...</div>;
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Lookup Data</h2>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('journal')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'journal'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Journal Types
+          </button>
+          <button
+            onClick={() => setActiveTab('contact')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'contact'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Contact Log Types
+          </button>
+          <button
+            onClick={() => setActiveTab('tag')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'tag'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Tag Types
+            {activeTab === 'tag' && (
+              <button
+                onClick={() => setShowTagModal(true)}
+                className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
+              >
+                Create Tag Type
+              </button>
+            )}
+          </button>
+        </nav>
+      </div>
+
+      {/* Journal Types Tab */}
+      {activeTab === 'journal' && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub Types</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {journalTypes.map((type) => (
+                <tr key={type.journalTypeId}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{type.journalTypeName}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {type.subTypes.map(st => st.journalSubTypeName).join(', ') || '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Contact Log Types Tab */}
+      {activeTab === 'contact' && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {contactLogTypes.map((type) => (
+                <tr key={type.contactLogTypeId}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{type.contactLogTypeName}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Tag Types Tab */}
+      {activeTab === 'tag' && (
+        <div>
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Color</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {tagTypes.map((type) => (
+                  <tr key={type.tagTypeId}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{type.tagTypeName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {type.color && (
+                        <span className="px-2 py-1 rounded text-xs text-white" style={{ backgroundColor: type.color }}>
+                          {type.color}
+                        </span>
+                      )}
+                      {!type.color && <span className="text-gray-400">-</span>}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button onClick={() => setEditingTagType(type)} className="text-blue-600 hover:text-blue-900">Edit</button>
+                      <button onClick={() => handleDeleteTagType(type.tagTypeId)} className="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Create Tag Type Modal */}
+          {showTagModal && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-bold mb-4">Create Tag Type</h3>
+                <form onSubmit={handleCreateTagType}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tag Type Name *</label>
+                    <input type="text" name="tagTypeName" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                    <input type="color" name="color" className="w-full h-10 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button type="button" onClick={() => setShowTagModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Create</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Tag Type Modal */}
+          {editingTagType && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-bold mb-4">Edit Tag Type</h3>
+                <form onSubmit={(e) => handleUpdateTagType(editingTagType.tagTypeId, e)}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tag Type Name</label>
+                    <input type="text" name="tagTypeName" defaultValue={editingTagType.tagTypeName} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                    <input type="color" name="color" defaultValue={editingTagType.color || '#000000'} className="w-full h-10 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows={3} defaultValue={editingTagType.description || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button type="button" onClick={() => setEditingTagType(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Update</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Lookups;

@@ -1,0 +1,48 @@
+1-Project Scope
+    This project will be to create a modern website with multiple workstreams and in each workstream there will be multiple pages and subpages.
+    An example of the structure will be as follows: domainName.com/workstream1/home or domainName.com/workstream2/home and so on; each workstream can have multiple pages and subpages for example: domainName.com/workstream1/admin/admin subpage 1 or domainName.com/workstream1/admin/admin subpage 2 or domainName.com/workstream1/help and so on.
+    
+2-Access Control
+    Each user can have access to multiple workstreams, some users may only have some access to some pages within a workstreams (i.e. may not have access to every page within the workstream).  The user access will be determined by database which will dictate what each user has access to.
+
+3-Hosting Service
+    This is hosted by hostinger.com.
+    I pay this service.
+    domain name we'll use: itsson.co.uk
+    Username is: brent@itsystemsolutions.co.uk
+    Password is: password 123 (not the actual password)
+
+4-Github
+    The repo to use is https://github.com/brentITSS/itssWebpage
+
+5-Tech Stack
+    The website tech stack will be modern, simple, responsive and super easy to use.  You will have to suggest an appropriate tech stack.
+    I am able to use Azure SQL for database.
+
+6-Important Notes
+    Must be responsive in design so that it can be used across all devices including mobile phones.
+    You should create a requirements file for this project.
+    You should create a design document for this project.
+    You sould record each change made, issues encountered, fixes applied to resolve the issues.
+    We should always reference the requirements, issues log and change log before making changes to avoid repetitive issues and to make sure we learn from issues already identified.
+    Investigate whether it's best practice to use different CSS styles/themes for different workstreams or whether it's best to just use one CSS across the whole website.
+
+7-Initial Setup
+    Workstream 1.0: itsson.co.uk/Login (everyone will have access to this page where they can enter username/password) - based on a Azure SQL table - it will know what workstreams/pages the user has access to.
+    Workstream 2.0: itsson.co.uk/Admin (this will be global admins - here the user can add, edit assign workstreams and page access appropriately for each user across all workstreams)
+    Workstream 3.0: itsson.co.uk/Property Hub/Home (landing page for users with access to the workstream).
+    Workstream 3.1: itsson.co.uk/Property Hub/Admin (for users with admin rights in the property workstream to be able to edit/add users to the workstream, edit some admin data lookups, etc.)
+    Workstream 3.2: itsson.co.uk/Property Hub/Admin/User Management 
+
+8-Workstream 3 Details
+    Scope: 
+    This will be a workstream that allows users who have access the ability to manage all things related to property management of multiple properties.  The workstream admin should be able to setup new properties, tenants, record contact logs for properties and contact logs specific to tenants living in the properties.  The workstream admin should also be able to record 'journal' (transactions against the property for things like repairs, rates, electricity, income from tenants and so on - a transactional log/record) entries - these could come in an email which the web app needs to be able to accept as an upload and use the knowledge supplied to it to interpret the email and record transactions against the property / tenant.
+    Properties:
+    Properties are setup to have a property group, and in each property group you have properties or units.
+
+9-Relationships / Entity Diagram
+    The entity relationship diagram is found here at the root level .\EntityRelationship.png
+
+10-Other Rules
+    Anyone with the Role = Global Admin has access to all workstreams and anything else.
+
