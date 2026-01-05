@@ -134,12 +134,11 @@ public class AuthService : IAuthService
         {
             foreach (var userRole in user.UserRoles)
             {
-                if (userRole.Role != null)
+                if (userRole.RoleType != null)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, userRole.Role.RoleName));
+                    claims.Add(new Claim(ClaimTypes.Role, userRole.RoleType.RoleTypeName));
                     
-                    if (userRole.Role.RoleType != null && 
-                        userRole.Role.RoleType.RoleTypeName.Equals("Global Admin", StringComparison.OrdinalIgnoreCase))
+                    if (userRole.RoleType.RoleTypeName.Equals("Global Admin", StringComparison.OrdinalIgnoreCase))
                     {
                         claims.Add(new Claim("IsGlobalAdmin", "true"));
                     }
@@ -191,13 +190,13 @@ public class AuthService : IAuthService
         if (user.UserRoles != null && user.UserRoles.Any())
         {
             roles = user.UserRoles
-                .Where(ur => ur.Role != null)
-                .Select(ur => ur.Role!.RoleName)
+                .Where(ur => ur.RoleType != null)
+                .Select(ur => ur.RoleType!.RoleTypeName)
                 .ToList();
 
             isGlobalAdmin = user.UserRoles
-                .Any(ur => ur.Role?.RoleType != null && 
-                    ur.Role.RoleType.RoleTypeName.Equals("Global Admin", StringComparison.OrdinalIgnoreCase));
+                .Any(ur => ur.RoleType != null && 
+                    ur.RoleType.RoleTypeName.Equals("Global Admin", StringComparison.OrdinalIgnoreCase));
         }
 
         // Safely extract workstream access if WorkstreamUsers exist

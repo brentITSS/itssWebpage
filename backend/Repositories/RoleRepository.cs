@@ -63,8 +63,7 @@ public class RoleRepository : IRoleRepository
     public async Task<List<UserRole>> GetUserRolesAsync(int userId)
     {
         return await _context.UserRoles
-            .Include(ur => ur.Role)
-                .ThenInclude(r => r.RoleType)
+            .Include(ur => ur.RoleType)
             .Where(ur => ur.UserId == userId)
             .ToListAsync();
     }
@@ -75,10 +74,10 @@ public class RoleRepository : IRoleRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task RemoveUserRoleAsync(int userId, int roleId)
+    public async Task RemoveUserRoleAsync(int userId, int roleTypeId)
     {
         var userRole = await _context.UserRoles
-            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleTypeId == roleTypeId);
         
         if (userRole != null)
         {

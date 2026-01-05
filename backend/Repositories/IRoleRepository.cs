@@ -13,5 +13,5 @@ public interface IRoleRepository
     Task<bool> DeleteAsync(int roleId);
     Task<List<UserRole>> GetUserRolesAsync(int userId);
     Task AddUserRoleAsync(UserRole userRole);
-    Task RemoveUserRoleAsync(int userId, int roleId);
+    Task RemoveUserRoleAsync(int userId, int roleTypeId);
 }

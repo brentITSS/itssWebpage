@@ -7,20 +7,24 @@ namespace backend.Models;
 public class UserRole
 {
     [Key]
+    [Column("roleID")]
     public int UserRoleId { get; set; }
 
     [Required]
+    [Column("userID")]
     public int UserId { get; set; }
 
     [Required]
-    public int RoleId { get; set; }
+    [Column("roleTypeID")]
+    public int RoleTypeId { get; set; }
 
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+    [Column("active")]
+    public bool Active { get; set; } = true;
 
     // Navigation properties
     [ForeignKey("UserId")]
     public virtual User User { get; set; } = null!;
 
-    [ForeignKey("RoleId")]
-    public virtual Role Role { get; set; } = null!;
+    [ForeignKey("RoleTypeId")]
+    public virtual RoleType RoleType { get; set; } = null!;
 }

@@ -31,8 +31,7 @@ public class UserRepository : IUserRepository
         // Load related data if tables exist (handles case where related tables may not be populated)
         var userWithRelations = await _context.Users
             .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                    .ThenInclude(r => r.RoleType)
+                .ThenInclude(ur => ur.RoleType)
             .Include(u => u.WorkstreamUsers)
                 .ThenInclude(wu => wu.Workstream)
             .Include(u => u.WorkstreamUsers)
@@ -49,8 +48,7 @@ public class UserRepository : IUserRepository
     {
         return await _context.Users
             .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                    .ThenInclude(r => r.RoleType)
+                .ThenInclude(ur => ur.RoleType)
             .Include(u => u.WorkstreamUsers)
                 .ThenInclude(wu => wu.Workstream)
             .Include(u => u.WorkstreamUsers)
@@ -66,8 +64,7 @@ public class UserRepository : IUserRepository
     {
         return await _context.Users
             .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                    .ThenInclude(r => r.RoleType)
+                .ThenInclude(ur => ur.RoleType)
             .Include(u => u.WorkstreamUsers)
                 .ThenInclude(wu => wu.Workstream)
             .Include(u => u.WorkstreamUsers)

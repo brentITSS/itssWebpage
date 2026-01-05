@@ -52,7 +52,7 @@ public class ApplicationDbContext : DbContext
 
         // Configure relationships and indexes
         modelBuilder.Entity<UserRole>()
-            .HasIndex(ur => new { ur.UserId, ur.RoleId })
+            .HasIndex(ur => new { ur.UserId, ur.RoleTypeId })
             .IsUnique();
 
         modelBuilder.Entity<WorkstreamUser>()
