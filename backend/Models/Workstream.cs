@@ -12,8 +12,17 @@ public class Workstream
 
     [Required]
     [MaxLength(100)]
-    [Column("workstreamName")]
+    [Column("workstreamWebID")]
+    public string WorkstreamWebId { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(100)]
+    [Column("workstream")]
     public string WorkstreamName { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    [Column("workstreamGroup")]
+    public string? WorkstreamGroup { get; set; }
 
     [MaxLength(500)]
     [Column("description")]
