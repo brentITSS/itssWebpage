@@ -46,8 +46,7 @@ public class UserService : IUserService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FirstName = request.FirstName,
             LastName = request.LastName,
-            IsActive = true,
-            CreatedDate = DateTime.UtcNow
+            IsActive = true
         };
 
         user = await _userRepository.CreateAsync(user);
@@ -91,7 +90,6 @@ public class UserService : IUserService
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
-        user.ModifiedDate = DateTime.UtcNow;
 
         // Update roles if provided
         if (request.RoleIds != null && request.RoleIds.Any())
@@ -149,7 +147,6 @@ public class UserService : IUserService
 
         // Soft delete by deactivating
         user.IsActive = false;
-        user.ModifiedDate = DateTime.UtcNow;
         await _userRepository.UpdateAsync(user);
 
         // Audit log
@@ -172,7 +169,6 @@ public class UserService : IUserService
         if (user == null) return false;
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.ModifiedDate = DateTime.UtcNow;
         await _userRepository.UpdateAsync(user);
 
         // Audit log
@@ -212,7 +208,7 @@ public class UserService : IUserService
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsActive = user.IsActive,
-            CreatedDate = user.CreatedDate,
+            CreatedDate = DateTime.UtcNow, // Database doesn't have CreatedDate column, using current time as placeholder
             Roles = roles,
             WorkstreamAccess = workstreamAccess
         };
