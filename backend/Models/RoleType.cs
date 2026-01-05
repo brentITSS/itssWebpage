@@ -7,13 +7,13 @@ namespace backend.Models;
 public class RoleType
 {
     [Key]
+    [Column("roleTypeID")]
     public int RoleTypeId { get; set; }
 
     [Required]
     [MaxLength(100)]
+    [Column("roleTypeName")]
     public string RoleTypeName { get; set; } = string.Empty;
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();

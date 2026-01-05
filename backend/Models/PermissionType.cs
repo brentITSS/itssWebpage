@@ -7,16 +7,17 @@ namespace backend.Models;
 public class PermissionType
 {
     [Key]
+    [Column("permissionTypeID")]
     public int PermissionTypeId { get; set; }
 
     [Required]
     [MaxLength(100)]
+    [Column("permissionTypeName")]
     public string PermissionTypeName { get; set; } = string.Empty;
 
     [MaxLength(500)]
+    [Column("description")]
     public string? Description { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public virtual ICollection<WorkstreamUser> WorkstreamUsers { get; set; } = new List<WorkstreamUser>();
