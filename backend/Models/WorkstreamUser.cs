@@ -18,10 +18,6 @@ public class WorkstreamUser
     [Required]
     public int PermissionTypeId { get; set; }
 
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    public DateTime? ModifiedDate { get; set; }
-
     // Navigation properties
     [ForeignKey("UserId")]
     public virtual User User { get; set; } = null!;
