@@ -63,8 +63,12 @@ builder.Services.AddCors(options =>
 
 // Database configuration - prefer environment variable over config file
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Database connection string is not configured");
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("Database connection string is not configured. Please set 'ConnectionStrings__DefaultConnection' in Azure App Service Configuration.");
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
