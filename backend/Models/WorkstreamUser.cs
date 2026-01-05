@@ -7,16 +7,22 @@ namespace backend.Models;
 public class WorkstreamUser
 {
     [Key]
+    [Column("workstreamUserID")]
     public int WorkstreamUserId { get; set; }
 
     [Required]
+    [Column("userID")]
     public int UserId { get; set; }
 
     [Required]
+    [Column("workstreamID")]
     public int WorkstreamId { get; set; }
 
-    [Required]
+    [Column("permissionTypeID")]
     public int PermissionTypeId { get; set; }
+
+    [Column("active")]
+    public bool Active { get; set; } = true;
 
     // Navigation properties
     [ForeignKey("UserId")]
