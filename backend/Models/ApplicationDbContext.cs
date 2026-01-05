@@ -89,5 +89,11 @@ public class ApplicationDbContext : DbContext
             .WithMany(p => p.ContactLogs)
             .HasForeignKey(c => c.PropertyId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalSubType>()
+            .HasOne(jst => jst.JournalType)
+            .WithMany(jt => jt.JournalSubTypes)
+            .HasForeignKey(jst => jst.JournalTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

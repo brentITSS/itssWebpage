@@ -141,12 +141,14 @@ public class JournalLogService : IJournalLogService
             JournalTypeId = jt.JournalTypeId,
             JournalTypeName = jt.JournalTypeName,
             Description = jt.Description,
-            SubTypes = jt.JournalSubTypes.Select(jst => new JournalSubTypeDto
-            {
-                JournalSubTypeId = jst.JournalSubTypeId,
-                JournalSubTypeName = jst.JournalSubTypeName,
-                Description = jst.Description
-            }).ToList()
+            SubTypes = jt.JournalSubTypes != null && jt.JournalSubTypes.Any()
+                ? jt.JournalSubTypes.Select(jst => new JournalSubTypeDto
+                {
+                    JournalSubTypeId = jst.JournalSubTypeId,
+                    JournalSubTypeName = jst.JournalSubTypeName,
+                    Description = jst.Description
+                }).ToList()
+                : new List<JournalSubTypeDto>()
         }).ToList();
     }
 

@@ -20,4 +20,5 @@ public class JournalType
 
     // Navigation properties
     public virtual ICollection<JournalLog> JournalLogs { get; set; } = new List<JournalLog>();
+    public virtual ICollection<JournalSubType> JournalSubTypes { get; set; } = new List<JournalSubType>();
 }

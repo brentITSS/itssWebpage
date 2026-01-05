@@ -1,4 +1,5 @@
 using backend.Middleware;
+using backend.Models;
 using backend.Repositories;
 using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

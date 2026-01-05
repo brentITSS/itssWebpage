@@ -110,53 +110,6 @@ public class AuthService : IAuthService
         return propertyHubAccess != null;
     }
 
-    private string GenerateJwtToken(User user)
-    {
-        var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
-        var issuer = jwtSettings["Issuer"];
-        var audience = jwtSettings["Audience"];
-        var expirationMinutes = int.Parse(jwtSettings["ExpirationInMinutes"] ?? "60");
-
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim())
-        };
-
-        // Add role claims
-        foreach (var userRole in user.UserRoles)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, userRole.Role.RoleName));
-            
-            if (userRole.Role.RoleType.RoleTypeName.Equals("Global Admin", StringComparison.OrdinalIgnoreCase))
-            {
-                claims.Add(new Claim("IsGlobalAdmin", "true"));
-            }
-        }
-
-        // Add workstream access claims
-        foreach (var workstreamUser in user.WorkstreamUsers)
-        {
-            claims.Add(new Claim("Workstream", workstreamUser.WorkstreamId.ToString()));
-            claims.Add(new Claim($"Workstream_{workstreamUser.WorkstreamId}_Permission", workstreamUser.PermissionType.PermissionTypeName));
-        }
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(expirationMinutes),
-            signingCredentials: creds
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
     /// <summary>
     /// Generate JWT token for authenticated user.
     /// Includes user ID, email, roles, and workstream access in claims.
