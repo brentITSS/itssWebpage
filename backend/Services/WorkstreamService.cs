@@ -47,7 +47,6 @@ public class WorkstreamService : IWorkstreamService
             WorkstreamName = request.WorkstreamName,
             Description = request.Description,
             IsActive = true,
-            CreatedDate = DateTime.UtcNow
         };
 
         workstream = await _workstreamRepository.CreateAsync(workstream);
@@ -62,7 +61,6 @@ public class WorkstreamService : IWorkstreamService
         if (request.WorkstreamName != null) workstream.WorkstreamName = request.WorkstreamName;
         if (request.Description != null) workstream.Description = request.Description;
         if (request.IsActive.HasValue) workstream.IsActive = request.IsActive.Value;
-        workstream.ModifiedDate = DateTime.UtcNow;
 
         workstream = await _workstreamRepository.UpdateAsync(workstream);
         return MapToWorkstreamResponseDto(workstream);
@@ -88,7 +86,7 @@ public class WorkstreamService : IWorkstreamService
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 IsActive = u.IsActive,
-                CreatedDate = DateTime.UtcNow, // Database doesn't have CreatedDate column, using current time as placeholder
+, // Database doesn't have CreatedDate column, using current time as placeholder
                 Roles = u.UserRoles.Select(ur => new RoleDto
                 {
                     RoleId = ur.RoleTypeId,
@@ -122,7 +120,6 @@ public class WorkstreamService : IWorkstreamService
             UserId = request.UserId,
             WorkstreamId = workstreamId,
             PermissionTypeId = request.PermissionTypeId,
-            CreatedDate = DateTime.UtcNow
         };
 
         await _workstreamRepository.AddWorkstreamUserAsync(workstreamUser);
@@ -141,7 +138,7 @@ public class WorkstreamService : IWorkstreamService
             WorkstreamName = workstream.WorkstreamName,
             Description = workstream.Description,
             IsActive = workstream.IsActive,
-            CreatedDate = workstream.CreatedDate
+            CreatedDate = DateTime.UtcNow // Database doesn't have CreatedDate column, using current time as placeholder
         };
     }
 }
