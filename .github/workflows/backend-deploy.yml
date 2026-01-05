@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: 'itsson-api'
+  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
   AZURE_WEBAPP_PACKAGE_PATH: './backend'
   DOTNET_VERSION: '8.0.x'
 
