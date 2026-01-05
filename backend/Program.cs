@@ -72,8 +72,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // JWT Authentication - prefer environment variables over config file
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Environment.GetEnvironmentVariable("JwtSettings__SecretKey") 
-    ?? jwtSettings["SecretKey"]
-    ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+    ?? jwtSettings["SecretKey"];
+
+if (string.IsNullOrWhiteSpace(secretKey))
+{
+    var errorMsg = "JWT SecretKey is not configured. Please set 'JwtSettings__SecretKey' in Azure App Service Configuration.";
+    throw new InvalidOperationException(errorMsg);
+}
 
 var jwtIssuer = Environment.GetEnvironmentVariable("JwtSettings__Issuer") 
     ?? jwtSettings["Issuer"] 
@@ -140,20 +145,43 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Production logging
-if (app.Environment.IsProduction())
-{
-    app.UseExceptionHandler("/Error");
-    // Enable detailed error pages in development only
-}
-
-// Structured logging
+// Error handling middleware - log errors before UseExceptionHandler
 app.Use(async (context, next) =>
 {
     var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation($"Request: {context.Request.Method} {context.Request.Path}");
-    await next();
+    try
+    {
+        logger.LogInformation($"Request: {context.Request.Method} {context.Request.Path}");
+        await next();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
+        throw;
+    }
 });
+
+// Production logging
+if (app.Environment.IsProduction())
+{
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+            var exception = exceptionHandlerPathFeature?.Error;
+            
+            logger.LogError(exception, "Unhandled exception: {Message}", exception?.Message);
+            
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            
+            var errorResponse = new { error = "An internal server error occurred", message = exception?.Message };
+            await context.Response.WriteAsJsonAsync(errorResponse);
+        });
+    });
+}
 
 app.UseHttpsRedirection();
 
