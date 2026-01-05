@@ -86,7 +86,7 @@ public class WorkstreamService : IWorkstreamService
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 IsActive = u.IsActive,
-, // Database doesn't have CreatedDate column, using current time as placeholder
+                CreatedDate = DateTime.UtcNow, // Database doesn't have CreatedDate column, using current time as placeholder
                 Roles = u.UserRoles.Select(ur => new RoleDto
                 {
                     RoleId = ur.RoleTypeId,
