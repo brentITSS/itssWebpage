@@ -52,13 +52,12 @@ public class UserService : IUserService
         user = await _userRepository.CreateAsync(user);
 
         // Assign roles
-        foreach (var roleId in request.RoleIds)
+        foreach (var roleTypeId in request.RoleIds)
         {
             var userRole = new UserRole
             {
                 UserId = user.UserId,
-                RoleId = roleId,
-                CreatedDate = DateTime.UtcNow
+                RoleTypeId = roleTypeId
             };
             await _roleRepository.AddUserRoleAsync(userRole);
         }
@@ -95,27 +94,26 @@ public class UserService : IUserService
         if (request.RoleIds != null && request.RoleIds.Any())
         {
             var currentRoles = await _roleRepository.GetUserRolesAsync(userId);
-            var currentRoleIds = currentRoles.Select(ur => ur.RoleId).ToList();
+            var currentRoleTypeIds = currentRoles.Select(ur => ur.RoleTypeId).ToList();
 
             // Remove roles not in the new list
-            foreach (var roleId in currentRoleIds)
+            foreach (var roleTypeId in currentRoleTypeIds)
             {
-                if (!request.RoleIds.Contains(roleId))
+                if (!request.RoleIds.Contains(roleTypeId))
                 {
-                    await _roleRepository.RemoveUserRoleAsync(userId, roleId);
+                    await _roleRepository.RemoveUserRoleAsync(userId, roleTypeId);
                 }
             }
 
             // Add new roles
-            foreach (var roleId in request.RoleIds)
+            foreach (var roleTypeId in request.RoleIds)
             {
-                if (!currentRoleIds.Contains(roleId))
+                if (!currentRoleTypeIds.Contains(roleTypeId))
                 {
                     await _roleRepository.AddUserRoleAsync(new UserRole
                     {
                         UserId = userId,
-                        RoleId = roleId,
-                        CreatedDate = DateTime.UtcNow
+                        RoleTypeId = roleTypeId
                     });
                 }
             }
