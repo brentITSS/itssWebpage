@@ -188,9 +188,9 @@ public class UserService : IUserService
     {
         var roles = user.UserRoles.Select(ur => new RoleDto
         {
-            RoleId = ur.Role.RoleId,
-            RoleName = ur.Role.RoleName,
-            RoleTypeName = ur.Role.RoleType.RoleTypeName
+            RoleId = ur.RoleTypeId,
+            RoleName = ur.RoleType?.RoleTypeName ?? "",
+            RoleTypeName = ur.RoleType?.RoleTypeName ?? ""
         }).ToList();
 
         var workstreamAccess = user.WorkstreamUsers.Select(wu => new WorkstreamAccessDto

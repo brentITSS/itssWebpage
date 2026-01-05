@@ -91,9 +91,9 @@ public class WorkstreamService : IWorkstreamService
                 CreatedDate = DateTime.UtcNow, // Database doesn't have CreatedDate column, using current time as placeholder
                 Roles = u.UserRoles.Select(ur => new RoleDto
                 {
-                    RoleId = ur.Role.RoleId,
-                    RoleName = ur.Role.RoleName,
-                    RoleTypeName = ur.Role.RoleType.RoleTypeName
+                    RoleId = ur.RoleTypeId,
+                    RoleName = ur.RoleType?.RoleTypeName ?? "",
+                    RoleTypeName = ur.RoleType?.RoleTypeName ?? ""
                 }).ToList(),
                 WorkstreamAccess = u.WorkstreamUsers
                     .Where(wu => wu.WorkstreamId == workstreamId)
