@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { journalService, CreateJournalLogRequest, UpdateJournalLogRequest, JournalLogResponseDto } from '../../../services/journalService';
+import { journalService, CreateJournalLogRequest, UpdateJournalLogRequest, JournalLogResponseDto, JournalTypeDto, JournalSubTypeDto } from '../../../services/journalService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../../../services/propertyAdminService';
 
@@ -14,7 +14,7 @@ const JournalLogForm: React.FC = () => {
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
-  const [journalTypes, setJournalTypes] = useState<any[]>([]);
+  const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
   const [journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -241,7 +241,7 @@ const JournalLogForm: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="0">Select Journal Type</option>
-              {journalTypes.map(t => (
+              {journalTypes.map((t: JournalTypeDto) => (
                 <option key={t.journalTypeId} value={t.journalTypeId}>{t.journalTypeName}</option>
               ))}
             </select>
@@ -261,7 +261,7 @@ const JournalLogForm: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">None</option>
-                {availableSubTypes.map(st => (
+                {availableSubTypes.map((st: JournalSubTypeDto) => (
                   <option key={st.journalSubTypeId} value={st.journalSubTypeId}>
                     {st.journalSubTypeName}
                   </option>
