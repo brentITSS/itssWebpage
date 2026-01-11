@@ -37,6 +37,14 @@ jobs:
           echo "API URL configured (last 40 chars): ...$(echo '${{ secrets.REACT_APP_API_URL }}' | tail -c 41)"
           echo "API URL ends with /api: $(echo '${{ secrets.REACT_APP_API_URL }}' | grep -q '/api$' && echo 'YES' || echo 'NO')"
 
+      - name: Verify environment variable before build
+        working-directory: ./frontend
+        run: |
+          echo "Checking REACT_APP_API_URL before build..."
+          echo "Value ends with /api: $(echo '${{ secrets.REACT_APP_API_URL }}' | grep -q '/api$' && echo 'YES' || echo 'NO')"
+          echo "Last 40 chars: ...$(echo '${{ secrets.REACT_APP_API_URL }}' | tail -c 41)"
+          cat .env.production || echo ".env.production not found"
+          
       - name: Build React app
         working-directory: ./frontend
         run: npm run build
