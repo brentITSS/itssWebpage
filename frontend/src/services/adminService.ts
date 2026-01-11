@@ -101,6 +101,59 @@ export interface WorkstreamAccessDto {
   permissionTypeName: string;
 }
 
+// Tenant DTOs
+export interface CreateTenantRequest {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface UpdateTenantRequest {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface TenantResponseDto {
+  tenantId: number;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  createdDate: string;
+}
+
+// Tenancy DTOs
+export interface CreateTenancyRequest {
+  propertyId: number;
+  tenantId: number;
+  startDate: string;
+  endDate?: string;
+  monthlyRent?: number;
+}
+
+export interface UpdateTenancyRequest {
+  propertyId?: number;
+  tenantId?: number;
+  startDate?: string;
+  endDate?: string;
+  monthlyRent?: number;
+}
+
+export interface TenancyResponseDto {
+  tenancyId: number;
+  propertyId: number;
+  propertyName: string;
+  tenantId: number;
+  tenantName: string;
+  startDate: string;
+  endDate?: string;
+  monthlyRent?: number;
+  createdDate: string;
+}
+
 export const adminService = {
   // Users
   getUsers: async (): Promise<UserResponseDto[]> => {
