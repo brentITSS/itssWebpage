@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import Login from '../pages/Login';
 import Admin from '../pages/Admin';
 import Users from '../pages/Admin/Users';
 import Roles from '../pages/Admin/Roles';
@@ -36,6 +37,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      {/* Login Route */}
+      <Route path="/Login" element={<Login />} />
+
       {/* Global Admin Routes */}
       <Route
         path="/Admin"

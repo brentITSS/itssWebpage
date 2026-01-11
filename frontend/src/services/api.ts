@@ -1,5 +1,5 @@
 // API base URL - update this for production
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://localhost:5001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 // Get JWT token from localStorage
 const getToken = (): string | null => {
