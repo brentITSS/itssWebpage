@@ -34,7 +34,8 @@ jobs:
         working-directory: ./frontend
         run: |
           echo "REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}" > .env.production
-          echo "API URL configured (first 30 chars): $(echo ${{ secrets.REACT_APP_API_URL }} | cut -c1-30)..."
+          echo "API URL configured (last 40 chars): ...$(echo '${{ secrets.REACT_APP_API_URL }}' | tail -c 41)"
+          echo "API URL ends with /api: $(echo '${{ secrets.REACT_APP_API_URL }}' | grep -q '/api$' && echo 'YES' || echo 'NO')"
 
       - name: Build React app
         working-directory: ./frontend
