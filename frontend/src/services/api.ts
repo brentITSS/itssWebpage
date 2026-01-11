@@ -1,4 +1,4 @@
-// API base URL - configured via REACT_APP_API_URL environment variable
+// API base URL - configured via REACT_APP_API_URL environment variable  
 // Production: https://itsson-api.azurewebsites.net/api (must include /api)
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
