@@ -14,7 +14,7 @@ const ContactLogForm: React.FC = () => {
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [contactLogTypes, setContactLogTypes] = useState<any[]>([]);
-  const [_contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
+  const [, setContactLog] = useState<ContactLogResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -61,7 +61,7 @@ const ContactLogForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, isEdit, contactLogId]);
+  }, [isEdit, contactLogId]);
 
   useEffect(() => {
     loadData();

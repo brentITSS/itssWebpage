@@ -15,7 +15,7 @@ const JournalLogForm: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
-  const [_journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
+  const [, setJournalLog] = useState<JournalLogResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -68,7 +68,7 @@ const JournalLogForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, isEdit, journalLogId]);
+  }, [isEdit, journalLogId]);
 
   useEffect(() => {
     loadData();

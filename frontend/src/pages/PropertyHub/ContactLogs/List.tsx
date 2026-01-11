@@ -42,7 +42,7 @@ const ContactLogsList: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...contactLogs];
 
     if (filterPropertyId) {
@@ -62,7 +62,11 @@ const ContactLogsList: React.FC = () => {
     }
 
     setFilteredLogs(filtered);
-  };
+  }, [contactLogs, filterPropertyId, filterContactLogTypeId, filterDateFrom, filterDateTo]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this contact log?')) return;

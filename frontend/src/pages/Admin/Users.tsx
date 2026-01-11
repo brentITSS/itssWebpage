@@ -4,11 +4,11 @@ import { RoleTypeDto } from '../../services/adminService';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<UserResponseDto[]>([]);
-  const [_roles, setRoles] = useState<RoleTypeDto[]>([]);
+  const [, setRoles] = useState<RoleTypeDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [_editingUser, setEditingUser] = useState<UserResponseDto | null>(null);
+  const [, setEditingUser] = useState<UserResponseDto | null>(null);
   const [showResetPassword, setShowResetPassword] = useState<number | null>(null);
 
   useEffect(() => {
@@ -57,6 +57,7 @@ const Users: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _handleUpdateUser = async (id: number, request: UpdateUserRequest) => {
     try {
       await adminService.updateUser(id, request);

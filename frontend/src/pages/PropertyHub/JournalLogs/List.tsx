@@ -42,7 +42,7 @@ const JournalLogsList: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...journalLogs];
 
     if (filterPropertyId) {
@@ -62,7 +62,11 @@ const JournalLogsList: React.FC = () => {
     }
 
     setFilteredLogs(filtered);
-  };
+  }, [journalLogs, filterPropertyId, filterJournalTypeId, filterDateFrom, filterDateTo]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this journal log?')) return;
