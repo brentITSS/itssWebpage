@@ -91,8 +91,8 @@ const Tenants: React.FC = () => {
     const request: CreateTenancyRequest = {
       propertyId: parseInt(formData.get('propertyId') as string),
       tenantId: selectedTenantId || parseInt(formData.get('tenantId') as string),
-      startDate: new Date(formData.get('startDate') as string),
-      endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string) : undefined,
+      startDate: new Date(formData.get('startDate') as string).toISOString(),
+      endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string).toISOString() : undefined,
       monthlyRent: formData.get('monthlyRent') ? parseFloat(formData.get('monthlyRent') as string) : undefined,
     };
 
@@ -112,8 +112,8 @@ const Tenants: React.FC = () => {
     const request: UpdateTenancyRequest = {
       propertyId: formData.get('propertyId') ? parseInt(formData.get('propertyId') as string) : undefined,
       tenantId: formData.get('tenantId') ? parseInt(formData.get('tenantId') as string) : undefined,
-      startDate: formData.get('startDate') ? new Date(formData.get('startDate') as string) : undefined,
-      endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string) : undefined,
+      startDate: formData.get('startDate') ? new Date(formData.get('startDate') as string).toISOString() : undefined,
+      endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string).toISOString() : undefined,
       monthlyRent: formData.get('monthlyRent') ? parseFloat(formData.get('monthlyRent') as string) : undefined,
     };
 
