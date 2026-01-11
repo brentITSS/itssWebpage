@@ -36,7 +36,18 @@ const ContactLogDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id && !isEdit) {
+      loadContactLog();
+    }
+  }, [id, isEdit, loadContactLog]);
+
+  // If edit mode, show form instead
+  if (isEdit) {
+    return <ContactLogForm />;
+  }
 
   const handleTagAdded = async () => {
     if (!id) return;

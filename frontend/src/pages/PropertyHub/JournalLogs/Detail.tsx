@@ -36,7 +36,18 @@ const JournalLogDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id && !isEdit) {
+      loadJournalLog();
+    }
+  }, [id, isEdit, loadJournalLog]);
+
+  // If edit mode, show form instead
+  if (isEdit) {
+    return <JournalLogForm />;
+  }
 
   const handleTagAdded = async () => {
     if (!id) return;

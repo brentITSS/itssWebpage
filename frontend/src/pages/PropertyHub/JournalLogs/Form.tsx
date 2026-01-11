@@ -68,7 +68,11 @@ const JournalLogForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, isEdit, journalLogId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
