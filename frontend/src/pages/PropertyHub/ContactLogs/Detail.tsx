@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { contactLogService, ContactLogResponseDto, AttachmentDto } from '../../../services/contactLogService';
+import { contactLogService, ContactLogResponseDto } from '../../../services/contactLogService';
 import { tagService, TagDto } from '../../../services/tagService';
 import Tag from '../../../components/Tag';
 import TagAssignmentModal from '../../../components/TagAssignmentModal';
@@ -19,18 +19,7 @@ const ContactLogDetail: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
 
-  useEffect(() => {
-    if (id && !isEdit) {
-      loadContactLog();
-    }
-  }, [id, isEdit]);
-
-  // If edit mode, show form instead
-  if (isEdit) {
-    return <ContactLogForm />;
-  }
-
-  const loadContactLog = async () => {
+  const loadContactLog = useCallback(async () => {
     if (!id) return;
 
     try {

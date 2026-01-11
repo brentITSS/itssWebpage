@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { tagService, TagTypeResponseDto, CreateTagLogRequest } from '../services/tagService';
 
 interface TagAssignmentModalProps {
@@ -23,13 +23,7 @@ const TagAssignmentModal: React.FC<TagAssignmentModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadTagTypes();
-    }
-  }, [isOpen]);
-
-  const loadTagTypes = async () => {
+  const loadTagTypes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -46,7 +40,13 @@ const TagAssignmentModal: React.FC<TagAssignmentModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [existingTagTypeIds]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadTagTypes();
+    }
+  }, [isOpen, loadTagTypes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

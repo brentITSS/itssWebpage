@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { journalService, CreateJournalLogRequest, UpdateJournalLogRequest, JournalLogResponseDto, JournalTypeDto, JournalSubTypeDto } from '../../../services/journalService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
@@ -15,7 +15,7 @@ const JournalLogForm: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
-  const [journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
+  const [_journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,11 +32,7 @@ const JournalLogForm: React.FC = () => {
     transactionDate: new Date().toISOString().split('T')[0],
   });
 
-  useEffect(() => {
-    loadData();
-  }, [id]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);

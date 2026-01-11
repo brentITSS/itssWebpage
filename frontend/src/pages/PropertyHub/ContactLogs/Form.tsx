@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { contactLogService, CreateContactLogRequest, UpdateContactLogRequest, ContactLogResponseDto } from '../../../services/contactLogService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
@@ -14,7 +14,7 @@ const ContactLogForm: React.FC = () => {
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [contactLogTypes, setContactLogTypes] = useState<any[]>([]);
-  const [contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
+  const [_contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -29,11 +29,7 @@ const ContactLogForm: React.FC = () => {
     contactDate: new Date().toISOString().split('T')[0],
   });
 
-  useEffect(() => {
-    loadData();
-  }, [id]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -65,7 +61,11 @@ const ContactLogForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, isEdit, contactLogId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

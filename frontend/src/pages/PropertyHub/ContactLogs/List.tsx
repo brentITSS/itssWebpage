@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { contactLogService, ContactLogResponseDto } from '../../../services/contactLogService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
@@ -21,10 +21,6 @@ const ContactLogsList: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [contactLogs, filterPropertyId, filterContactLogTypeId, filterDateFrom, filterDateTo]);
 
   const loadData = async () => {
     try {

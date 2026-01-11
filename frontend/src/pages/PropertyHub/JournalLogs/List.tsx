@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { journalService, JournalLogResponseDto } from '../../../services/journalService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
@@ -21,10 +21,6 @@ const JournalLogsList: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [journalLogs, filterPropertyId, filterJournalTypeId, filterDateFrom, filterDateTo]);
 
   const loadData = async () => {
     try {

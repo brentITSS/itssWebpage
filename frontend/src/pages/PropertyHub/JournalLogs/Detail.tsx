@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { journalService, JournalLogResponseDto, AttachmentDto } from '../../../services/journalService';
+import { journalService, JournalLogResponseDto } from '../../../services/journalService';
 import { tagService, TagDto } from '../../../services/tagService';
 import Tag from '../../../components/Tag';
 import TagAssignmentModal from '../../../components/TagAssignmentModal';
@@ -19,18 +19,7 @@ const JournalLogDetail: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
 
-  useEffect(() => {
-    if (id && !isEdit) {
-      loadJournalLog();
-    }
-  }, [id, isEdit]);
-
-  // If edit mode, show form instead
-  if (isEdit) {
-    return <JournalLogForm />;
-  }
-
-  const loadJournalLog = async () => {
+  const loadJournalLog = useCallback(async () => {
     if (!id) return;
 
     try {
