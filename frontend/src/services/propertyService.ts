@@ -1,6 +1,16 @@
 import apiClient from './api';
 
 // Property Group DTOs
+export interface CreatePropertyGroupRequest {
+  propertyGroupName: string;
+  description?: string;
+}
+
+export interface UpdatePropertyGroupRequest {
+  propertyGroupName?: string;
+  description?: string;
+}
+
 export interface PropertyGroupResponseDto {
   propertyGroupId: number;
   propertyGroupName: string;
@@ -10,6 +20,20 @@ export interface PropertyGroupResponseDto {
 }
 
 // Property DTOs
+export interface CreatePropertyRequest {
+  propertyGroupId: number;
+  propertyName: string;
+  address?: string;
+  postCode?: string;
+}
+
+export interface UpdatePropertyRequest {
+  propertyGroupId?: number;
+  propertyName?: string;
+  address?: string;
+  postCode?: string;
+}
+
 export interface PropertyResponseDto {
   propertyId: number;
   propertyGroupId: number;
