@@ -58,7 +58,15 @@ jobs:
           echo "Checking if built files contain the API URL..."
           if grep -r "itsson-api.azurewebsites.net" build/static/js/ | head -1; then
             echo "Found API URL in built files"
-            grep -r "itsson-api.azurewebsites.net" build/static/js/ | head -1 | grep -q "/api" && echo "✅ URL contains /api" || echo "❌ URL missing /api"
+            # Check if URL ends with /api or contains /api/ in the path (not just in subdomain)
+            if grep -r "itsson-api.azurewebsites.net/api" build/static/js/ | head -1 | grep -q "\.net/api"; then
+              echo "✅ URL correctly contains /api path"
+            else
+              echo "❌ URL missing /api path (might only have 'api' in subdomain)"
+              echo "Sample line from built file:"
+              grep -r "itsson-api.azurewebsites.net" build/static/js/ | head -1 | head -c 200
+              echo ""
+            fi
           else
             echo "Could not find API URL in built files"
           fi
