@@ -52,6 +52,17 @@ jobs:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
           NODE_ENV: production
 
+      - name: Verify API URL in built files
+        working-directory: ./frontend
+        run: |
+          echo "Checking if built files contain the API URL..."
+          if grep -r "itsson-api.azurewebsites.net" build/static/js/ | head -1; then
+            echo "Found API URL in built files"
+            grep -r "itsson-api.azurewebsites.net" build/static/js/ | head -1 | grep -q "/api" && echo "✅ URL contains /api" || echo "❌ URL missing /api"
+          else
+            echo "Could not find API URL in built files"
+          fi
+          
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
