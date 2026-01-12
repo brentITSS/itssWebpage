@@ -80,6 +80,7 @@ jobs:
           local-dir: ./frontend/build/
           server-dir: ./
           dangerous-clean-slate: true
+          dry-run: false
           exclude: |
             **/.git*
             **/.git*/**
