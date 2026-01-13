@@ -34,8 +34,12 @@ jobs:
         working-directory: ./frontend
         run: |
           echo "REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}" > .env.production
-          echo "API URL configured (last 40 chars): ...$(echo '${{ secrets.REACT_APP_API_URL }}' | tail -c 41)"
-          echo "API URL ends with /api: $(echo '${{ secrets.REACT_APP_API_URL }}' | grep -q '/api$' && echo 'YES' || echo 'NO')"
+          echo "=== API URL VERIFICATION ==="
+          echo "Full URL length: $(echo '${{ secrets.REACT_APP_API_URL }}' | wc -c)"
+          echo "Last 50 chars: ...$(echo '${{ secrets.REACT_APP_API_URL }}' | tail -c 51)"
+          echo "Ends with /api: $(echo '${{ secrets.REACT_APP_API_URL }}' | grep -q '/api$' && echo 'YES ✅' || echo 'NO ❌')"
+          echo "Contains /api: $(echo '${{ secrets.REACT_APP_API_URL }}' | grep -q '/api' && echo 'YES' || echo 'NO')"
+          cat .env.production
 
       - name: Verify environment variable before build
         working-directory: ./frontend
@@ -45,6 +49,10 @@ jobs:
           echo "Last 40 chars: ...$(echo '${{ secrets.REACT_APP_API_URL }}' | tail -c 41)"
           cat .env.production || echo ".env.production not found"
           
+      - name: Clean build directory
+        working-directory: ./frontend
+        run: rm -rf build
+
       - name: Build React app
         working-directory: ./frontend
         run: npm run build
