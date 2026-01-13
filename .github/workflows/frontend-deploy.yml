@@ -70,6 +70,19 @@ jobs:
           else
             echo "Could not find API URL in built files"
           fi
+
+      - name: List build directory contents
+        working-directory: ./frontend
+        run: |
+          echo "Build directory structure:"
+          find build -type f | head -20
+          echo ""
+          echo "Number of files in build/: $(find build -type f | wc -l)"
+          echo "Files in build/static/js/: $(find build/static/js -type f 2>/dev/null | wc -l || echo '0')"
+          if [ -d "build/static/js" ]; then
+            echo "Sample JS files:"
+            ls -lh build/static/js/ | head -5
+          fi
           
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -78,7 +91,8 @@ jobs:
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           local-dir: ./frontend/build/
-          server-dir: ./
+          server-dir: /public_html/
+          log-level: verbose
           dangerous-clean-slate: true
           dry-run: false
           exclude: |
