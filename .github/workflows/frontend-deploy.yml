@@ -109,11 +109,13 @@ jobs:
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           local-dir: ./frontend/build/
-          server-dir: /public_html/
+          server-dir: /domains/itsson.co.uk/public_html/
           log-level: verbose
           dangerous-clean-slate: true
+          dangerous-clean-slate-skip-existing: false
           dry-run: false
           exclude: |
             **/.git*
             **/.git*/**
             **/node_modules**
+          state: ${{ github.workspace }}/.ftp-deploy-state.json
