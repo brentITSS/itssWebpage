@@ -14,16 +14,16 @@ public class RoleRepository : IRoleRepository
 
     public async Task<List<Role>> GetAllAsync()
     {
-        return await _context.Roles
-            .Include(r => r.RoleType)
-            .ToListAsync();
+        // tblRole table doesn't exist - return empty list
+        // Service layer will handle converting RoleType to RoleResponseDto
+        return new List<Role>();
     }
 
     public async Task<Role?> GetByIdAsync(int roleId)
     {
-        return await _context.Roles
-            .Include(r => r.RoleType)
-            .FirstOrDefaultAsync(r => r.RoleId == roleId);
+        // tblRole table doesn't exist - return null
+        // Service layer will handle converting RoleType to RoleResponseDto
+        return null;
     }
 
     public async Task<List<RoleType>> GetAllRoleTypesAsync()
@@ -38,26 +38,20 @@ public class RoleRepository : IRoleRepository
 
     public async Task<Role> CreateAsync(Role role)
     {
-        _context.Roles.Add(role);
-        await _context.SaveChangesAsync();
-        return role;
+        // tblRole table doesn't exist - operation not supported
+        throw new NotSupportedException("Role creation is not supported. Use RoleTypes instead.");
     }
 
     public async Task<Role> UpdateAsync(Role role)
     {
-        _context.Roles.Update(role);
-        await _context.SaveChangesAsync();
-        return role;
+        // tblRole table doesn't exist - operation not supported
+        throw new NotSupportedException("Role updates are not supported. Use RoleTypes instead.");
     }
 
     public async Task<bool> DeleteAsync(int roleId)
     {
-        var role = await _context.Roles.FindAsync(roleId);
-        if (role == null) return false;
-
-        _context.Roles.Remove(role);
-        await _context.SaveChangesAsync();
-        return true;
+        // tblRole table doesn't exist - operation not supported
+        throw new NotSupportedException("Role deletion is not supported. Use RoleTypes instead.");
     }
 
     public async Task<List<UserRole>> GetUserRolesAsync(int userId)
