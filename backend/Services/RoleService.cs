@@ -15,16 +15,32 @@ public class RoleService : IRoleService
 
     public async Task<List<RoleResponseDto>> GetAllRolesAsync()
     {
-        var roles = await _roleRepository.GetAllAsync();
-        return roles.Select(MapToRoleResponseDto).ToList();
+        // Since tblRole doesn't exist, return RoleTypes as roles
+        var roleTypes = await _roleRepository.GetAllRoleTypesAsync();
+        return roleTypes.Select(rt => new RoleResponseDto
+        {
+            RoleId = rt.RoleTypeId, // Use RoleTypeId as RoleId
+            RoleName = rt.RoleTypeName, // Use RoleTypeName as RoleName
+            RoleTypeId = rt.RoleTypeId,
+            RoleTypeName = rt.RoleTypeName,
+            CreatedDate = DateTime.UtcNow // RoleType doesn't have CreatedDate, use current date
+        }).ToList();
     }
 
     public async Task<RoleResponseDto?> GetRoleByIdAsync(int roleId)
     {
-        var role = await _roleRepository.GetByIdAsync(roleId);
-        if (role == null) return null;
+        // Since tblRole doesn't exist, treat roleId as roleTypeId
+        var roleType = await _roleRepository.GetRoleTypeByIdAsync(roleId);
+        if (roleType == null) return null;
 
-        return MapToRoleResponseDto(role);
+        return new RoleResponseDto
+        {
+            RoleId = roleType.RoleTypeId,
+            RoleName = roleType.RoleTypeName,
+            RoleTypeId = roleType.RoleTypeId,
+            RoleTypeName = roleType.RoleTypeName,
+            CreatedDate = DateTime.UtcNow
+        };
     }
 
     public async Task<List<RoleTypeDto>> GetAllRoleTypesAsync()
@@ -39,58 +55,22 @@ public class RoleService : IRoleService
 
     public async Task<RoleResponseDto> CreateRoleAsync(CreateRoleRequest request)
     {
-        var roleType = await _roleRepository.GetRoleTypeByIdAsync(request.RoleTypeId);
-        if (roleType == null)
-            throw new InvalidOperationException("Invalid RoleTypeId");
-
-        var role = new Role
-        {
-            RoleName = request.RoleName,
-            RoleTypeId = request.RoleTypeId,
-            CreatedDate = DateTime.UtcNow
-        };
-
-        role = await _roleRepository.CreateAsync(role);
-        role = await _roleRepository.GetByIdAsync(role.RoleId);
-
-        return MapToRoleResponseDto(role!);
+        // Since tblRole doesn't exist, this operation is not supported
+        // Roles are managed through RoleTypes
+        throw new InvalidOperationException("Role creation is not supported. Use RoleTypes instead.");
     }
 
     public async Task<RoleResponseDto?> UpdateRoleAsync(int roleId, UpdateRoleRequest request)
     {
-        var role = await _roleRepository.GetByIdAsync(roleId);
-        if (role == null) return null;
-
-        if (request.RoleName != null) role.RoleName = request.RoleName;
-        if (request.RoleTypeId.HasValue)
-        {
-            var roleType = await _roleRepository.GetRoleTypeByIdAsync(request.RoleTypeId.Value);
-            if (roleType == null)
-                throw new InvalidOperationException("Invalid RoleTypeId");
-            role.RoleTypeId = request.RoleTypeId.Value;
-        }
-
-        role.ModifiedDate = DateTime.UtcNow;
-        role = await _roleRepository.UpdateAsync(role);
-        role = await _roleRepository.GetByIdAsync(roleId);
-
-        return MapToRoleResponseDto(role!);
+        // Since tblRole doesn't exist, this operation is not supported
+        // Roles are managed through RoleTypes
+        throw new InvalidOperationException("Role updates are not supported. Use RoleTypes instead.");
     }
 
     public async Task<bool> DeleteRoleAsync(int roleId)
     {
-        return await _roleRepository.DeleteAsync(roleId);
-    }
-
-    private RoleResponseDto MapToRoleResponseDto(Role role)
-    {
-        return new RoleResponseDto
-        {
-            RoleId = role.RoleId,
-            RoleName = role.RoleName,
-            RoleTypeId = role.RoleTypeId,
-            RoleTypeName = role.RoleType.RoleTypeName,
-            CreatedDate = role.CreatedDate
-        };
+        // Since tblRole doesn't exist, this operation is not supported
+        // Roles are managed through RoleTypes
+        throw new InvalidOperationException("Role deletion is not supported. Use RoleTypes instead.");
     }
 }
