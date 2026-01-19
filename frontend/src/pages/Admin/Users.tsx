@@ -148,7 +148,9 @@ const Users: React.FC = () => {
                   {user.firstName} {user.lastName}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.roles.join(', ') || 'None'}
+                  {user.roles && user.roles.length > 0
+                    ? user.roles.map(role => role.roleTypeName || role.roleName).join(', ')
+                    : 'None'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
