@@ -21,8 +21,7 @@ public class JournalLogRepository : IJournalLogRepository
             .Include(j => j.Tenant)
             .Include(j => j.JournalType)
             .Include(j => j.JournalSubType)
-            // Temporarily commented out until column mapping is confirmed
-            // .Include(j => j.Attachments)
+            .Include(j => j.Attachments)
             .OrderByDescending(j => j.TransactionDate)
             .ToListAsync();
     }
@@ -36,8 +35,7 @@ public class JournalLogRepository : IJournalLogRepository
             .Include(j => j.Tenant)
             .Include(j => j.JournalType)
             .Include(j => j.JournalSubType)
-            // Temporarily commented out until column mapping is confirmed
-            // .Include(j => j.Attachments)
+            .Include(j => j.Attachments)
             .FirstOrDefaultAsync(j => j.JournalLogId == journalLogId);
     }
 
@@ -49,8 +47,7 @@ public class JournalLogRepository : IJournalLogRepository
             .Include(j => j.Tenant)
             .Include(j => j.JournalType)
             .Include(j => j.JournalSubType)
-            // Temporarily commented out until column mapping is confirmed
-            // .Include(j => j.Attachments)
+            .Include(j => j.Attachments)
             .Where(j => j.PropertyId == propertyId)
             .OrderByDescending(j => j.TransactionDate)
             .ToListAsync();
