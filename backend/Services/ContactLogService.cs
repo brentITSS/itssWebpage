@@ -54,7 +54,7 @@ public class ContactLogService : IContactLogService
             TenantId = request.TenantId,
             ContactLogTypeId = request.ContactLogTypeId,
             Notes = request.Subject ?? request.Notes ?? string.Empty, // Store Subject in Notes
-            ContactDate = request.ContactDate ?? DateTime.UtcNow,
+            ContactDate = request.ContactDate,
             ContactBy = "System" // TODO: Get from authenticated user
         };
 

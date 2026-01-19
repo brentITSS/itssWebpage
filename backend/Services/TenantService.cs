@@ -113,7 +113,12 @@ public class TenantService : ITenantService
     public async Task<List<TenancyResponseDto>> GetAllTenanciesAsync()
     {
         var tenancies = await _tenantRepository.GetAllTenanciesAsync();
-        return tenancies.Select(MapToTenancyResponseDto).ToList();
+        var result = new List<TenancyResponseDto>();
+        foreach (var tenancy in tenancies)
+        {
+            result.Add(await MapToTenancyResponseDtoAsync(tenancy));
+        }
+        return result;
     }
 
     public async Task<TenancyResponseDto?> GetTenancyByIdAsync(int tenancyId)
@@ -121,7 +126,7 @@ public class TenantService : ITenantService
         var tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
         if (tenancy == null) return null;
 
-        return MapToTenancyResponseDto(tenancy);
+        return await MapToTenancyResponseDtoAsync(tenancy);
     }
 
     public async Task<TenancyResponseDto> CreateTenancyAsync(CreateTenancyRequest request, int createdByUserId)
@@ -148,7 +153,7 @@ public class TenantService : ITenantService
             CreatedDate = DateTime.UtcNow
         });
 
-        return MapToTenancyResponseDto(tenancy!);
+        return await MapToTenancyResponseDtoAsync(tenancy!);
     }
 
     public async Task<TenancyResponseDto?> UpdateTenancyAsync(int tenancyId, UpdateTenancyRequest request, int modifiedByUserId)
@@ -179,7 +184,7 @@ public class TenantService : ITenantService
             CreatedDate = DateTime.UtcNow
         });
 
-        return MapToTenancyResponseDto(tenancy);
+        return await MapToTenancyResponseDtoAsync(tenancy);
     }
 
     public async Task<bool> DeleteTenancyAsync(int tenancyId, int deletedByUserId)
@@ -218,11 +223,11 @@ public class TenantService : ITenantService
         };
     }
 
-    private TenancyResponseDto MapToTenancyResponseDto(Tenancy tenancy)
+    private async Task<TenancyResponseDto> MapToTenancyResponseDtoAsync(Tenancy tenancy)
     {
         // Get tenant from tenancy via Tenant.TenancyId relationship
-        var tenant = await _tenantRepository.GetAllAsync();
-        var relatedTenant = tenant.FirstOrDefault(t => t.TenancyId == tenancy.TenancyId);
+        var tenants = await _tenantRepository.GetAllAsync();
+        var relatedTenant = tenants.FirstOrDefault(t => t.TenancyId == tenancy.TenancyId);
 
         return new TenancyResponseDto
         {

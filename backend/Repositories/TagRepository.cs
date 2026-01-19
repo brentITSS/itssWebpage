@@ -55,18 +55,30 @@ public class TagRepository : ITagRepository
 
     public async Task<List<TagLog>> GetTagLogsByEntityAsync(string entityType, int entityId)
     {
-        var query = _context.TagLogs.Include(tl => tl.TagType);
+        IQueryable<TagLog> query = _context.TagLogs.Include(tl => tl.TagType);
 
         // Filter based on entity type
-        query = entityType.ToLower() switch
+        switch (entityType.ToLower())
         {
-            "contactlog" => query.Where(tl => tl.ContactLogId == entityId),
-            "journallog" => query.Where(tl => tl.JournalLogId == entityId),
-            "tenant" => query.Where(tl => tl.TenantId == entityId),
-            "tenancy" => query.Where(tl => tl.TenancyId == entityId),
-            "propertygroup" => query.Where(tl => tl.PropertyGroupId == entityId),
-            _ => query.Where(tl => false) // No matches for unknown entity types
-        };
+            case "contactlog":
+                query = query.Where(tl => tl.ContactLogId == entityId);
+                break;
+            case "journallog":
+                query = query.Where(tl => tl.JournalLogId == entityId);
+                break;
+            case "tenant":
+                query = query.Where(tl => tl.TenantId == entityId);
+                break;
+            case "tenancy":
+                query = query.Where(tl => tl.TenancyId == entityId);
+                break;
+            case "propertygroup":
+                query = query.Where(tl => tl.PropertyGroupId == entityId);
+                break;
+            default:
+                query = query.Where(tl => false); // No matches for unknown entity types
+                break;
+        }
 
         return await query.ToListAsync();
     }

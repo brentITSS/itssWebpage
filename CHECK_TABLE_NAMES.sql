@@ -1,0 +1,13 @@
+-- Run this query to see all table names in your database
+
+SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_TYPE = 'BASE TABLE'
+ORDER BY TABLE_NAME;
+
+-- Specifically check for user role related tables
+SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_TYPE = 'BASE TABLE'
+  AND (TABLE_NAME LIKE '%User%' OR TABLE_NAME LIKE '%Role%')
+ORDER BY TABLE_NAME;

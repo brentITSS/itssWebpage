@@ -49,7 +49,7 @@ public class JournalLogService : IJournalLogService
             TenantId = request.TenantId,
             JournalTypeId = request.JournalTypeId,
             JournalSubTypeId = request.JournalSubTypeId,
-            TransactionDate = request.TransactionDate ?? DateTime.UtcNow,
+            TransactionDate = request.TransactionDate,
             // Store Amount/Description in computed properties (not persisted)
             Amount = request.Amount,
             Description = request.Description

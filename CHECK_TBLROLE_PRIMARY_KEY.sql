@@ -1,0 +1,10 @@
+-- Check the primary key and structure of tblRole
+
+SELECT 
+    COLUMN_NAME,
+    DATA_TYPE,
+    IS_NULLABLE,
+    COLUMNPROPERTY(OBJECT_ID('tblRole'), COLUMN_NAME, 'IsIdentity') AS IsIdentity
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'tblRole'
+ORDER BY ORDINAL_POSITION;
