@@ -11,12 +11,15 @@ public class ContactLogType
     public int ContactLogTypeId { get; set; }
 
     [MaxLength(100)]
-    [Column("contactLogTypeName")]
+    [Column("contactType")]
     public string? ContactLogTypeName { get; set; }
 
     [MaxLength(500)]
-    [Column("description")]
+    [Column("contactTypeDescription")]
     public string? Description { get; set; }
+
+    [Column("contactTypeActive")]
+    public bool? IsActive { get; set; }
 
     // Navigation properties
     public virtual ICollection<ContactLog> ContactLogs { get; set; } = new List<ContactLog>();

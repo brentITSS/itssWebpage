@@ -10,23 +10,16 @@ public class ContactLogAttachment
     [Column("contactLogAttachmentID")]
     public int ContactLogAttachmentId { get; set; }
 
-    [Column("contactLogID")]
-    public int ContactLogId { get; set; }
-
     [MaxLength(255)]
-    [Column("fileName")]
-    public string? FileName { get; set; }
+    [Column("contactID")]
+    public string? ContactId { get; set; }
+
+    [Column("contactLogID")]
+    public int? ContactLogId { get; set; }
 
     [MaxLength(500)]
-    [Column("filePath")]
-    public string? FilePath { get; set; }
-
-    [MaxLength(50)]
-    [Column("fileType")]
-    public string? FileType { get; set; }
-
-    [Column("fileSize")]
-    public long? FileSize { get; set; }
+    [Column("attachmentDescription")]
+    public string? Description { get; set; }
 
     // Navigation properties
     [ForeignKey("ContactLogId")]

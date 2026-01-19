@@ -7,20 +7,19 @@ namespace backend.Models;
 public class TagType
 {
     [Key]
-    [Column("tagTypeID")]
+    [Column("tagID")]
     public int TagTypeId { get; set; }
 
     [MaxLength(100)]
-    [Column("tagTypeName")]
+    [Column("tagName")]
     public string? TagTypeName { get; set; }
 
-    [MaxLength(50)]
-    [Column("color")]
-    public string? Color { get; set; }
-
     [MaxLength(500)]
-    [Column("description")]
+    [Column("tagDescription")]
     public string? Description { get; set; }
+
+    [Column("tagActive")]
+    public bool? IsActive { get; set; }
 
     // Navigation properties
     public virtual ICollection<TagLog> TagLogs { get; set; } = new List<TagLog>();

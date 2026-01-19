@@ -7,33 +7,29 @@ namespace backend.Models;
 public class JournalLog
 {
     [Key]
-    [Column("journalLogId")]
+    [Column("journalLogID")]
     public int JournalLogId { get; set; }
 
-    [Column("propertyId")]
-    public int PropertyId { get; set; }
+    [Column("propertyGroupID")]
+    public int? PropertyGroupId { get; set; }
 
-    [Column("tenancyId")]
+    [Column("propertyID")]
+    public int? PropertyId { get; set; }
+
+    [Column("tenancyID")]
     public int? TenancyId { get; set; }
 
-    [Column("tenantId")]
+    [Column("tenantID")]
     public int? TenantId { get; set; }
-
-    [Column("journalTypeId")]
-    public int JournalTypeId { get; set; }
-
-    [Column("journalSubTypeId")]
-    public int? JournalSubTypeId { get; set; }
-
-    [Column("amount", TypeName = "decimal(18,2)")]
-    public decimal? Amount { get; set; }
-
-    [MaxLength(1000)]
-    [Column("description")]
-    public string? Description { get; set; }
 
     [Column("transactionDate")]
     public DateTime? TransactionDate { get; set; }
+
+    [Column("journalTypeID")]
+    public int? JournalTypeId { get; set; }
+
+    [Column("journalSubTypeID")]
+    public int? JournalSubTypeId { get; set; }
 
     // Navigation properties
     [ForeignKey("PropertyId")]

@@ -7,23 +7,37 @@ namespace backend.Models;
 public class Tenant
 {
     [Key]
-    [Column("tenantId")]
+    [Column("tenantID")]
     public int TenantId { get; set; }
 
+    [Required]
+    [Column("tenancyID")]
+    public int TenancyId { get; set; }
+
+    [Required]
     [MaxLength(100)]
     [Column("firstName")]
-    public string? FirstName { get; set; }
+    public string FirstName { get; set; } = string.Empty;
 
+    [Required]
     [MaxLength(100)]
-    [Column("lastName")]
-    public string? LastName { get; set; }
+    [Column("secondName")]
+    public string LastName { get; set; } = string.Empty;
+
+    [Required]
+    [Column("tenantDOB")]
+    public DateTime TenantDOB { get; set; }
 
     [MaxLength(255)]
-    [Column("email")]
+    [Column("tenantEmail")]
     public string? Email { get; set; }
 
-    [MaxLength(20)]
-    [Column("phone")]
+    [MaxLength(255)]
+    [Column("identification")]
+    public string? Identification { get; set; }
+
+    [MaxLength(50)]
+    [Column("mobile")]
     public string? Phone { get; set; }
 
     // Navigation properties

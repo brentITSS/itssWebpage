@@ -7,19 +7,24 @@ namespace backend.Models;
 public class JournalSubType
 {
     [Key]
-    [Column("journalSubTypeId")]
+    [Column("journalSubTypeID")]
     public int JournalSubTypeId { get; set; }
 
-    [Column("journalTypeId")]
+    [Required]
+    [Column("journalTypeID")]
     public int JournalTypeId { get; set; }
 
+    [Required]
     [MaxLength(100)]
-    [Column("journalSubTypeName")]
-    public string? JournalSubTypeName { get; set; }
+    [Column("subType")]
+    public string JournalSubTypeName { get; set; } = string.Empty;
 
     [MaxLength(500)]
     [Column("description")]
     public string? Description { get; set; }
+
+    [Column("active")]
+    public bool? IsActive { get; set; }
 
     // Navigation properties
     [ForeignKey("JournalTypeId")]

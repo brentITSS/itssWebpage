@@ -7,16 +7,19 @@ namespace backend.Models;
 public class JournalType
 {
     [Key]
-    [Column("journalTypeId")]
+    [Column("journalTypeID")]
     public int JournalTypeId { get; set; }
 
     [MaxLength(100)]
-    [Column("journalTypeName")]
+    [Column("journalType")]
     public string? JournalTypeName { get; set; }
 
     [MaxLength(500)]
     [Column("description")]
     public string? Description { get; set; }
+
+    [Column("active")]
+    public bool? IsActive { get; set; }
 
     // Navigation properties
     public virtual ICollection<JournalLog> JournalLogs { get; set; } = new List<JournalLog>();

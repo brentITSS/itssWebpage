@@ -11,27 +11,25 @@ public class TagLog
     public int TagLogId { get; set; }
 
     [Column("tagTypeID")]
-    public int TagTypeId { get; set; }
+    public int? TagTypeId { get; set; }
 
-    // Polymorphic relationship - can tag different entity types
-    [MaxLength(50)]
-    [Column("entityType")]
-    public string? EntityType { get; set; } // "Property", "PropertyGroup", "Tenant", "ContactLog"
+    [Column("tagActive")]
+    public bool? IsActive { get; set; }
 
-    [Column("entityID")]
-    public int? EntityId { get; set; } // ID of the tagged entity
+    [Column("contactLogID")]
+    public int? ContactLogId { get; set; }
 
-    [Column("propertyID")]
-    public int? PropertyId { get; set; }
-
-    [Column("propertyGroupID")]
-    public int? PropertyGroupId { get; set; }
+    [Column("journalLogID")]
+    public int? JournalLogId { get; set; }
 
     [Column("tenantID")]
     public int? TenantId { get; set; }
 
-    [Column("contactLogID")]
-    public int? ContactLogId { get; set; }
+    [Column("tenancyID")]
+    public int? TenancyId { get; set; }
+
+    [Column("propertyGrpID")]
+    public int? PropertyGroupId { get; set; }
 
     // Navigation properties
     [ForeignKey("TagTypeId")]

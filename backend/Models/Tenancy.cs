@@ -7,30 +7,37 @@ namespace backend.Models;
 public class Tenancy
 {
     [Key]
-    [Column("tenancyId")]
+    [Column("tenancyID")]
     public int TenancyId { get; set; }
 
-    [Column("propertyId")]
+    [Required]
+    [Column("propertyID")]
     public int PropertyId { get; set; }
 
-    [Column("tenantId")]
-    public int TenantId { get; set; }
+    [Required]
+    [Column("tenancyStartDate")]
+    public DateTime StartDate { get; set; }
 
-    [Column("startDate")]
-    public DateTime? StartDate { get; set; }
-
-    [Column("endDate")]
+    [Column("tenancyEndDate")]
     public DateTime? EndDate { get; set; }
 
-    [Column("monthlyRent", TypeName = "decimal(18,2)")]
+    [Column("tenancyActive")]
+    public bool? IsActive { get; set; }
+
+    [MaxLength(500)]
+    [Column("description")]
+    public string? Description { get; set; }
+
+    [Column("monthlyRentalCharge", TypeName = "money")]
     public decimal? MonthlyRent { get; set; }
+
+    [MaxLength(1000)]
+    [Column("specialConditions")]
+    public string? SpecialConditions { get; set; }
 
     // Navigation properties
     [ForeignKey("PropertyId")]
     public virtual Property Property { get; set; } = null!;
-
-    [ForeignKey("TenantId")]
-    public virtual Tenant Tenant { get; set; } = null!;
 
     public virtual ICollection<JournalLog> JournalLogs { get; set; } = new List<JournalLog>();
 }
