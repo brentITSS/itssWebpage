@@ -31,9 +31,19 @@ public class JournalLog
     [Column("journalSubTypeID")]
     public int? JournalSubTypeId { get; set; }
 
+    // Computed properties for fields that don't exist in database (for backward compatibility)
+    [NotMapped]
+    public decimal? Amount { get; set; }
+
+    [NotMapped]
+    public string? Description { get; set; }
+
     // Navigation properties
     [ForeignKey("PropertyId")]
-    public virtual Property Property { get; set; } = null!;
+    public virtual Property? Property { get; set; }
+
+    [ForeignKey("PropertyGroupId")]
+    public virtual PropertyGroup? PropertyGroup { get; set; }
 
     [ForeignKey("TenancyId")]
     public virtual Tenancy? Tenancy { get; set; }
@@ -42,7 +52,7 @@ public class JournalLog
     public virtual Tenant? Tenant { get; set; }
 
     [ForeignKey("JournalTypeId")]
-    public virtual JournalType JournalType { get; set; } = null!;
+    public virtual JournalType? JournalType { get; set; }
 
     [ForeignKey("JournalSubTypeId")]
     public virtual JournalSubType? JournalSubType { get; set; }

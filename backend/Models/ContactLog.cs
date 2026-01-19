@@ -36,9 +36,13 @@ public class ContactLog
     [Column("contactLogTypeID")]
     public int ContactLogTypeId { get; set; }
 
-    // Computed property for Subject (for backward compatibility)
+    // Computed property for Subject (for backward compatibility) - derived from Notes
     [NotMapped]
-    public string? Subject => Notes;
+    public string? Subject
+    {
+        get => Notes;
+        set { if (value != null) Notes = value; }
+    }
 
     // Navigation properties
     [ForeignKey("PropertyId")]

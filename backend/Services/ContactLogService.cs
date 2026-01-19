@@ -53,9 +53,9 @@ public class ContactLogService : IContactLogService
             PropertyId = request.PropertyId,
             TenantId = request.TenantId,
             ContactLogTypeId = request.ContactLogTypeId,
-            Subject = request.Subject,
-            Notes = request.Notes,
-            ContactDate = request.ContactDate
+            Notes = request.Subject ?? request.Notes ?? string.Empty, // Store Subject in Notes
+            ContactDate = request.ContactDate ?? DateTime.UtcNow,
+            ContactBy = "System" // TODO: Get from authenticated user
         };
 
         contactLog = await _contactLogRepository.CreateAsync(contactLog);
@@ -85,8 +85,10 @@ public class ContactLogService : IContactLogService
         if (request.PropertyId.HasValue) contactLog.PropertyId = request.PropertyId.Value;
         if (request.TenantId.HasValue) contactLog.TenantId = request.TenantId;
         if (request.ContactLogTypeId.HasValue) contactLog.ContactLogTypeId = request.ContactLogTypeId.Value;
-        if (request.Subject != null) contactLog.Subject = request.Subject;
-        if (request.Notes != null) contactLog.Notes = request.Notes;
+        if (request.Subject != null || request.Notes != null) 
+        {
+            contactLog.Notes = request.Subject ?? request.Notes ?? string.Empty;
+        }
         if (request.ContactDate.HasValue) contactLog.ContactDate = request.ContactDate.Value;
 
         contactLog = await _contactLogRepository.UpdateAsync(contactLog);
@@ -162,10 +164,10 @@ public class ContactLogService : IContactLogService
         var attachment = new ContactLogAttachment
         {
             ContactLogId = contactLogId,
-            FileName = file.FileName,
-            FilePath = filePath,
-            FileType = file.ContentType,
-            FileSize = file.Length
+            Description = file.FileName, // Store filename in Description
+            FilePath = filePath, // Store in computed property (not in DB)
+            FileType = file.ContentType, // Store in computed property (not in DB)
+            FileSize = file.Length // Store in computed property (not in DB)
         };
 
         attachment = await _contactLogRepository.AddAttachmentAsync(attachment);
@@ -173,7 +175,7 @@ public class ContactLogService : IContactLogService
         return new AttachmentDto
         {
             AttachmentId = attachment.ContactLogAttachmentId,
-            FileName = attachment.FileName,
+            FileName = attachment.FileName ?? attachment.Description ?? "Unknown",
             FileType = attachment.FileType,
             FileSize = attachment.FileSize ?? 0,
             CreatedDate = DateTime.UtcNow
@@ -191,20 +193,20 @@ public class ContactLogService : IContactLogService
         return new ContactLogResponseDto
         {
             ContactLogId = contactLog.ContactLogId,
-            PropertyId = contactLog.PropertyId,
+            PropertyId = contactLog.PropertyId ?? 0,
             PropertyName = contactLog.Property?.PropertyName ?? string.Empty,
             TenantId = contactLog.TenantId,
             TenantName = contactLog.Tenant != null ? $"{contactLog.Tenant.FirstName} {contactLog.Tenant.LastName}".Trim() : null,
             ContactLogTypeId = contactLog.ContactLogTypeId,
             ContactLogTypeName = contactLog.ContactLogType?.ContactLogTypeName ?? string.Empty,
-            Subject = contactLog.Subject ?? string.Empty,
+            Subject = contactLog.Notes ?? string.Empty, // Subject is derived from Notes
             Notes = contactLog.Notes ?? string.Empty,
-            ContactDate = contactLog.ContactDate ?? DateTime.UtcNow,
+            ContactDate = contactLog.ContactDate,
             CreatedDate = DateTime.UtcNow,
             Attachments = contactLog.Attachments.Select(a => new AttachmentDto
             {
                 AttachmentId = a.ContactLogAttachmentId,
-                FileName = a.FileName,
+                FileName = a.FileName ?? a.Description ?? "Unknown",
                 FileType = a.FileType,
                 FileSize = a.FileSize ?? 0,
                 CreatedDate = DateTime.UtcNow
@@ -212,9 +214,9 @@ public class ContactLogService : IContactLogService
             Tags = contactLog.TagLogs.Select(tl => new TagDto
             {
                 TagLogId = tl.TagLogId,
-                TagTypeId = tl.TagTypeId,
+                TagTypeId = tl.TagTypeId ?? 0,
                 TagTypeName = tl.TagType?.TagTypeName ?? string.Empty,
-                Color = tl.TagType?.Color,
+                Color = null, // TagType doesn't have Color
                 EntityType = tl.EntityType ?? "ContactLog",
                 EntityId = tl.EntityId ?? contactLog.ContactLogId,
                 CreatedDate = DateTime.UtcNow

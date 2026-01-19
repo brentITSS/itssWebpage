@@ -73,10 +73,18 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(t => t.PropertyId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<Tenancy>()
-            .HasOne(t => t.Tenant)
-            .WithMany(t => t.Tenancies)
-            .HasForeignKey(t => t.TenantId)
+        // Tenant -> Tenancy relationship (Tenant has TenancyId)
+        modelBuilder.Entity<Tenant>()
+            .HasOne(t => t.Tenancy)
+            .WithMany()
+            .HasForeignKey(t => t.TenancyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // TagLog relationships
+        modelBuilder.Entity<TagLog>()
+            .HasOne(tl => tl.Tenancy)
+            .WithMany()
+            .HasForeignKey(tl => tl.TenancyId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<JournalLog>()

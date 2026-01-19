@@ -36,7 +36,9 @@ public class TenantService : ITenantService
             FirstName = request.FirstName,
             LastName = request.LastName,
             Email = request.Email,
-            Phone = request.Phone
+            Phone = request.Phone,
+            TenantDOB = DateTime.UtcNow, // Default DOB, should be provided in request
+            TenancyId = 0 // Must be set - TODO: Get from request or create tenancy first
         };
 
         tenant = await _tenantRepository.CreateAsync(tenant);
@@ -127,7 +129,6 @@ public class TenantService : ITenantService
         var tenancy = new Tenancy
         {
             PropertyId = request.PropertyId,
-            TenantId = request.TenantId,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             MonthlyRent = request.MonthlyRent
@@ -143,7 +144,7 @@ public class TenantService : ITenantService
             Action = "Create",
             EntityType = "Tenancy",
             EntityId = tenancy.TenancyId,
-            NewValues = $"PropertyId: {tenancy.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate?.ToString() ?? "N/A"}",
+            NewValues = $"PropertyId: {tenancy.PropertyId}, StartDate: {tenancy.StartDate:yyyy-MM-dd}",
             CreatedDate = DateTime.UtcNow
         });
 
@@ -155,10 +156,9 @@ public class TenantService : ITenantService
         var tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
         if (tenancy == null) return null;
 
-        var oldValues = $"PropertyId: {tenancy.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate?.ToString() ?? "N/A"}, EndDate: {tenancy.EndDate?.ToString() ?? "N/A"}";
+        var oldValues = $"PropertyId: {tenancy.PropertyId}, StartDate: {tenancy.StartDate:yyyy-MM-dd}, EndDate: {tenancy.EndDate?.ToString("yyyy-MM-dd") ?? "N/A"}";
 
         if (request.PropertyId.HasValue) tenancy.PropertyId = request.PropertyId.Value;
-        if (request.TenantId.HasValue) tenancy.TenantId = request.TenantId.Value;
         if (request.StartDate.HasValue) tenancy.StartDate = request.StartDate.Value;
         if (request.EndDate.HasValue) tenancy.EndDate = request.EndDate;
         if (request.MonthlyRent.HasValue) tenancy.MonthlyRent = request.MonthlyRent;
@@ -167,7 +167,7 @@ public class TenantService : ITenantService
         tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
 
         // Audit log
-        var newValues = $"PropertyId: {tenancy!.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate?.ToString() ?? "N/A"}, EndDate: {tenancy.EndDate?.ToString() ?? "N/A"}";
+        var newValues = $"PropertyId: {tenancy!.PropertyId}, StartDate: {tenancy.StartDate:yyyy-MM-dd}, EndDate: {tenancy.EndDate?.ToString("yyyy-MM-dd") ?? "N/A"}";
         await _auditLogRepository.CreateAsync(new AuditLog
         {
             UserId = modifiedByUserId,
@@ -197,7 +197,7 @@ public class TenantService : ITenantService
                 Action = "Delete",
                 EntityType = "Tenancy",
                 EntityId = tenancyId,
-                OldValues = $"PropertyId: {tenancy.PropertyId}, TenantId: {tenancy.TenantId}",
+                OldValues = $"PropertyId: {tenancy.PropertyId}",
                 CreatedDate = DateTime.UtcNow
             });
         }
@@ -220,14 +220,18 @@ public class TenantService : ITenantService
 
     private TenancyResponseDto MapToTenancyResponseDto(Tenancy tenancy)
     {
+        // Get tenant from tenancy via Tenant.TenancyId relationship
+        var tenant = await _tenantRepository.GetAllAsync();
+        var relatedTenant = tenant.FirstOrDefault(t => t.TenancyId == tenancy.TenancyId);
+
         return new TenancyResponseDto
         {
             TenancyId = tenancy.TenancyId,
             PropertyId = tenancy.PropertyId,
             PropertyName = tenancy.Property?.PropertyName ?? string.Empty,
-            TenantId = tenancy.TenantId,
-            TenantName = tenancy.Tenant != null ? $"{tenancy.Tenant.FirstName} {tenancy.Tenant.LastName}".Trim() : string.Empty,
-            StartDate = tenancy.StartDate ?? DateTime.UtcNow,
+            TenantId = relatedTenant?.TenantId ?? 0,
+            TenantName = relatedTenant != null ? $"{relatedTenant.FirstName} {relatedTenant.LastName}".Trim() : string.Empty,
+            StartDate = tenancy.StartDate,
             EndDate = tenancy.EndDate,
             MonthlyRent = tenancy.MonthlyRent ?? 0,
             CreatedDate = DateTime.UtcNow

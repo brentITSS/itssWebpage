@@ -10,9 +10,8 @@ public class Tenant
     [Column("tenantID")]
     public int TenantId { get; set; }
 
-    [Required]
     [Column("tenancyID")]
-    public int TenancyId { get; set; }
+    public int? TenancyId { get; set; }
 
     [Required]
     [MaxLength(100)]
@@ -41,7 +40,9 @@ public class Tenant
     public string? Phone { get; set; }
 
     // Navigation properties
-    public virtual ICollection<Tenancy> Tenancies { get; set; } = new List<Tenancy>();
+    [ForeignKey("TenancyId")]
+    public virtual Tenancy? Tenancy { get; set; }
+    
     public virtual ICollection<ContactLog> ContactLogs { get; set; } = new List<ContactLog>();
     public virtual ICollection<TagLog> TagLogs { get; set; } = new List<TagLog>();
 }

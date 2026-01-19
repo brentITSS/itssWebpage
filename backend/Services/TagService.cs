@@ -34,7 +34,6 @@ public class TagService : ITagService
         var tagType = new TagType
         {
             TagTypeName = request.TagTypeName,
-            Color = request.Color,
             Description = request.Description
         };
 
@@ -48,7 +47,6 @@ public class TagService : ITagService
         if (tagType == null) return null;
 
         if (request.TagTypeName != null) tagType.TagTypeName = request.TagTypeName;
-        if (request.Color != null) tagType.Color = request.Color;
         if (request.Description != null) tagType.Description = request.Description;
 
         tagType = await _tagRepository.UpdateTagTypeAsync(tagType);
@@ -68,28 +66,26 @@ public class TagService : ITagService
 
         var tagLog = new TagLog
         {
-            TagTypeId = request.TagTypeId,
-            EntityType = request.EntityType,
-            EntityId = request.EntityId
+            TagTypeId = request.TagTypeId
         };
 
         // Set the appropriate foreign key based on entity type
         switch (request.EntityType.ToLower())
         {
-            case "property":
-                tagLog.PropertyId = request.EntityId;
-                break;
             case "propertygroup":
                 tagLog.PropertyGroupId = request.EntityId;
                 break;
             case "tenant":
                 tagLog.TenantId = request.EntityId;
                 break;
+            case "tenancy":
+                tagLog.TenancyId = request.EntityId;
+                break;
             case "contactlog":
                 tagLog.ContactLogId = request.EntityId;
                 break;
             case "journallog":
-                // JournalLog doesn't have a direct FK in TagLog, using EntityType/EntityId only
+                tagLog.JournalLogId = request.EntityId;
                 break;
         }
 
@@ -98,9 +94,9 @@ public class TagService : ITagService
         return new TagDto
         {
             TagLogId = tagLog.TagLogId,
-            TagTypeId = tagLog.TagTypeId,
+            TagTypeId = tagLog.TagTypeId ?? 0,
             TagTypeName = tagType.TagTypeName ?? string.Empty,
-            Color = tagType.Color,
+            Color = null, // TagType doesn't have Color in database
             EntityType = tagLog.EntityType ?? request.EntityType,
             EntityId = tagLog.EntityId ?? request.EntityId,
             CreatedDate = DateTime.UtcNow
@@ -113,9 +109,9 @@ public class TagService : ITagService
         return tagLogs.Select(tl => new TagDto
         {
             TagLogId = tl.TagLogId,
-            TagTypeId = tl.TagTypeId,
+            TagTypeId = tl.TagTypeId ?? 0,
             TagTypeName = tl.TagType?.TagTypeName ?? string.Empty,
-            Color = tl.TagType?.Color,
+            Color = null, // TagType doesn't have Color in database
             EntityType = tl.EntityType ?? entityType,
             EntityId = tl.EntityId ?? entityId,
             CreatedDate = DateTime.UtcNow
@@ -147,7 +143,7 @@ public class TagService : ITagService
         {
             TagTypeId = tagType.TagTypeId,
             TagTypeName = tagType.TagTypeName ?? string.Empty,
-            Color = tagType.Color,
+            Color = null, // TagType doesn't have Color in database
             Description = tagType.Description,
             CreatedDate = DateTime.UtcNow
         };

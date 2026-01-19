@@ -55,10 +55,20 @@ public class TagRepository : ITagRepository
 
     public async Task<List<TagLog>> GetTagLogsByEntityAsync(string entityType, int entityId)
     {
-        return await _context.TagLogs
-            .Include(tl => tl.TagType)
-            .Where(tl => tl.EntityType == entityType && tl.EntityId == entityId)
-            .ToListAsync();
+        var query = _context.TagLogs.Include(tl => tl.TagType);
+
+        // Filter based on entity type
+        query = entityType.ToLower() switch
+        {
+            "contactlog" => query.Where(tl => tl.ContactLogId == entityId),
+            "journallog" => query.Where(tl => tl.JournalLogId == entityId),
+            "tenant" => query.Where(tl => tl.TenantId == entityId),
+            "tenancy" => query.Where(tl => tl.TenancyId == entityId),
+            "propertygroup" => query.Where(tl => tl.PropertyGroupId == entityId),
+            _ => query.Where(tl => false) // No matches for unknown entity types
+        };
+
+        return await query.ToListAsync();
     }
 
     public async Task<bool> DeleteTagLogAsync(int tagLogId)

@@ -51,7 +51,6 @@ public class TenantRepository : ITenantRepository
         return await _context.Tenancies
             .Include(t => t.Property)
                 .ThenInclude(p => p.PropertyGroup)
-            .Include(t => t.Tenant)
             .ToListAsync();
     }
 
@@ -60,7 +59,6 @@ public class TenantRepository : ITenantRepository
         return await _context.Tenancies
             .Include(t => t.Property)
                 .ThenInclude(p => p.PropertyGroup)
-            .Include(t => t.Tenant)
             .FirstOrDefaultAsync(t => t.TenancyId == tenancyId);
     }
 
@@ -68,19 +66,22 @@ public class TenantRepository : ITenantRepository
     {
         return await _context.Tenancies
             .Include(t => t.Property)
-            .Include(t => t.Tenant)
             .Where(t => t.PropertyId == propertyId)
             .ToListAsync();
     }
 
     public async Task<List<Tenancy>> GetTenanciesByTenantAsync(int tenantId)
     {
-        return await _context.Tenancies
+        // Tenant has TenancyId - get the tenancy that this tenant belongs to
+        var tenant = await _context.Tenants.FindAsync(tenantId);
+        if (tenant == null || !tenant.TenancyId.HasValue) return new List<Tenancy>();
+
+        var tenancy = await _context.Tenancies
             .Include(t => t.Property)
                 .ThenInclude(p => p.PropertyGroup)
-            .Include(t => t.Tenant)
-            .Where(t => t.TenantId == tenantId)
-            .ToListAsync();
+            .FirstOrDefaultAsync(t => t.TenancyId == tenant.TenancyId.Value);
+
+        return tenancy != null ? new List<Tenancy> { tenancy } : new List<Tenancy>();
     }
 
     public async Task<Tenancy> CreateTenancyAsync(Tenancy tenancy)

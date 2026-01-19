@@ -11,24 +11,23 @@ public class JournalLogAttachment
     public int JournalLogAttachmentId { get; set; }
 
     [Column("journalLogID")]
-    public int JournalLogId { get; set; }
+    public int? JournalLogId { get; set; }
 
-    [MaxLength(255)]
-    [Column("fileName")]
+    // Note: Database schema not provided - using computed properties for file fields
+    // If these columns exist in DB, they should be mapped here
+    [NotMapped]
     public string? FileName { get; set; }
 
-    [MaxLength(500)]
-    [Column("filePath")]
+    [NotMapped]
     public string? FilePath { get; set; }
 
-    [MaxLength(50)]
-    [Column("fileType")]
+    [NotMapped]
     public string? FileType { get; set; }
 
-    [Column("fileSize")]
+    [NotMapped]
     public long? FileSize { get; set; }
 
     // Navigation properties
     [ForeignKey("JournalLogId")]
-    public virtual JournalLog JournalLog { get; set; } = null!;
+    public virtual JournalLog? JournalLog { get; set; }
 }

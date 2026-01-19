@@ -49,9 +49,10 @@ public class JournalLogService : IJournalLogService
             TenantId = request.TenantId,
             JournalTypeId = request.JournalTypeId,
             JournalSubTypeId = request.JournalSubTypeId,
+            TransactionDate = request.TransactionDate ?? DateTime.UtcNow,
+            // Store Amount/Description in computed properties (not persisted)
             Amount = request.Amount,
-            Description = request.Description,
-            TransactionDate = request.TransactionDate
+            Description = request.Description
         };
 
         journalLog = await _journalLogRepository.CreateAsync(journalLog);
@@ -83,9 +84,10 @@ public class JournalLogService : IJournalLogService
         if (request.TenantId.HasValue) journalLog.TenantId = request.TenantId;
         if (request.JournalTypeId.HasValue) journalLog.JournalTypeId = request.JournalTypeId.Value;
         if (request.JournalSubTypeId.HasValue) journalLog.JournalSubTypeId = request.JournalSubTypeId;
+        if (request.TransactionDate.HasValue) journalLog.TransactionDate = request.TransactionDate.Value;
+        // Update computed properties (not persisted to DB)
         if (request.Amount.HasValue) journalLog.Amount = request.Amount.Value;
         if (request.Description != null) journalLog.Description = request.Description;
-        if (request.TransactionDate.HasValue) journalLog.TransactionDate = request.TransactionDate.Value;
 
         journalLog = await _journalLogRepository.UpdateAsync(journalLog);
         journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
@@ -197,12 +199,12 @@ public class JournalLogService : IJournalLogService
         return new JournalLogResponseDto
         {
             JournalLogId = journalLog.JournalLogId,
-            PropertyId = journalLog.PropertyId,
+            PropertyId = journalLog.PropertyId ?? 0,
             PropertyName = journalLog.Property?.PropertyName ?? string.Empty,
             TenancyId = journalLog.TenancyId,
             TenantId = journalLog.TenantId,
             TenantName = journalLog.Tenant != null ? $"{journalLog.Tenant.FirstName} {journalLog.Tenant.LastName}".Trim() : null,
-            JournalTypeId = journalLog.JournalTypeId,
+            JournalTypeId = journalLog.JournalTypeId ?? 0,
             JournalTypeName = journalLog.JournalType?.JournalTypeName ?? string.Empty,
             JournalSubTypeId = journalLog.JournalSubTypeId,
             JournalSubTypeName = journalLog.JournalSubType?.JournalSubTypeName,
