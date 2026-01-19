@@ -175,7 +175,11 @@ const Users: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                   <button
-                    onClick={() => setEditingUser(user)}
+                    type="button"
+                    onClick={() => {
+                      console.log('Edit clicked for user:', user);
+                      setEditingUser(user);
+                    }}
                     className="text-blue-600 hover:text-blue-900"
                   >
                     Edit
