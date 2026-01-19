@@ -7,36 +7,36 @@ namespace backend.Models;
 public class Property
 {
     [Key]
-    [Column("propertyID")]
+    [Column("PropertyID")]
     public int PropertyId { get; set; }
 
     [Required]
-    [Column("propertyGroupID")]
+    [Column("PropertyGroupID")]
     public int PropertyGroupId { get; set; }
 
     [Required]
     [MaxLength(200)]
-    [Column("propertyName")]
+    [Column("PropertyName")]
     public string PropertyName { get; set; } = string.Empty;
 
     [MaxLength(500)]
-    [Column("address")]
+    [Column("Address")]
     public string? Address { get; set; }
 
     [MaxLength(50)]
-    [Column("postCode")]
+    [Column("PostCode")]
     public string? PostCode { get; set; }
 
-    [Column("createdDate")]
+    [Column("CreatedDate")]
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
-    [Column("modifiedDate")]
+    [Column("ModifiedDate")]
     public DateTime? ModifiedDate { get; set; }
 
-    [Column("createdByID")]
+    [Column("CreatedByID")]
     public int? CreatedByUserId { get; set; }
 
-    [Column("modifiedByID")]
+    [Column("ModifiedByID")]
     public int? ModifiedByUserId { get; set; }
 
     // Navigation properties
