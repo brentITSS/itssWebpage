@@ -172,15 +172,24 @@ public class UserService : IUserService
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         await _userRepository.UpdateAsync(user);
 
-        // Audit log
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = modifiedByUserId,
-            Action = "ResetPassword",
-            EntityType = "User",
-            EntityId = userId,
-            CreatedDate = DateTime.UtcNow
-        });
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = modifiedByUserId,
+                Action = "ResetPassword",
+                EntityType = "User",
+                EntityId = userId,
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't fail the password reset
+            // In production, you might want to use a proper logging framework
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
         return true;
     }
