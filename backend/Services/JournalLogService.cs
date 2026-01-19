@@ -64,7 +64,7 @@ public class JournalLogService : IJournalLogService
             Action = "Create",
             EntityType = "JournalLog",
             EntityId = journalLog.JournalLogId,
-            NewValues = $"PropertyId: {journalLog.PropertyId}, Amount: {journalLog.Amount}, Date: {journalLog.TransactionDate}",
+            NewValues = $"PropertyId: {journalLog.PropertyId}, Amount: {journalLog.Amount?.ToString() ?? "0"}, Date: {journalLog.TransactionDate?.ToString() ?? "N/A"}",
             CreatedDate = DateTime.UtcNow
         });
 
@@ -76,7 +76,7 @@ public class JournalLogService : IJournalLogService
         var journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
         if (journalLog == null) return null;
 
-        var oldValues = $"PropertyId: {journalLog.PropertyId}, Amount: {journalLog.Amount}";
+        var oldValues = $"PropertyId: {journalLog.PropertyId}, Amount: {journalLog.Amount?.ToString() ?? "0"}";
 
         if (request.PropertyId.HasValue) journalLog.PropertyId = request.PropertyId.Value;
         if (request.TenancyId.HasValue) journalLog.TenancyId = request.TenancyId;
@@ -91,7 +91,7 @@ public class JournalLogService : IJournalLogService
         journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
 
         // Audit log
-        var newValues = $"PropertyId: {journalLog!.PropertyId}, Amount: {journalLog.Amount}";
+        var newValues = $"PropertyId: {journalLog!.PropertyId}, Amount: {journalLog.Amount?.ToString() ?? "0"}";
         await _auditLogRepository.CreateAsync(new AuditLog
         {
             UserId = modifiedByUserId,
@@ -121,7 +121,7 @@ public class JournalLogService : IJournalLogService
                 Action = "Delete",
                 EntityType = "JournalLog",
                 EntityId = journalLogId,
-                OldValues = $"PropertyId: {journalLog.PropertyId}, Amount: {journalLog.Amount}",
+                OldValues = $"PropertyId: {journalLog.PropertyId}, Amount: {journalLog.Amount?.ToString() ?? "0"}",
                 CreatedDate = DateTime.UtcNow
             });
         }

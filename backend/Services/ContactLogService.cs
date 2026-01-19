@@ -68,7 +68,7 @@ public class ContactLogService : IContactLogService
             Action = "Create",
             EntityType = "ContactLog",
             EntityId = contactLog.ContactLogId,
-            NewValues = $"PropertyId: {contactLog.PropertyId}, Subject: {contactLog.Subject}",
+            NewValues = $"PropertyId: {contactLog.PropertyId}, Subject: {contactLog.Subject ?? "N/A"}",
             CreatedDate = DateTime.UtcNow
         });
 
@@ -80,7 +80,7 @@ public class ContactLogService : IContactLogService
         var contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);
         if (contactLog == null) return null;
 
-        var oldValues = $"PropertyId: {contactLog.PropertyId}, Subject: {contactLog.Subject}";
+        var oldValues = $"PropertyId: {contactLog.PropertyId}, Subject: {contactLog.Subject ?? "N/A"}";
 
         if (request.PropertyId.HasValue) contactLog.PropertyId = request.PropertyId.Value;
         if (request.TenantId.HasValue) contactLog.TenantId = request.TenantId;
@@ -93,7 +93,7 @@ public class ContactLogService : IContactLogService
         contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);
 
         // Audit log
-        var newValues = $"PropertyId: {contactLog!.PropertyId}, Subject: {contactLog.Subject}";
+        var newValues = $"PropertyId: {contactLog!.PropertyId}, Subject: {contactLog.Subject ?? "N/A"}";
         await _auditLogRepository.CreateAsync(new AuditLog
         {
             UserId = modifiedByUserId,
@@ -123,7 +123,7 @@ public class ContactLogService : IContactLogService
                 Action = "Delete",
                 EntityType = "ContactLog",
                 EntityId = contactLogId,
-                OldValues = $"Subject: {contactLog.Subject}",
+                OldValues = $"Subject: {contactLog.Subject ?? "N/A"}",
                 CreatedDate = DateTime.UtcNow
             });
         }

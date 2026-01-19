@@ -143,7 +143,7 @@ public class TenantService : ITenantService
             Action = "Create",
             EntityType = "Tenancy",
             EntityId = tenancy.TenancyId,
-            NewValues = $"PropertyId: {tenancy.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate}",
+            NewValues = $"PropertyId: {tenancy.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate?.ToString() ?? "N/A"}",
             CreatedDate = DateTime.UtcNow
         });
 
@@ -155,7 +155,7 @@ public class TenantService : ITenantService
         var tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
         if (tenancy == null) return null;
 
-        var oldValues = $"PropertyId: {tenancy.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate}, EndDate: {tenancy.EndDate}";
+        var oldValues = $"PropertyId: {tenancy.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate?.ToString() ?? "N/A"}, EndDate: {tenancy.EndDate?.ToString() ?? "N/A"}";
 
         if (request.PropertyId.HasValue) tenancy.PropertyId = request.PropertyId.Value;
         if (request.TenantId.HasValue) tenancy.TenantId = request.TenantId.Value;
@@ -167,7 +167,7 @@ public class TenantService : ITenantService
         tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
 
         // Audit log
-        var newValues = $"PropertyId: {tenancy!.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate}, EndDate: {tenancy.EndDate}";
+        var newValues = $"PropertyId: {tenancy!.PropertyId}, TenantId: {tenancy.TenantId}, StartDate: {tenancy.StartDate?.ToString() ?? "N/A"}, EndDate: {tenancy.EndDate?.ToString() ?? "N/A"}";
         await _auditLogRepository.CreateAsync(new AuditLog
         {
             UserId = modifiedByUserId,
