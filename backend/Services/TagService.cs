@@ -35,8 +35,7 @@ public class TagService : ITagService
         {
             TagTypeName = request.TagTypeName,
             Color = request.Color,
-            Description = request.Description,
-            CreatedDate = DateTime.UtcNow
+            Description = request.Description
         };
 
         tagType = await _tagRepository.CreateTagTypeAsync(tagType);
@@ -71,9 +70,7 @@ public class TagService : ITagService
         {
             TagTypeId = request.TagTypeId,
             EntityType = request.EntityType,
-            EntityId = request.EntityId,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            EntityId = request.EntityId
         };
 
         // Set the appropriate foreign key based on entity type
@@ -102,11 +99,11 @@ public class TagService : ITagService
         {
             TagLogId = tagLog.TagLogId,
             TagTypeId = tagLog.TagTypeId,
-            TagTypeName = tagType.TagTypeName,
+            TagTypeName = tagType.TagTypeName ?? string.Empty,
             Color = tagType.Color,
             EntityType = tagLog.EntityType ?? request.EntityType,
             EntityId = tagLog.EntityId ?? request.EntityId,
-            CreatedDate = tagLog.CreatedDate
+            CreatedDate = DateTime.UtcNow
         };
     }
 
@@ -117,11 +114,11 @@ public class TagService : ITagService
         {
             TagLogId = tl.TagLogId,
             TagTypeId = tl.TagTypeId,
-            TagTypeName = tl.TagType.TagTypeName,
-            Color = tl.TagType.Color,
+            TagTypeName = tl.TagType?.TagTypeName ?? string.Empty,
+            Color = tl.TagType?.Color,
             EntityType = tl.EntityType ?? entityType,
             EntityId = tl.EntityId ?? entityId,
-            CreatedDate = tl.CreatedDate
+            CreatedDate = DateTime.UtcNow
         }).ToList();
     }
 
@@ -149,10 +146,10 @@ public class TagService : ITagService
         return new TagTypeResponseDto
         {
             TagTypeId = tagType.TagTypeId,
-            TagTypeName = tagType.TagTypeName,
+            TagTypeName = tagType.TagTypeName ?? string.Empty,
             Color = tagType.Color,
             Description = tagType.Description,
-            CreatedDate = tagType.CreatedDate
+            CreatedDate = DateTime.UtcNow
         };
     }
 }

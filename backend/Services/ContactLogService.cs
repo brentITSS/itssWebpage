@@ -55,9 +55,7 @@ public class ContactLogService : IContactLogService
             ContactLogTypeId = request.ContactLogTypeId,
             Subject = request.Subject,
             Notes = request.Notes,
-            ContactDate = request.ContactDate,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            ContactDate = request.ContactDate
         };
 
         contactLog = await _contactLogRepository.CreateAsync(contactLog);
@@ -90,8 +88,6 @@ public class ContactLogService : IContactLogService
         if (request.Subject != null) contactLog.Subject = request.Subject;
         if (request.Notes != null) contactLog.Notes = request.Notes;
         if (request.ContactDate.HasValue) contactLog.ContactDate = request.ContactDate.Value;
-        contactLog.ModifiedDate = DateTime.UtcNow;
-        contactLog.ModifiedByUserId = modifiedByUserId;
 
         contactLog = await _contactLogRepository.UpdateAsync(contactLog);
         contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);
@@ -141,7 +137,7 @@ public class ContactLogService : IContactLogService
         return contactLogTypes.Select(clt => new ContactLogTypeDto
         {
             ContactLogTypeId = clt.ContactLogTypeId,
-            ContactLogTypeName = clt.ContactLogTypeName,
+            ContactLogTypeName = clt.ContactLogTypeName ?? string.Empty,
             Description = clt.Description
         }).ToList();
     }
@@ -169,9 +165,7 @@ public class ContactLogService : IContactLogService
             FileName = file.FileName,
             FilePath = filePath,
             FileType = file.ContentType,
-            FileSize = file.Length,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            FileSize = file.Length
         };
 
         attachment = await _contactLogRepository.AddAttachmentAsync(attachment);
@@ -181,8 +175,8 @@ public class ContactLogService : IContactLogService
             AttachmentId = attachment.ContactLogAttachmentId,
             FileName = attachment.FileName,
             FileType = attachment.FileType,
-            FileSize = attachment.FileSize,
-            CreatedDate = attachment.CreatedDate
+            FileSize = attachment.FileSize ?? 0,
+            CreatedDate = DateTime.UtcNow
         };
     }
 
@@ -198,32 +192,32 @@ public class ContactLogService : IContactLogService
         {
             ContactLogId = contactLog.ContactLogId,
             PropertyId = contactLog.PropertyId,
-            PropertyName = contactLog.Property.PropertyName,
+            PropertyName = contactLog.Property?.PropertyName ?? string.Empty,
             TenantId = contactLog.TenantId,
             TenantName = contactLog.Tenant != null ? $"{contactLog.Tenant.FirstName} {contactLog.Tenant.LastName}".Trim() : null,
             ContactLogTypeId = contactLog.ContactLogTypeId,
-            ContactLogTypeName = contactLog.ContactLogType.ContactLogTypeName,
-            Subject = contactLog.Subject,
-            Notes = contactLog.Notes,
-            ContactDate = contactLog.ContactDate,
-            CreatedDate = contactLog.CreatedDate,
+            ContactLogTypeName = contactLog.ContactLogType?.ContactLogTypeName ?? string.Empty,
+            Subject = contactLog.Subject ?? string.Empty,
+            Notes = contactLog.Notes ?? string.Empty,
+            ContactDate = contactLog.ContactDate ?? DateTime.UtcNow,
+            CreatedDate = DateTime.UtcNow,
             Attachments = contactLog.Attachments.Select(a => new AttachmentDto
             {
                 AttachmentId = a.ContactLogAttachmentId,
                 FileName = a.FileName,
                 FileType = a.FileType,
-                FileSize = a.FileSize,
-                CreatedDate = a.CreatedDate
+                FileSize = a.FileSize ?? 0,
+                CreatedDate = DateTime.UtcNow
             }).ToList(),
             Tags = contactLog.TagLogs.Select(tl => new TagDto
             {
                 TagLogId = tl.TagLogId,
                 TagTypeId = tl.TagTypeId,
-                TagTypeName = tl.TagType.TagTypeName,
-                Color = tl.TagType.Color,
+                TagTypeName = tl.TagType?.TagTypeName ?? string.Empty,
+                Color = tl.TagType?.Color,
                 EntityType = tl.EntityType ?? "ContactLog",
                 EntityId = tl.EntityId ?? contactLog.ContactLogId,
-                CreatedDate = tl.CreatedDate
+                CreatedDate = DateTime.UtcNow
             }).ToList()
         };
     }

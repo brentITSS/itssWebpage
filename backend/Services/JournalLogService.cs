@@ -51,9 +51,7 @@ public class JournalLogService : IJournalLogService
             JournalSubTypeId = request.JournalSubTypeId,
             Amount = request.Amount,
             Description = request.Description,
-            TransactionDate = request.TransactionDate,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            TransactionDate = request.TransactionDate
         };
 
         journalLog = await _journalLogRepository.CreateAsync(journalLog);
@@ -88,8 +86,6 @@ public class JournalLogService : IJournalLogService
         if (request.Amount.HasValue) journalLog.Amount = request.Amount.Value;
         if (request.Description != null) journalLog.Description = request.Description;
         if (request.TransactionDate.HasValue) journalLog.TransactionDate = request.TransactionDate.Value;
-        journalLog.ModifiedDate = DateTime.UtcNow;
-        journalLog.ModifiedByUserId = modifiedByUserId;
 
         journalLog = await _journalLogRepository.UpdateAsync(journalLog);
         journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
@@ -139,13 +135,13 @@ public class JournalLogService : IJournalLogService
         return journalTypes.Select(jt => new JournalTypeDto
         {
             JournalTypeId = jt.JournalTypeId,
-            JournalTypeName = jt.JournalTypeName,
+            JournalTypeName = jt.JournalTypeName ?? string.Empty,
             Description = jt.Description,
             SubTypes = jt.JournalSubTypes != null && jt.JournalSubTypes.Any()
                 ? jt.JournalSubTypes.Select(jst => new JournalSubTypeDto
                 {
                     JournalSubTypeId = jst.JournalSubTypeId,
-                    JournalSubTypeName = jst.JournalSubTypeName,
+                    JournalSubTypeName = jst.JournalSubTypeName ?? string.Empty,
                     Description = jst.Description
                 }).ToList()
                 : new List<JournalSubTypeDto>()
@@ -175,9 +171,7 @@ public class JournalLogService : IJournalLogService
             FileName = file.FileName,
             FilePath = filePath,
             FileType = file.ContentType,
-            FileSize = file.Length,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            FileSize = file.Length
         };
 
         attachment = await _journalLogRepository.AddAttachmentAsync(attachment);
@@ -187,8 +181,8 @@ public class JournalLogService : IJournalLogService
             AttachmentId = attachment.JournalLogAttachmentId,
             FileName = attachment.FileName,
             FileType = attachment.FileType,
-            FileSize = attachment.FileSize,
-            CreatedDate = attachment.CreatedDate
+            FileSize = attachment.FileSize ?? 0,
+            CreatedDate = DateTime.UtcNow
         };
     }
 
@@ -204,25 +198,25 @@ public class JournalLogService : IJournalLogService
         {
             JournalLogId = journalLog.JournalLogId,
             PropertyId = journalLog.PropertyId,
-            PropertyName = journalLog.Property.PropertyName,
+            PropertyName = journalLog.Property?.PropertyName ?? string.Empty,
             TenancyId = journalLog.TenancyId,
             TenantId = journalLog.TenantId,
             TenantName = journalLog.Tenant != null ? $"{journalLog.Tenant.FirstName} {journalLog.Tenant.LastName}".Trim() : null,
             JournalTypeId = journalLog.JournalTypeId,
-            JournalTypeName = journalLog.JournalType.JournalTypeName,
+            JournalTypeName = journalLog.JournalType?.JournalTypeName ?? string.Empty,
             JournalSubTypeId = journalLog.JournalSubTypeId,
             JournalSubTypeName = journalLog.JournalSubType?.JournalSubTypeName,
-            Amount = journalLog.Amount,
+            Amount = journalLog.Amount ?? 0,
             Description = journalLog.Description,
-            TransactionDate = journalLog.TransactionDate,
-            CreatedDate = journalLog.CreatedDate,
+            TransactionDate = journalLog.TransactionDate ?? DateTime.UtcNow,
+            CreatedDate = DateTime.UtcNow,
             Attachments = journalLog.Attachments.Select(a => new AttachmentDto
             {
                 AttachmentId = a.JournalLogAttachmentId,
                 FileName = a.FileName,
                 FileType = a.FileType,
-                FileSize = a.FileSize,
-                CreatedDate = a.CreatedDate
+                FileSize = a.FileSize ?? 0,
+                CreatedDate = DateTime.UtcNow
             }).ToList()
         };
     }

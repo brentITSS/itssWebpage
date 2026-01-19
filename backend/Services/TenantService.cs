@@ -36,9 +36,7 @@ public class TenantService : ITenantService
             FirstName = request.FirstName,
             LastName = request.LastName,
             Email = request.Email,
-            Phone = request.Phone,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            Phone = request.Phone
         };
 
         tenant = await _tenantRepository.CreateAsync(tenant);
@@ -68,8 +66,6 @@ public class TenantService : ITenantService
         if (request.LastName != null) tenant.LastName = request.LastName;
         if (request.Email != null) tenant.Email = request.Email;
         if (request.Phone != null) tenant.Phone = request.Phone;
-        tenant.ModifiedDate = DateTime.UtcNow;
-        tenant.ModifiedByUserId = modifiedByUserId;
 
         tenant = await _tenantRepository.UpdateAsync(tenant);
 
@@ -134,9 +130,7 @@ public class TenantService : ITenantService
             TenantId = request.TenantId,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
-            MonthlyRent = request.MonthlyRent,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            MonthlyRent = request.MonthlyRent
         };
 
         tenancy = await _tenantRepository.CreateTenancyAsync(tenancy);
@@ -168,8 +162,6 @@ public class TenantService : ITenantService
         if (request.StartDate.HasValue) tenancy.StartDate = request.StartDate.Value;
         if (request.EndDate.HasValue) tenancy.EndDate = request.EndDate;
         if (request.MonthlyRent.HasValue) tenancy.MonthlyRent = request.MonthlyRent;
-        tenancy.ModifiedDate = DateTime.UtcNow;
-        tenancy.ModifiedByUserId = modifiedByUserId;
 
         tenancy = await _tenantRepository.UpdateTenancyAsync(tenancy);
         tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
@@ -222,7 +214,7 @@ public class TenantService : ITenantService
             LastName = tenant.LastName,
             Email = tenant.Email,
             Phone = tenant.Phone,
-            CreatedDate = tenant.CreatedDate
+            CreatedDate = DateTime.UtcNow
         };
     }
 
@@ -232,13 +224,13 @@ public class TenantService : ITenantService
         {
             TenancyId = tenancy.TenancyId,
             PropertyId = tenancy.PropertyId,
-            PropertyName = tenancy.Property.PropertyName,
+            PropertyName = tenancy.Property?.PropertyName ?? string.Empty,
             TenantId = tenancy.TenantId,
-            TenantName = $"{tenancy.Tenant.FirstName} {tenancy.Tenant.LastName}".Trim(),
-            StartDate = tenancy.StartDate,
+            TenantName = tenancy.Tenant != null ? $"{tenancy.Tenant.FirstName} {tenancy.Tenant.LastName}".Trim() : string.Empty,
+            StartDate = tenancy.StartDate ?? DateTime.UtcNow,
             EndDate = tenancy.EndDate,
             MonthlyRent = tenancy.MonthlyRent ?? 0,
-            CreatedDate = tenancy.CreatedDate
+            CreatedDate = DateTime.UtcNow
         };
     }
 }
