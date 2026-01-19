@@ -1,3 +1,4 @@
+using System.Linq;
 using backend.DTOs;
 using backend.Models;
 using backend.Repositories;
@@ -21,9 +22,9 @@ public class PropertyService : IPropertyService
         return propertyGroups.Select(pg => new PropertyGroupResponseDto
         {
             PropertyGroupId = pg.PropertyGroupId,
-            PropertyGroupName = pg.PropertyGroupName,
-            Description = pg.Description,
-            CreatedDate = pg.CreatedDate,
+            PropertyGroupName = pg.PropertyGroupName ?? string.Empty,
+            Description = null,
+            CreatedDate = DateTime.UtcNow,
             PropertyCount = pg.Properties.Count
         }).ToList();
     }
@@ -36,9 +37,9 @@ public class PropertyService : IPropertyService
         return new PropertyGroupResponseDto
         {
             PropertyGroupId = propertyGroup.PropertyGroupId,
-            PropertyGroupName = propertyGroup.PropertyGroupName,
-            Description = propertyGroup.Description,
-            CreatedDate = propertyGroup.CreatedDate,
+            PropertyGroupName = propertyGroup.PropertyGroupName ?? string.Empty,
+            Description = null,
+            CreatedDate = DateTime.UtcNow,
             PropertyCount = propertyGroup.Properties.Count
         };
     }
@@ -48,9 +49,7 @@ public class PropertyService : IPropertyService
         var propertyGroup = new PropertyGroup
         {
             PropertyGroupName = request.PropertyGroupName,
-            Description = request.Description,
-            CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            IsActive = true
         };
 
         propertyGroup = await _propertyRepository.CreatePropertyGroupAsync(propertyGroup);
@@ -69,9 +68,9 @@ public class PropertyService : IPropertyService
         return new PropertyGroupResponseDto
         {
             PropertyGroupId = propertyGroup.PropertyGroupId,
-            PropertyGroupName = propertyGroup.PropertyGroupName,
-            Description = propertyGroup.Description,
-            CreatedDate = propertyGroup.CreatedDate,
+            PropertyGroupName = propertyGroup.PropertyGroupName ?? string.Empty,
+            Description = null,
+            CreatedDate = DateTime.UtcNow,
             PropertyCount = 0
         };
     }
@@ -81,17 +80,14 @@ public class PropertyService : IPropertyService
         var propertyGroup = await _propertyRepository.GetPropertyGroupByIdAsync(propertyGroupId);
         if (propertyGroup == null) return null;
 
-        var oldValues = $"Name: {propertyGroup.PropertyGroupName}, Description: {propertyGroup.Description}";
+        var oldValues = $"Name: {propertyGroup.PropertyGroupName}";
 
         if (request.PropertyGroupName != null) propertyGroup.PropertyGroupName = request.PropertyGroupName;
-        if (request.Description != null) propertyGroup.Description = request.Description;
-        propertyGroup.ModifiedDate = DateTime.UtcNow;
-        propertyGroup.ModifiedByUserId = modifiedByUserId;
 
         propertyGroup = await _propertyRepository.UpdatePropertyGroupAsync(propertyGroup);
 
         // Audit log
-        var newValues = $"Name: {propertyGroup.PropertyGroupName}, Description: {propertyGroup.Description}";
+        var newValues = $"Name: {propertyGroup.PropertyGroupName}";
         await _auditLogRepository.CreateAsync(new AuditLog
         {
             UserId = modifiedByUserId,
@@ -106,9 +102,9 @@ public class PropertyService : IPropertyService
         return new PropertyGroupResponseDto
         {
             PropertyGroupId = propertyGroup.PropertyGroupId,
-            PropertyGroupName = propertyGroup.PropertyGroupName,
-            Description = propertyGroup.Description,
-            CreatedDate = propertyGroup.CreatedDate,
+            PropertyGroupName = propertyGroup.PropertyGroupName ?? string.Empty,
+            Description = null,
+            CreatedDate = DateTime.UtcNow,
             PropertyCount = propertyGroup.Properties.Count
         };
     }
@@ -158,14 +154,26 @@ public class PropertyService : IPropertyService
 
     public async Task<PropertyResponseDto> CreatePropertyAsync(CreatePropertyRequest request, int createdByUserId)
     {
+        // Parse address if provided (split by comma or newline)
+        string? address1 = null;
+        string? address2 = null;
+        if (!string.IsNullOrWhiteSpace(request.Address))
+        {
+            var addressParts = request.Address.Split(new[] { ',', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (addressParts.Length > 0) address1 = addressParts[0];
+            if (addressParts.Length > 1) address2 = string.Join(", ", addressParts.Skip(1));
+        }
+
         var property = new Property
         {
             PropertyGroupId = request.PropertyGroupId,
             PropertyName = request.PropertyName,
-            Address = request.Address,
+            Address1 = address1,
+            Address2 = address2,
             PostCode = request.PostCode,
             CreatedDate = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            CreatedBy = createdByUserId.ToString(),
+            IsActive = true
         };
 
         property = await _propertyRepository.CreatePropertyAsync(property);
@@ -194,10 +202,15 @@ public class PropertyService : IPropertyService
 
         if (request.PropertyGroupId.HasValue) property.PropertyGroupId = request.PropertyGroupId.Value;
         if (request.PropertyName != null) property.PropertyName = request.PropertyName;
-        if (request.Address != null) property.Address = request.Address;
         if (request.PostCode != null) property.PostCode = request.PostCode;
-        property.ModifiedDate = DateTime.UtcNow;
-        property.ModifiedByUserId = modifiedByUserId;
+        
+        // Parse address if provided
+        if (request.Address != null)
+        {
+            var addressParts = request.Address.Split(new[] { ',', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (addressParts.Length > 0) property.Address1 = addressParts[0];
+            if (addressParts.Length > 1) property.Address2 = string.Join(", ", addressParts.Skip(1));
+        }
 
         property = await _propertyRepository.UpdatePropertyAsync(property);
         property = await _propertyRepository.GetPropertyByIdAsync(propertyId);
@@ -246,12 +259,12 @@ public class PropertyService : IPropertyService
         return new PropertyResponseDto
         {
             PropertyId = property.PropertyId,
-            PropertyGroupId = property.PropertyGroupId,
-            PropertyGroupName = property.PropertyGroup.PropertyGroupName,
-            PropertyName = property.PropertyName,
+            PropertyGroupId = property.PropertyGroupId ?? 0,
+            PropertyGroupName = property.PropertyGroup?.PropertyGroupName ?? string.Empty,
+            PropertyName = property.PropertyName ?? string.Empty,
             Address = property.Address,
             PostCode = property.PostCode,
-            CreatedDate = property.CreatedDate
+            CreatedDate = property.CreatedDate ?? DateTime.UtcNow
         };
     }
 }

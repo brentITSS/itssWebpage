@@ -7,29 +7,15 @@ namespace backend.Models;
 public class PropertyGroup
 {
     [Key]
-    [Column("PropertyGroupID")]
+    [Column("propertyGrpID")]
     public int PropertyGroupId { get; set; }
 
-    [Required]
     [MaxLength(200)]
-    [Column("PropertyGroupName")]
-    public string PropertyGroupName { get; set; } = string.Empty;
+    [Column("groupName")]
+    public string? PropertyGroupName { get; set; }
 
-    [MaxLength(500)]
-    [Column("Description")]
-    public string? Description { get; set; }
-
-    [Column("CreatedDate")]
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    [Column("ModifiedDate")]
-    public DateTime? ModifiedDate { get; set; }
-
-    [Column("CreatedByID")]
-    public int? CreatedByUserId { get; set; }
-
-    [Column("ModifiedByID")]
-    public int? ModifiedByUserId { get; set; }
+    [Column("active")]
+    public bool? IsActive { get; set; }
 
     // Navigation properties
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
