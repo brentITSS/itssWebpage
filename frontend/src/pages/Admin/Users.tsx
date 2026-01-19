@@ -4,11 +4,11 @@ import { RoleTypeDto } from '../../services/adminService';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<UserResponseDto[]>([]);
-  const [, setRoles] = useState<RoleTypeDto[]>([]);
+  const [roles, setRoles] = useState<RoleTypeDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [, setEditingUser] = useState<UserResponseDto | null>(null);
+  const [editingUser, setEditingUser] = useState<UserResponseDto | null>(null);
   const [showResetPassword, setShowResetPassword] = useState<number | null>(null);
 
   useEffect(() => {
@@ -57,10 +57,20 @@ const Users: React.FC = () => {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handleUpdateUser = async (id: number, request: UpdateUserRequest) => {
+  const handleUpdateUser = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const formData = new FormData(e.currentTarget);
+    const request: UpdateUserRequest = {
+      firstName: formData.get('firstName') as string || undefined,
+      lastName: formData.get('lastName') as string || undefined,
+      isActive: formData.get('isActive') === 'true',
+      roleIds: [], // TODO: Add role selection UI
+    };
+
     try {
-      await adminService.updateUser(id, request);
+      await adminService.updateUser(editingUser.userId, request);
       setEditingUser(null);
       loadUsers();
     } catch (err: any) {
@@ -250,6 +260,78 @@ const Users: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
                   Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 className="text-lg font-bold mb-4">Edit User</h3>
+            <form onSubmit={handleUpdateUser}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  name="firstName"
+                  defaultValue={editingUser.firstName || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  name="lastName"
+                  defaultValue={editingUser.lastName || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  name="isActive"
+                  defaultValue={editingUser.isActive ? 'true' : 'false'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Update
                 </button>
               </div>
             </form>
