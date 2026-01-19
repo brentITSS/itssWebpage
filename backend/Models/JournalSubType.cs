@@ -7,10 +7,10 @@ namespace backend.Models;
 public class JournalSubType
 {
     [Key]
-    [Column("journalSubTypeID")]
+    [Column("journalSubTypeId")]
     public int JournalSubTypeId { get; set; }
 
-    [Column("journalTypeID")]
+    [Column("journalTypeId")]
     public int JournalTypeId { get; set; }
 
     [MaxLength(100)]

@@ -7,7 +7,7 @@ namespace backend.Models;
 public class Tenant
 {
     [Key]
-    [Column("tenantID")]
+    [Column("tenantId")]
     public int TenantId { get; set; }
 
     [MaxLength(100)]

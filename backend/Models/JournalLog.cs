@@ -7,22 +7,22 @@ namespace backend.Models;
 public class JournalLog
 {
     [Key]
-    [Column("journalLogID")]
+    [Column("journalLogId")]
     public int JournalLogId { get; set; }
 
-    [Column("propertyID")]
+    [Column("propertyId")]
     public int PropertyId { get; set; }
 
-    [Column("tenancyID")]
+    [Column("tenancyId")]
     public int? TenancyId { get; set; }
 
-    [Column("tenantID")]
+    [Column("tenantId")]
     public int? TenantId { get; set; }
 
-    [Column("journalTypeID")]
+    [Column("journalTypeId")]
     public int JournalTypeId { get; set; }
 
-    [Column("journalSubTypeID")]
+    [Column("journalSubTypeId")]
     public int? JournalSubTypeId { get; set; }
 
     [Column("amount", TypeName = "decimal(18,2)")]

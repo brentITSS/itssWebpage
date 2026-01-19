@@ -7,10 +7,10 @@ namespace backend.Models;
 public class JournalLogAttachment
 {
     [Key]
-    [Column("journalLogAttachmentID")]
+    [Column("journalLogAttachmentId")]
     public int JournalLogAttachmentId { get; set; }
 
-    [Column("journalLogID")]
+    [Column("journalLogId")]
     public int JournalLogId { get; set; }
 
     [MaxLength(255)]

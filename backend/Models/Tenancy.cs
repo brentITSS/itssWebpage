@@ -7,13 +7,13 @@ namespace backend.Models;
 public class Tenancy
 {
     [Key]
-    [Column("tenancyID")]
+    [Column("tenancyId")]
     public int TenancyId { get; set; }
 
-    [Column("propertyID")]
+    [Column("propertyId")]
     public int PropertyId { get; set; }
 
-    [Column("tenantID")]
+    [Column("tenantId")]
     public int TenantId { get; set; }
 
     [Column("startDate")]
