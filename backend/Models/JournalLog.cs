@@ -7,37 +7,33 @@ namespace backend.Models;
 public class JournalLog
 {
     [Key]
+    [Column("journalLogID")]
     public int JournalLogId { get; set; }
 
-    [Required]
+    [Column("propertyID")]
     public int PropertyId { get; set; }
 
+    [Column("tenancyID")]
     public int? TenancyId { get; set; }
 
+    [Column("tenantID")]
     public int? TenantId { get; set; }
 
-    [Required]
+    [Column("journalTypeID")]
     public int JournalTypeId { get; set; }
 
+    [Column("journalSubTypeID")]
     public int? JournalSubTypeId { get; set; }
 
-    [Required]
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal Amount { get; set; }
+    [Column("amount", TypeName = "decimal(18,2)")]
+    public decimal? Amount { get; set; }
 
     [MaxLength(1000)]
+    [Column("description")]
     public string? Description { get; set; }
 
-    public DateTime TransactionDate { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    public DateTime? ModifiedDate { get; set; }
-
-    [Required]
-    public int CreatedByUserId { get; set; }
-
-    public int? ModifiedByUserId { get; set; }
+    [Column("transactionDate")]
+    public DateTime? TransactionDate { get; set; }
 
     // Navigation properties
     [ForeignKey("PropertyId")]

@@ -7,19 +7,19 @@ namespace backend.Models;
 public class JournalSubType
 {
     [Key]
+    [Column("journalSubTypeID")]
     public int JournalSubTypeId { get; set; }
 
-    [Required]
+    [Column("journalTypeID")]
     public int JournalTypeId { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public string JournalSubTypeName { get; set; } = string.Empty;
+    [Column("journalSubTypeName")]
+    public string? JournalSubTypeName { get; set; }
 
     [MaxLength(500)]
+    [Column("description")]
     public string? Description { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("JournalTypeId")]

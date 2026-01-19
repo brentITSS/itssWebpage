@@ -7,29 +7,31 @@ namespace backend.Models;
 public class TagLog
 {
     [Key]
+    [Column("tagLogID")]
     public int TagLogId { get; set; }
 
-    [Required]
+    [Column("tagTypeID")]
     public int TagTypeId { get; set; }
 
     // Polymorphic relationship - can tag different entity types
     [MaxLength(50)]
+    [Column("entityType")]
     public string? EntityType { get; set; } // "Property", "PropertyGroup", "Tenant", "ContactLog"
 
+    [Column("entityID")]
     public int? EntityId { get; set; } // ID of the tagged entity
 
+    [Column("propertyID")]
     public int? PropertyId { get; set; }
 
+    [Column("propertyGroupID")]
     public int? PropertyGroupId { get; set; }
 
+    [Column("tenantID")]
     public int? TenantId { get; set; }
 
+    [Column("contactLogID")]
     public int? ContactLogId { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    [Required]
-    public int CreatedByUserId { get; set; }
 
     // Navigation properties
     [ForeignKey("TagTypeId")]

@@ -7,34 +7,27 @@ namespace backend.Models;
 public class ContactLog
 {
     [Key]
+    [Column("contactLogID")]
     public int ContactLogId { get; set; }
 
-    [Required]
+    [Column("propertyID")]
     public int PropertyId { get; set; }
 
+    [Column("tenantID")]
     public int? TenantId { get; set; }
 
-    [Required]
+    [Column("contactLogTypeID")]
     public int ContactLogTypeId { get; set; }
 
-    [Required]
     [MaxLength(500)]
-    public string Subject { get; set; } = string.Empty;
+    [Column("subject")]
+    public string? Subject { get; set; }
 
-    [Required]
-    [Column(TypeName = "nvarchar(max)")]
-    public string Notes { get; set; } = string.Empty;
+    [Column("notes", TypeName = "nvarchar(max)")]
+    public string? Notes { get; set; }
 
-    public DateTime ContactDate { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    public DateTime? ModifiedDate { get; set; }
-
-    [Required]
-    public int CreatedByUserId { get; set; }
-
-    public int? ModifiedByUserId { get; set; }
+    [Column("contactDate")]
+    public DateTime? ContactDate { get; set; }
 
     // Navigation properties
     [ForeignKey("PropertyId")]

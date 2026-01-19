@@ -7,16 +7,16 @@ namespace backend.Models;
 public class ContactLogType
 {
     [Key]
+    [Column("contactLogTypeID")]
     public int ContactLogTypeId { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public string ContactLogTypeName { get; set; } = string.Empty;
+    [Column("contactLogTypeName")]
+    public string? ContactLogTypeName { get; set; }
 
     [MaxLength(500)]
+    [Column("description")]
     public string? Description { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public virtual ICollection<ContactLog> ContactLogs { get; set; } = new List<ContactLog>();

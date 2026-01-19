@@ -7,28 +7,23 @@ namespace backend.Models;
 public class Tenancy
 {
     [Key]
+    [Column("tenancyID")]
     public int TenancyId { get; set; }
 
-    [Required]
+    [Column("propertyID")]
     public int PropertyId { get; set; }
 
-    [Required]
+    [Column("tenantID")]
     public int TenantId { get; set; }
 
-    public DateTime StartDate { get; set; }
+    [Column("startDate")]
+    public DateTime? StartDate { get; set; }
 
+    [Column("endDate")]
     public DateTime? EndDate { get; set; }
 
-    [Column(TypeName = "decimal(18,2)")]
+    [Column("monthlyRent", TypeName = "decimal(18,2)")]
     public decimal? MonthlyRent { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    public DateTime? ModifiedDate { get; set; }
-
-    public int? CreatedByUserId { get; set; }
-
-    public int? ModifiedByUserId { get; set; }
 
     // Navigation properties
     [ForeignKey("PropertyId")]

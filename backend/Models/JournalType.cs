@@ -7,16 +7,16 @@ namespace backend.Models;
 public class JournalType
 {
     [Key]
+    [Column("journalTypeID")]
     public int JournalTypeId { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public string JournalTypeName { get; set; } = string.Empty;
+    [Column("journalTypeName")]
+    public string? JournalTypeName { get; set; }
 
     [MaxLength(500)]
+    [Column("description")]
     public string? Description { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public virtual ICollection<JournalLog> JournalLogs { get; set; } = new List<JournalLog>();

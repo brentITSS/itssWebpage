@@ -7,28 +7,26 @@ namespace backend.Models;
 public class ContactLogAttachment
 {
     [Key]
+    [Column("contactLogAttachmentID")]
     public int ContactLogAttachmentId { get; set; }
 
-    [Required]
+    [Column("contactLogID")]
     public int ContactLogId { get; set; }
 
-    [Required]
     [MaxLength(255)]
-    public string FileName { get; set; } = string.Empty;
+    [Column("fileName")]
+    public string? FileName { get; set; }
 
-    [Required]
     [MaxLength(500)]
-    public string FilePath { get; set; } = string.Empty;
+    [Column("filePath")]
+    public string? FilePath { get; set; }
 
     [MaxLength(50)]
+    [Column("fileType")]
     public string? FileType { get; set; }
 
-    public long FileSize { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    [Required]
-    public int CreatedByUserId { get; set; }
+    [Column("fileSize")]
+    public long? FileSize { get; set; }
 
     // Navigation properties
     [ForeignKey("ContactLogId")]

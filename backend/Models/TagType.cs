@@ -7,19 +7,20 @@ namespace backend.Models;
 public class TagType
 {
     [Key]
+    [Column("tagTypeID")]
     public int TagTypeId { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public string TagTypeName { get; set; } = string.Empty;
+    [Column("tagTypeName")]
+    public string? TagTypeName { get; set; }
 
     [MaxLength(50)]
+    [Column("color")]
     public string? Color { get; set; }
 
     [MaxLength(500)]
+    [Column("description")]
     public string? Description { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public virtual ICollection<TagLog> TagLogs { get; set; } = new List<TagLog>();

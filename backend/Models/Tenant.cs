@@ -7,29 +7,24 @@ namespace backend.Models;
 public class Tenant
 {
     [Key]
+    [Column("tenantID")]
     public int TenantId { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public string FirstName { get; set; } = string.Empty;
+    [Column("firstName")]
+    public string? FirstName { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public string LastName { get; set; } = string.Empty;
+    [Column("lastName")]
+    public string? LastName { get; set; }
 
     [MaxLength(255)]
+    [Column("email")]
     public string? Email { get; set; }
 
     [MaxLength(20)]
+    [Column("phone")]
     public string? Phone { get; set; }
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-    public DateTime? ModifiedDate { get; set; }
-
-    public int? CreatedByUserId { get; set; }
-
-    public int? ModifiedByUserId { get; set; }
 
     // Navigation properties
     public virtual ICollection<Tenancy> Tenancies { get; set; } = new List<Tenancy>();
