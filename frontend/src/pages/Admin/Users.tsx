@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService, UserResponseDto, CreateUserRequest, UpdateUserRequest, ResetPasswordRequest } from '../../services/adminService';
+import { adminService, UserResponseDto, CreateUserRequest, UpdateUserRequest, ResetPasswordRequest, RoleTypeDto } from '../../services/adminService';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<UserResponseDto[]>([]);
