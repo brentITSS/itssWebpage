@@ -15,6 +15,11 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(int userId);
     
     /// <summary>
+    /// Get user by ID for updates (tracked entity, no navigation properties).
+    /// </summary>
+    Task<User?> GetByIdForUpdateAsync(int userId);
+    
+    /// <summary>
     /// Get all users with related data.
     /// </summary>
     Task<List<User>> GetAllAsync();

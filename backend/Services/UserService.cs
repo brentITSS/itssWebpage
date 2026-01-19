@@ -81,10 +81,13 @@ public class UserService : IUserService
 
     public async Task<UserResponseDto?> UpdateUserAsync(int userId, UpdateUserRequest request, int modifiedByUserId)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
+        // Get user for update (tracked, no navigation properties)
+        var user = await _userRepository.GetByIdForUpdateAsync(userId);
         if (user == null) return null;
 
-        var oldValues = $"Email: {user.Email}, FirstName: {user.FirstName}, LastName: {user.LastName}, IsActive: {user.IsActive}";
+        // Get old values for audit log (with navigation properties)
+        var oldUser = await _userRepository.GetByIdAsync(userId);
+        var oldValues = $"Email: {oldUser!.Email}, FirstName: {oldUser.FirstName}, LastName: {oldUser.LastName}, IsActive: {oldUser.IsActive}";
 
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
@@ -140,7 +143,7 @@ public class UserService : IUserService
 
     public async Task<bool> DeleteUserAsync(int userId, int deletedByUserId)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdForUpdateAsync(userId);
         if (user == null) return false;
 
         // Soft delete by deactivating
@@ -163,7 +166,7 @@ public class UserService : IUserService
 
     public async Task<bool> ResetPasswordAsync(int userId, ResetPasswordRequest request, int modifiedByUserId)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdForUpdateAsync(userId);
         if (user == null) return false;
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);

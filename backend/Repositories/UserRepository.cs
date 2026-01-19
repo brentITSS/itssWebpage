@@ -58,6 +58,15 @@ public class UserRepository : IUserRepository
     }
 
     /// <summary>
+    /// Get user by ID for updates (tracked entity).
+    /// </summary>
+    public async Task<User?> GetByIdForUpdateAsync(int userId)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.UserId == userId);
+    }
+
+    /// <summary>
     /// Get all users with related data.
     /// </summary>
     public async Task<List<User>> GetAllAsync()
