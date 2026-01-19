@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { adminService, UserResponseDto, CreateUserRequest, UpdateUserRequest, ResetPasswordRequest, RoleTypeDto } from '../../services/adminService';
+import { adminService, UserResponseDto, CreateUserRequest, UpdateUserRequest, ResetPasswordRequest } from '../../services/adminService';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<UserResponseDto[]>([]);
-  const [roles, setRoles] = useState<RoleTypeDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -12,7 +11,6 @@ const Users: React.FC = () => {
 
   useEffect(() => {
     loadUsers();
-    loadRoleTypes();
   }, []);
 
   const loadUsers = async () => {
@@ -24,15 +22,6 @@ const Users: React.FC = () => {
       setError(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadRoleTypes = async () => {
-    try {
-      const data = await adminService.getRoleTypes();
-      setRoles(data);
-    } catch (err) {
-      console.error('Failed to load role types', err);
     }
   };
 
