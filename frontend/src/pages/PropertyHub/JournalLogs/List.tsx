@@ -82,9 +82,9 @@ const JournalLogsList: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat('en-ZA', {
       style: 'currency',
-      currency: 'GBP',
+      currency: 'ZAR',
     }).format(amount);
   };
 
