@@ -66,16 +66,24 @@ public class UserService : IUserService
         // Reload user with roles
         user = await _userRepository.GetByIdAsync(user.UserId);
 
-        // Audit log
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = createdByUserId,
-            Action = "Create",
-            EntityType = "User",
-            EntityId = user.UserId,
-            NewValues = $"Email: {user.Email}, FirstName: {user.FirstName}, LastName: {user.LastName}",
-            CreatedDate = DateTime.UtcNow
-        });
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = createdByUserId,
+                Action = "Create",
+                EntityType = "User",
+                EntityId = user!.UserId,
+                NewValues = $"Email: {user.Email}, FirstName: {user.FirstName}, LastName: {user.LastName}",
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't fail the user creation
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
         return MapToUserResponseDto(user!);
     }
@@ -135,20 +143,28 @@ public class UserService : IUserService
         user = await _userRepository.UpdateAsync(user);
         user = await _userRepository.GetByIdAsync(userId);
 
-        // Audit log
-        var newValues = $"Email: {user!.Email}, FirstName: {user.FirstName}, LastName: {user.LastName}, IsActive: {user.IsActive}, DefaultLoginLandingPage: {user.DefaultLoginLandingPage ?? "null"}";
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = modifiedByUserId,
-            Action = "Update",
-            EntityType = "User",
-            EntityId = userId,
-            OldValues = oldValues,
-            NewValues = newValues,
-            CreatedDate = DateTime.UtcNow
-        });
+            var newValues = $"Email: {user!.Email}, FirstName: {user.FirstName}, LastName: {user.LastName}, IsActive: {user.IsActive}, DefaultLoginLandingPage: {user.DefaultLoginLandingPage ?? "null"}";
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = modifiedByUserId,
+                Action = "Update",
+                EntityType = "User",
+                EntityId = userId,
+                OldValues = oldValues,
+                NewValues = newValues,
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't fail the user update
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
-        return MapToUserResponseDto(user);
+        return MapToUserResponseDto(user!);
     }
 
     public async Task<bool> DeleteUserAsync(int userId, int deletedByUserId)
@@ -160,16 +176,24 @@ public class UserService : IUserService
         user.IsActive = false;
         await _userRepository.UpdateAsync(user);
 
-        // Audit log
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = deletedByUserId,
-            Action = "Delete",
-            EntityType = "User",
-            EntityId = userId,
-            OldValues = $"Email: {user.Email}",
-            CreatedDate = DateTime.UtcNow
-        });
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = deletedByUserId,
+                Action = "Delete",
+                EntityType = "User",
+                EntityId = userId,
+                OldValues = $"Email: {user.Email}",
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't fail the user deletion
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
         return true;
     }
