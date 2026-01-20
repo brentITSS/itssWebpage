@@ -347,8 +347,6 @@ const Permissions: React.FC = () => {
           )}
         </div>
       )}
-        </div>
-      )}
 
       {/* Property Group Access Tab */}
       {activeTab === 'propertyGroup' && (
