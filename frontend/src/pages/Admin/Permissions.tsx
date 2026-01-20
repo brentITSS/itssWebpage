@@ -191,36 +191,36 @@ const Permissions: React.FC = () => {
         <div>
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold text-gray-900">Workstream Permissions</h3>
-        {selectedWorkstream && (
-          <button
-            onClick={() => setShowAssignModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            Assign User
-          </button>
-        )}
-      </div>
+            {selectedWorkstream && (
+              <button
+                onClick={() => setShowAssignModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                Assign User
+              </button>
+            )}
+          </div>
 
           {/* Workstream Selector */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Workstream
-        </label>
-        <select
-          value={selectedWorkstream || ''}
-          onChange={(e) => setSelectedWorkstream(parseInt(e.target.value))}
-          className="px-4 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="">Select a workstream</option>
-          {workstreams.map((ws) => (
-            <option key={ws.workstreamId} value={ws.workstreamId}>
-              {ws.workstreamName}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Workstream
+            </label>
+            <select
+              value={selectedWorkstream || ''}
+              onChange={(e) => setSelectedWorkstream(parseInt(e.target.value))}
+              className="px-4 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Select a workstream</option>
+              {workstreams.map((ws) => (
+                <option key={ws.workstreamId} value={ws.workstreamId}>
+                  {ws.workstreamName}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {selectedWorkstream && (
+          {selectedWorkstream && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
@@ -284,65 +284,67 @@ const Permissions: React.FC = () => {
         </div>
       )}
 
-      {/* Assign User Modal */}
-      {showAssignModal && selectedWorkstream && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold mb-4">Assign User to Workstream</h3>
-            <form onSubmit={handleAssignUser}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  User *
-                </label>
-                <select
-                  name="userId"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Select User</option>
-                  {users
-                    .filter(u => !workstreamUsers.some(wu => wu.userId === u.userId))
-                    .map((user) => (
-                      <option key={user.userId} value={user.userId}>
-                        {user.email} - {user.firstName} {user.lastName}
-                      </option>
-                    ))}
-                </select>
+          {/* Assign User Modal */}
+          {showAssignModal && selectedWorkstream && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-bold mb-4">Assign User to Workstream</h3>
+                <form onSubmit={handleAssignUser}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      User *
+                    </label>
+                    <select
+                      name="userId"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Select User</option>
+                      {users
+                        .filter(u => !workstreamUsers.some(wu => wu.userId === u.userId))
+                        .map((user) => (
+                          <option key={user.userId} value={user.userId}>
+                            {user.email} - {user.firstName} {user.lastName}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Permission Type *
+                    </label>
+                    <select
+                      name="permissionTypeId"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Select Permission Type</option>
+                      {permissionTypes.map((pt) => (
+                        <option key={pt.permissionTypeId} value={pt.permissionTypeId}>
+                          {pt.permissionTypeName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAssignModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Assign
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Permission Type *
-                </label>
-                <select
-                  name="permissionTypeId"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Select Permission Type</option>
-                  {permissionTypes.map((pt) => (
-                    <option key={pt.permissionTypeId} value={pt.permissionTypeId}>
-                      {pt.permissionTypeName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  Assign
-                </button>
-              </div>
-            </form>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
