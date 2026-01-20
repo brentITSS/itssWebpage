@@ -184,7 +184,7 @@ const JournalLogForm: React.FC = () => {
                 const tenancyId = e.target.value ? parseInt(e.target.value) : undefined;
                 const selectedTenancy = availableTenancies.find(t => t.tenancyId === tenancyId);
                 // Set first tenant if available, otherwise undefined
-                const firstTenantId = selectedTenancy?.tenants.length > 0 ? selectedTenancy.tenants[0].tenantId : undefined;
+                const firstTenantId = selectedTenancy?.tenants && selectedTenancy.tenants.length > 0 ? selectedTenancy.tenants[0].tenantId : undefined;
                 setFormData({
                   ...formData,
                   tenancyId,
