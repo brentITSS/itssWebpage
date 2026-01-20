@@ -113,7 +113,7 @@ const JournalLogForm: React.FC = () => {
 
   // Filter tenants by selected property through tenancies
   const availableTenants = formData.propertyId
-    ? tenants.filter(t => availableTenancies.some(ten => ten.tenantId === t.tenantId))
+    ? tenants.filter(t => availableTenancies.some(ten => ten.tenants.some(tenant => tenant.tenantId === t.tenantId)))
     : tenants;
 
   if (loading) {
@@ -183,21 +183,28 @@ const JournalLogForm: React.FC = () => {
               onChange={(e) => {
                 const tenancyId = e.target.value ? parseInt(e.target.value) : undefined;
                 const selectedTenancy = availableTenancies.find(t => t.tenancyId === tenancyId);
+                // Set first tenant if available, otherwise undefined
+                const firstTenantId = selectedTenancy?.tenants.length > 0 ? selectedTenancy.tenants[0].tenantId : undefined;
                 setFormData({
                   ...formData,
                   tenancyId,
-                  tenantId: selectedTenancy?.tenantId || undefined,
+                  tenantId: firstTenantId,
                 });
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               disabled={!formData.propertyId}
             >
               <option value="">None</option>
-              {availableTenancies.map(t => (
-                <option key={t.tenancyId} value={t.tenancyId}>
-                  {t.propertyName} - {t.tenantName}
-                </option>
-              ))}
+              {availableTenancies.map(t => {
+                const tenantNames = t.tenants.length > 0 
+                  ? t.tenants.map(tenant => `${tenant.firstName} ${tenant.lastName}`).join(', ')
+                  : 'No tenants';
+                return (
+                  <option key={t.tenancyId} value={t.tenancyId}>
+                    {t.propertyName} - {tenantNames}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
