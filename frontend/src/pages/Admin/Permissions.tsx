@@ -221,68 +221,68 @@ const Permissions: React.FC = () => {
           </div>
 
           {selectedWorkstream && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Users assigned to: {selectedWorkstreamData?.workstreamName}
-            </h3>
-          </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Permission Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {workstreamUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No users assigned to this workstream
-                  </td>
-                </tr>
-              ) : (
-                workstreamUsers.map((user) => {
-                  const access = user.workstreamAccess.find(
-                    wa => wa.workstreamId === selectedWorkstream
-                  );
-                  return (
-                    <tr key={user.userId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {user.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.firstName} {user.lastName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {access?.permissionTypeName || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleRemoveUser(user.userId)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Remove
-                        </button>
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Users assigned to: {selectedWorkstreamData?.workstreamName}
+                </h3>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Permission Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {workstreamUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No users assigned to this workstream
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  ) : (
+                    workstreamUsers.map((user) => {
+                      const access = user.workstreamAccess.find(
+                        wa => wa.workstreamId === selectedWorkstream
+                      );
+                      return (
+                        <tr key={user.userId}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {user.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.firstName} {user.lastName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {access?.permissionTypeName || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleRemoveUser(user.userId)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Assign User Modal */}
           {showAssignModal && selectedWorkstream && (
@@ -345,6 +345,8 @@ const Permissions: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
         </div>
       )}
 
