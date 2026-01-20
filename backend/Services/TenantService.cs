@@ -38,7 +38,7 @@ public class TenantService : ITenantService
             Email = request.Email,
             Phone = request.Phone,
             TenantDOB = DateTime.UtcNow, // Default DOB, should be provided in request
-            TenancyId = 0 // Must be set - TODO: Get from request or create tenancy first
+            TenancyId = request.TenancyId
         };
 
         tenant = await _tenantRepository.CreateAsync(tenant);
@@ -142,6 +142,17 @@ public class TenantService : ITenantService
         tenancy = await _tenantRepository.CreateTenancyAsync(tenancy);
         tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancy.TenancyId);
 
+        // If a tenant ID was provided, link it to this tenancy
+        if (request.TenantId.HasValue && request.TenantId.Value > 0)
+        {
+            var tenant = await _tenantRepository.GetByIdAsync(request.TenantId.Value);
+            if (tenant != null)
+            {
+                tenant.TenancyId = tenancy.TenancyId;
+                await _tenantRepository.UpdateAsync(tenant);
+            }
+        }
+
         // Audit log
         await _auditLogRepository.CreateAsync(new AuditLog
         {
@@ -225,21 +236,20 @@ public class TenantService : ITenantService
 
     private async Task<TenancyResponseDto> MapToTenancyResponseDtoAsync(Tenancy tenancy)
     {
-        // Get tenant from tenancy via Tenant.TenancyId relationship
-        var tenants = await _tenantRepository.GetAllAsync();
-        var relatedTenant = tenants.FirstOrDefault(t => t.TenancyId == tenancy.TenancyId);
+        // Get all tenants for this tenancy via Tenant.TenancyId relationship
+        var allTenants = await _tenantRepository.GetAllAsync();
+        var relatedTenants = allTenants.Where(t => t.TenancyId == tenancy.TenancyId).ToList();
 
         return new TenancyResponseDto
         {
             TenancyId = tenancy.TenancyId,
             PropertyId = tenancy.PropertyId,
             PropertyName = tenancy.Property?.PropertyName ?? string.Empty,
-            TenantId = relatedTenant?.TenantId ?? 0,
-            TenantName = relatedTenant != null ? $"{relatedTenant.FirstName} {relatedTenant.LastName}".Trim() : string.Empty,
             StartDate = tenancy.StartDate,
             EndDate = tenancy.EndDate,
             MonthlyRent = tenancy.MonthlyRent ?? 0,
-            CreatedDate = DateTime.UtcNow
+            CreatedDate = DateTime.UtcNow,
+            Tenants = relatedTenants.Select(MapToTenantResponseDto).ToList()
         };
     }
 }

@@ -103,6 +103,7 @@ export interface WorkstreamAccessDto {
 
 // Tenant DTOs
 export interface CreateTenantRequest {
+  tenancyId?: number;
   firstName: string;
   lastName: string;
   email?: string;
@@ -128,7 +129,7 @@ export interface TenantResponseDto {
 // Tenancy DTOs
 export interface CreateTenancyRequest {
   propertyId: number;
-  tenantId: number;
+  tenantId?: number;
   startDate: string;
   endDate?: string;
   monthlyRent?: number;
@@ -146,12 +147,11 @@ export interface TenancyResponseDto {
   tenancyId: number;
   propertyId: number;
   propertyName: string;
-  tenantId: number;
-  tenantName: string;
   startDate: string;
   endDate?: string;
   monthlyRent?: number;
   createdDate: string;
+  tenants: TenantResponseDto[];
 }
 
 export const adminService = {
