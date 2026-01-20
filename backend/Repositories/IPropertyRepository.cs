@@ -16,4 +16,11 @@ public interface IPropertyRepository
     Task<Property> CreatePropertyAsync(Property property);
     Task<Property> UpdatePropertyAsync(Property property);
     Task<bool> DeletePropertyAsync(int propertyId);
+    
+    // Property Group User access methods
+    Task<List<int>> GetUserPropertyGroupIdsAsync(int userId);
+    Task<PropertyGroupUser?> GetPropertyGroupUserAsync(int userId, int propertyGroupId);
+    Task<PropertyGroupUser> AddPropertyGroupUserAsync(PropertyGroupUser propertyGroupUser);
+    Task<bool> RemovePropertyGroupUserAsync(int userId, int propertyGroupId);
+    Task<List<PropertyGroupUser>> GetPropertyGroupUsersByGroupAsync(int propertyGroupId);
 }

@@ -215,6 +215,20 @@ public class AuthService : IAuthService
                 .ToList();
         }
 
+        // Safely extract property group access if PropertyGroupUsers exist
+        var propertyGroupAccess = new List<PropertyGroupAccessDto>();
+        if (user.PropertyGroupUsers != null && user.PropertyGroupUsers.Any())
+        {
+            propertyGroupAccess = user.PropertyGroupUsers
+                .Where(pgu => pgu.PropertyGroup != null && pgu.Active)
+                .Select(pgu => new PropertyGroupAccessDto
+                {
+                    PropertyGroupId = pgu.PropertyGroup!.PropertyGroupId,
+                    PropertyGroupName = pgu.PropertyGroup.PropertyGroupName ?? string.Empty
+                })
+                .ToList();
+        }
+
         return new UserDto
         {
             UserId = user.UserId,
@@ -224,6 +238,7 @@ public class AuthService : IAuthService
             IsActive = user.IsActive,
             Roles = roles,
             WorkstreamAccess = workstreamAccess,
+            PropertyGroupAccess = propertyGroupAccess,
             IsGlobalAdmin = isGlobalAdmin
         };
     }

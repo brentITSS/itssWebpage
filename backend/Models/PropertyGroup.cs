@@ -20,4 +20,5 @@ public class PropertyGroup
     // Navigation properties
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
     public virtual ICollection<TagLog> TagLogs { get; set; } = new List<TagLog>();
+    public virtual ICollection<PropertyGroupUser> PropertyGroupUsers { get; set; } = new List<PropertyGroupUser>();
 }

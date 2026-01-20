@@ -1,5 +1,6 @@
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace backend.Repositories;
 
@@ -94,5 +95,58 @@ public class PropertyRepository : IPropertyRepository
         _context.Properties.Remove(property);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    // Property Group User access methods
+    public async Task<List<int>> GetUserPropertyGroupIdsAsync(int userId)
+    {
+        return await _context.PropertyGroupUsers
+            .Where(pgu => pgu.UserId == userId && pgu.Active)
+            .Select(pgu => pgu.PropertyGroupId)
+            .ToListAsync();
+    }
+
+    public async Task<PropertyGroupUser?> GetPropertyGroupUserAsync(int userId, int propertyGroupId)
+    {
+        return await _context.PropertyGroupUsers
+            .FirstOrDefaultAsync(pgu => pgu.UserId == userId && pgu.PropertyGroupId == propertyGroupId);
+    }
+
+    public async Task<PropertyGroupUser> AddPropertyGroupUserAsync(PropertyGroupUser propertyGroupUser)
+    {
+        // Check if already exists
+        var existing = await GetPropertyGroupUserAsync(propertyGroupUser.UserId, propertyGroupUser.PropertyGroupId);
+        if (existing != null)
+        {
+            // Reactivate if inactive
+            existing.Active = true;
+            _context.PropertyGroupUsers.Update(existing);
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+
+        _context.PropertyGroupUsers.Add(propertyGroupUser);
+        await _context.SaveChangesAsync();
+        return propertyGroupUser;
+    }
+
+    public async Task<bool> RemovePropertyGroupUserAsync(int userId, int propertyGroupId)
+    {
+        var propertyGroupUser = await GetPropertyGroupUserAsync(userId, propertyGroupId);
+        if (propertyGroupUser == null) return false;
+
+        // Soft delete by setting active to false
+        propertyGroupUser.Active = false;
+        _context.PropertyGroupUsers.Update(propertyGroupUser);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<List<PropertyGroupUser>> GetPropertyGroupUsersByGroupAsync(int propertyGroupId)
+    {
+        return await _context.PropertyGroupUsers
+            .Include(pgu => pgu.User)
+            .Where(pgu => pgu.PropertyGroupId == propertyGroupId && pgu.Active)
+            .ToListAsync();
     }
 }

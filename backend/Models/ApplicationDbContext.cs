@@ -24,6 +24,7 @@ public class ApplicationDbContext : DbContext
     // Properties
     public DbSet<PropertyGroup> PropertyGroups { get; set; }
     public DbSet<Property> Properties { get; set; }
+    public DbSet<PropertyGroupUser> PropertyGroupUsers { get; set; }
 
     // Tenants & Tenancies
     public DbSet<Tenant> Tenants { get; set; }
@@ -58,6 +59,10 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<WorkstreamUser>()
             .HasIndex(wu => new { wu.UserId, wu.WorkstreamId })
+            .IsUnique();
+
+        modelBuilder.Entity<PropertyGroupUser>()
+            .HasIndex(pgu => new { pgu.UserId, pgu.PropertyGroupId })
             .IsUnique();
 
         // Configure cascading deletes appropriately

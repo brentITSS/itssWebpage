@@ -18,6 +18,7 @@ export interface UserDto {
   isActive: boolean;
   roles: string[];
   workstreamAccess: WorkstreamAccessDto[];
+  propertyGroupAccess: PropertyGroupAccessDto[];
   isGlobalAdmin: boolean;
 }
 
@@ -26,6 +27,11 @@ export interface WorkstreamAccessDto {
   workstreamName: string;
   permissionTypeId: number;
   permissionTypeName: string;
+}
+
+export interface PropertyGroupAccessDto {
+  propertyGroupId: number;
+  propertyGroupName: string;
 }
 
 export const authService = {

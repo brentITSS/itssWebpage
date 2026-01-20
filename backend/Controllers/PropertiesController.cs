@@ -42,7 +42,13 @@ public class PropertiesController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
-        var properties = await _propertyService.GetAllPropertiesAsync();
+        // Filter properties based on user access (Global Admins and Property Hub Admins see all)
+        var isPropertyHubAdmin = _authService.HasPropertyHubAdminAccess(currentUser);
+        var properties = await _propertyService.GetAllPropertiesForUserAsync(
+            currentUserId.Value, 
+            currentUser.IsGlobalAdmin, 
+            isPropertyHubAdmin
+        );
         return Ok(properties);
     }
 

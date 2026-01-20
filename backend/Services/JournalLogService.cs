@@ -8,15 +8,18 @@ public class JournalLogService : IJournalLogService
 {
     private readonly IJournalLogRepository _journalLogRepository;
     private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IPropertyRepository _propertyRepository;
     private readonly IWebHostEnvironment _environment;
 
     public JournalLogService(
         IJournalLogRepository journalLogRepository,
         IAuditLogRepository auditLogRepository,
+        IPropertyRepository propertyRepository,
         IWebHostEnvironment environment)
     {
         _journalLogRepository = journalLogRepository;
         _auditLogRepository = auditLogRepository;
+        _propertyRepository = propertyRepository;
         _environment = environment;
     }
 
@@ -24,6 +27,39 @@ public class JournalLogService : IJournalLogService
     {
         var journalLogs = await _journalLogRepository.GetAllAsync();
         return journalLogs.Select(MapToJournalLogResponseDto).ToList();
+    }
+
+    public async Task<List<JournalLogResponseDto>> GetAllJournalLogsForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
+    {
+        var allJournalLogs = await _journalLogRepository.GetAllAsync();
+        
+        // Global Admins and Property Hub Admins see all journal logs
+        if (isGlobalAdmin || isPropertyHubAdmin)
+        {
+            return allJournalLogs.Select(MapToJournalLogResponseDto).ToList();
+        }
+
+        // Regular users: get their assigned property group IDs
+        var userPropertyGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
+        
+        // If user has no specific assignments, show all (backward compatible)
+        if (userPropertyGroupIds.Count == 0)
+        {
+            return allJournalLogs.Select(MapToJournalLogResponseDto).ToList();
+        }
+
+        // Get all properties in user's accessible property groups
+        var allProperties = await _propertyRepository.GetAllPropertiesAsync();
+        var accessiblePropertyIds = allProperties
+            .Where(p => p.PropertyGroupId.HasValue && userPropertyGroupIds.Contains(p.PropertyGroupId.Value))
+            .Select(p => p.PropertyId)
+            .ToList();
+
+        // Filter journal logs to only those for accessible properties
+        return allJournalLogs
+            .Where(jl => jl.PropertyId.HasValue && accessiblePropertyIds.Contains(jl.PropertyId.Value))
+            .Select(MapToJournalLogResponseDto)
+            .ToList();
     }
 
     public async Task<JournalLogResponseDto?> GetJournalLogByIdAsync(int journalLogId)

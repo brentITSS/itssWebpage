@@ -36,6 +36,8 @@ public class UserRepository : IUserRepository
                 .ThenInclude(wu => wu.Workstream)
             .Include(u => u.WorkstreamUsers)
                 .ThenInclude(wu => wu.PermissionType)
+            .Include(u => u.PropertyGroupUsers)
+                .ThenInclude(pgu => pgu.PropertyGroup)
             .FirstOrDefaultAsync(u => u.UserId == user.UserId);
 
         return userWithRelations ?? user;
@@ -53,6 +55,8 @@ public class UserRepository : IUserRepository
                 .ThenInclude(wu => wu.Workstream)
             .Include(u => u.WorkstreamUsers)
                 .ThenInclude(wu => wu.PermissionType)
+            .Include(u => u.PropertyGroupUsers)
+                .ThenInclude(pgu => pgu.PropertyGroup)
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.UserId == userId);
     }
@@ -78,6 +82,8 @@ public class UserRepository : IUserRepository
                 .ThenInclude(wu => wu.Workstream)
             .Include(u => u.WorkstreamUsers)
                 .ThenInclude(wu => wu.PermissionType)
+            .Include(u => u.PropertyGroupUsers)
+                .ThenInclude(pgu => pgu.PropertyGroup)
             .AsNoTracking()
             .ToListAsync();
     }

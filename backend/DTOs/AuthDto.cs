@@ -21,6 +21,7 @@ public class UserDto
     public bool IsActive { get; set; }
     public List<string> Roles { get; set; } = new();
     public List<WorkstreamAccessDto> WorkstreamAccess { get; set; } = new();
+    public List<PropertyGroupAccessDto> PropertyGroupAccess { get; set; } = new();
     public bool IsGlobalAdmin { get; set; }
 }
 
@@ -30,4 +31,10 @@ public class WorkstreamAccessDto
     public string WorkstreamName { get; set; } = string.Empty;
     public int PermissionTypeId { get; set; }
     public string PermissionTypeName { get; set; } = string.Empty;
+}
+
+public class PropertyGroupAccessDto
+{
+    public int PropertyGroupId { get; set; }
+    public string PropertyGroupName { get; set; } = string.Empty;
 }

@@ -5,6 +5,7 @@ namespace backend.Services;
 public interface IContactLogService
 {
     Task<List<ContactLogResponseDto>> GetAllContactLogsAsync();
+    Task<List<ContactLogResponseDto>> GetAllContactLogsForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin);
     Task<ContactLogResponseDto?> GetContactLogByIdAsync(int contactLogId);
     Task<List<ContactLogResponseDto>> GetContactLogsByPropertyIdAsync(int propertyId);
     Task<List<ContactLogResponseDto>> GetContactLogsByTenantIdAsync(int tenantId);

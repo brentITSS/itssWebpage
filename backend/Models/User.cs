@@ -34,5 +34,6 @@ public class User
     // Navigation properties
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public virtual ICollection<WorkstreamUser> WorkstreamUsers { get; set; } = new List<WorkstreamUser>();
+    public virtual ICollection<PropertyGroupUser> PropertyGroupUsers { get; set; } = new List<PropertyGroupUser>();
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 }

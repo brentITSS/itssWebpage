@@ -8,15 +8,18 @@ public class ContactLogService : IContactLogService
 {
     private readonly IContactLogRepository _contactLogRepository;
     private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IPropertyRepository _propertyRepository;
     private readonly IWebHostEnvironment _environment;
 
     public ContactLogService(
         IContactLogRepository contactLogRepository,
         IAuditLogRepository auditLogRepository,
+        IPropertyRepository propertyRepository,
         IWebHostEnvironment environment)
     {
         _contactLogRepository = contactLogRepository;
         _auditLogRepository = auditLogRepository;
+        _propertyRepository = propertyRepository;
         _environment = environment;
     }
 
@@ -24,6 +27,39 @@ public class ContactLogService : IContactLogService
     {
         var contactLogs = await _contactLogRepository.GetAllAsync();
         return contactLogs.Select(MapToContactLogResponseDto).ToList();
+    }
+
+    public async Task<List<ContactLogResponseDto>> GetAllContactLogsForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
+    {
+        var allContactLogs = await _contactLogRepository.GetAllAsync();
+        
+        // Global Admins and Property Hub Admins see all contact logs
+        if (isGlobalAdmin || isPropertyHubAdmin)
+        {
+            return allContactLogs.Select(MapToContactLogResponseDto).ToList();
+        }
+
+        // Regular users: get their assigned property group IDs
+        var userPropertyGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
+        
+        // If user has no specific assignments, show all (backward compatible)
+        if (userPropertyGroupIds.Count == 0)
+        {
+            return allContactLogs.Select(MapToContactLogResponseDto).ToList();
+        }
+
+        // Get all properties in user's accessible property groups
+        var allProperties = await _propertyRepository.GetAllPropertiesAsync();
+        var accessiblePropertyIds = allProperties
+            .Where(p => p.PropertyGroupId.HasValue && userPropertyGroupIds.Contains(p.PropertyGroupId.Value))
+            .Select(p => p.PropertyId)
+            .ToList();
+
+        // Filter contact logs to only those for accessible properties
+        return allContactLogs
+            .Where(cl => cl.PropertyId.HasValue && accessiblePropertyIds.Contains(cl.PropertyId.Value))
+            .Select(MapToContactLogResponseDto)
+            .ToList();
     }
 
     public async Task<ContactLogResponseDto?> GetContactLogByIdAsync(int contactLogId)

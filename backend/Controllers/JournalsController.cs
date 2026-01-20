@@ -42,7 +42,13 @@ public class JournalsController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
-        var journalLogs = await _journalLogService.GetAllJournalLogsAsync();
+        // Filter journal logs based on user access (Global Admins and Property Hub Admins see all)
+        var isPropertyHubAdmin = _authService.HasPropertyHubAdminAccess(currentUser);
+        var journalLogs = await _journalLogService.GetAllJournalLogsForUserAsync(
+            currentUserId.Value, 
+            currentUser.IsGlobalAdmin, 
+            isPropertyHubAdmin
+        );
         return Ok(journalLogs);
     }
 

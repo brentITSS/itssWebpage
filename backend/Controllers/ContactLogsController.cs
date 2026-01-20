@@ -42,7 +42,13 @@ public class ContactLogsController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
-        var contactLogs = await _contactLogService.GetAllContactLogsAsync();
+        // Filter contact logs based on user access (Global Admins and Property Hub Admins see all)
+        var isPropertyHubAdmin = _authService.HasPropertyHubAdminAccess(currentUser);
+        var contactLogs = await _contactLogService.GetAllContactLogsForUserAsync(
+            currentUserId.Value, 
+            currentUser.IsGlobalAdmin, 
+            isPropertyHubAdmin
+        );
         return Ok(contactLogs);
     }
 

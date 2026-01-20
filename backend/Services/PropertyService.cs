@@ -29,6 +29,52 @@ public class PropertyService : IPropertyService
         }).ToList();
     }
 
+    public async Task<List<PropertyGroupResponseDto>> GetAllPropertyGroupsForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
+    {
+        var allPropertyGroups = await _propertyRepository.GetAllPropertyGroupsAsync();
+        
+        // Global Admins and Property Hub Admins see all property groups
+        if (isGlobalAdmin || isPropertyHubAdmin)
+        {
+            return allPropertyGroups.Select(pg => new PropertyGroupResponseDto
+            {
+                PropertyGroupId = pg.PropertyGroupId,
+                PropertyGroupName = pg.PropertyGroupName ?? string.Empty,
+                Description = null,
+                CreatedDate = DateTime.UtcNow,
+                PropertyCount = pg.Properties.Count
+            }).ToList();
+        }
+
+        // Regular users: get their assigned property group IDs
+        var userPropertyGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
+        
+        // If user has no specific assignments, show all (backward compatible)
+        if (userPropertyGroupIds.Count == 0)
+        {
+            return allPropertyGroups.Select(pg => new PropertyGroupResponseDto
+            {
+                PropertyGroupId = pg.PropertyGroupId,
+                PropertyGroupName = pg.PropertyGroupName ?? string.Empty,
+                Description = null,
+                CreatedDate = DateTime.UtcNow,
+                PropertyCount = pg.Properties.Count
+            }).ToList();
+        }
+
+        // Filter to only assigned property groups
+        return allPropertyGroups
+            .Where(pg => userPropertyGroupIds.Contains(pg.PropertyGroupId))
+            .Select(pg => new PropertyGroupResponseDto
+            {
+                PropertyGroupId = pg.PropertyGroupId,
+                PropertyGroupName = pg.PropertyGroupName ?? string.Empty,
+                Description = null,
+                CreatedDate = DateTime.UtcNow,
+                PropertyCount = pg.Properties.Count
+            }).ToList();
+    }
+
     public async Task<PropertyGroupResponseDto?> GetPropertyGroupByIdAsync(int propertyGroupId)
     {
         var propertyGroup = await _propertyRepository.GetPropertyGroupByIdAsync(propertyGroupId);
@@ -136,6 +182,32 @@ public class PropertyService : IPropertyService
     {
         var properties = await _propertyRepository.GetAllPropertiesAsync();
         return properties.Select(MapToPropertyResponseDto).ToList();
+    }
+
+    public async Task<List<PropertyResponseDto>> GetAllPropertiesForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
+    {
+        var allProperties = await _propertyRepository.GetAllPropertiesAsync();
+        
+        // Global Admins and Property Hub Admins see all properties
+        if (isGlobalAdmin || isPropertyHubAdmin)
+        {
+            return allProperties.Select(MapToPropertyResponseDto).ToList();
+        }
+
+        // Regular users: get their assigned property group IDs
+        var userPropertyGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
+        
+        // If user has no specific assignments, show all (backward compatible)
+        if (userPropertyGroupIds.Count == 0)
+        {
+            return allProperties.Select(MapToPropertyResponseDto).ToList();
+        }
+
+        // Filter to only properties in assigned property groups
+        return allProperties
+            .Where(p => p.PropertyGroupId.HasValue && userPropertyGroupIds.Contains(p.PropertyGroupId.Value))
+            .Select(MapToPropertyResponseDto)
+            .ToList();
     }
 
     public async Task<List<PropertyResponseDto>> GetPropertiesByGroupAsync(int propertyGroupId)
