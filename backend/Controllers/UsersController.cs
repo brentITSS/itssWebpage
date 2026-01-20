@@ -85,7 +85,22 @@ public class UsersController : ControllerBase
         catch (Exception ex)
         {
             // Log the exception details for debugging
-            return StatusCode(500, new { error = "An error occurred while updating the user", message = ex.Message });
+            // Include inner exception if available
+            var errorMessage = ex.Message;
+            if (ex.InnerException != null)
+            {
+                errorMessage += $" Inner: {ex.InnerException.Message}";
+            }
+            
+            // Log stack trace for debugging (in production, use proper logging)
+            Console.WriteLine($"Error updating user {id}: {errorMessage}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            
+            return StatusCode(500, new { 
+                error = "An error occurred while updating the user", 
+                message = errorMessage,
+                details = ex.GetType().Name
+            });
         }
     }
 
