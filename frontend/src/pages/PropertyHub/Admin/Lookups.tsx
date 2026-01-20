@@ -418,6 +418,61 @@ const Lookups: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Create Journal Sub Type Modal */}
+          {showJournalSubTypeModal && selectedJournalTypeForSubType && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-bold mb-4">Create Journal Sub Type</h3>
+                <form onSubmit={handleCreateJournalSubType}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Journal Sub Type Name *</label>
+                    <input type="text" name="journalSubTypeName" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowJournalSubTypeModal(false);
+                        setSelectedJournalTypeForSubType(null);
+                      }}
+                      className="px-4 py-2 border border-gray-300 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Create</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Journal Sub Type Modal */}
+          {editingJournalSubType && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-bold mb-4">Edit Journal Sub Type</h3>
+                <form onSubmit={(e) => handleUpdateJournalSubType(editingJournalSubType.subType.journalSubTypeId, e)}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Journal Sub Type Name</label>
+                    <input type="text" name="journalSubTypeName" defaultValue={editingJournalSubType.subType.journalSubTypeName} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows={3} defaultValue={editingJournalSubType.subType.description || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button type="button" onClick={() => setEditingJournalSubType(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Update</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
