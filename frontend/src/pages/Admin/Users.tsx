@@ -62,11 +62,14 @@ const Users: React.FC = () => {
       roleIds: [], // TODO: Add role selection UI
     };
 
+    console.log('Updating user with request:', request);
+    
     try {
       await adminService.updateUser(editingUser.userId, request);
       setEditingUser(null);
       loadUsers();
     } catch (err: any) {
+      console.error('Error updating user:', err);
       setError(err.message || 'Failed to update user');
     }
   };
