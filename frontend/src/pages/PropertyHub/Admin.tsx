@@ -53,18 +53,18 @@ const PropertyHubAdmin: React.FC = () => {
                 </li>
                 <li>
                   <Link
-                    to="/Property Hub/Admin/Tenants"
-                    className="block px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
-                  >
-                    Tenants
-                  </Link>
-                </li>
-                <li>
-                  <Link
                     to="/Property Hub/Admin/Tenancies"
                     className="block px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
                   >
                     Tenancies
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/Property Hub/Admin/Tenants"
+                    className="block px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
+                  >
+                    Tenants
                   </Link>
                 </li>
                 <li>
