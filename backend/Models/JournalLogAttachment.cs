@@ -7,10 +7,10 @@ namespace backend.Models;
 public class JournalLogAttachment
 {
     [Key]
-    [Column("journalLogAttachmentId")]
+    [Column("journalLogAttachmentID")]
     public int JournalLogAttachmentId { get; set; }
 
-    [Column("journalLogId")]
+    [Column("journalLogID")]
     public int? JournalLogId { get; set; }
 
     // Note: Database schema not provided - using computed properties for file fields
