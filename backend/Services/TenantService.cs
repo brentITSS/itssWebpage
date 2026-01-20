@@ -43,16 +43,23 @@ public class TenantService : ITenantService
 
         tenant = await _tenantRepository.CreateAsync(tenant);
 
-        // Audit log
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = createdByUserId,
-            Action = "Create",
-            EntityType = "Tenant",
-            EntityId = tenant.TenantId,
-            NewValues = $"Name: {tenant.FirstName} {tenant.LastName}, Email: {tenant.Email}",
-            CreatedDate = DateTime.UtcNow
-        });
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = createdByUserId,
+                Action = "Create",
+                EntityType = "Tenant",
+                EntityId = tenant.TenantId,
+                NewValues = $"Name: {tenant.FirstName} {tenant.LastName}, Email: {tenant.Email}",
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
         return MapToTenantResponseDto(tenant);
     }
@@ -71,18 +78,25 @@ public class TenantService : ITenantService
 
         tenant = await _tenantRepository.UpdateAsync(tenant);
 
-        // Audit log
-        var newValues = $"Name: {tenant.FirstName} {tenant.LastName}, Email: {tenant.Email}, Phone: {tenant.Phone}";
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = modifiedByUserId,
-            Action = "Update",
-            EntityType = "Tenant",
-            EntityId = tenantId,
-            OldValues = oldValues,
-            NewValues = newValues,
-            CreatedDate = DateTime.UtcNow
-        });
+            var newValues = $"Name: {tenant.FirstName} {tenant.LastName}, Email: {tenant.Email}, Phone: {tenant.Phone}";
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = modifiedByUserId,
+                Action = "Update",
+                EntityType = "Tenant",
+                EntityId = tenantId,
+                OldValues = oldValues,
+                NewValues = newValues,
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
         return MapToTenantResponseDto(tenant);
     }
@@ -96,15 +110,23 @@ public class TenantService : ITenantService
 
         if (result)
         {
-            await _auditLogRepository.CreateAsync(new AuditLog
+            // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+            try
             {
-                UserId = deletedByUserId,
-                Action = "Delete",
-                EntityType = "Tenant",
-                EntityId = tenantId,
-                OldValues = $"Name: {tenant.FirstName} {tenant.LastName}",
-                CreatedDate = DateTime.UtcNow
-            });
+                await _auditLogRepository.CreateAsync(new AuditLog
+                {
+                    UserId = deletedByUserId,
+                    Action = "Delete",
+                    EntityType = "Tenant",
+                    EntityId = tenantId,
+                    OldValues = $"Name: {tenant.FirstName} {tenant.LastName}",
+                    CreatedDate = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to create audit log: {ex.Message}");
+            }
         }
 
         return result;
@@ -153,16 +175,23 @@ public class TenantService : ITenantService
             }
         }
 
-        // Audit log
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = createdByUserId,
-            Action = "Create",
-            EntityType = "Tenancy",
-            EntityId = tenancy.TenancyId,
-            NewValues = $"PropertyId: {tenancy.PropertyId}, StartDate: {tenancy.StartDate:yyyy-MM-dd}",
-            CreatedDate = DateTime.UtcNow
-        });
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = createdByUserId,
+                Action = "Create",
+                EntityType = "Tenancy",
+                EntityId = tenancy!.TenancyId,
+                NewValues = $"PropertyId: {tenancy.PropertyId}, StartDate: {tenancy.StartDate:yyyy-MM-dd}",
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
         return await MapToTenancyResponseDtoAsync(tenancy!);
     }
@@ -182,18 +211,25 @@ public class TenantService : ITenantService
         tenancy = await _tenantRepository.UpdateTenancyAsync(tenancy);
         tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
 
-        // Audit log
-        var newValues = $"PropertyId: {tenancy!.PropertyId}, StartDate: {tenancy.StartDate:yyyy-MM-dd}, EndDate: {tenancy.EndDate?.ToString("yyyy-MM-dd") ?? "N/A"}";
-        await _auditLogRepository.CreateAsync(new AuditLog
+        // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+        try
         {
-            UserId = modifiedByUserId,
-            Action = "Update",
-            EntityType = "Tenancy",
-            EntityId = tenancyId,
-            OldValues = oldValues,
-            NewValues = newValues,
-            CreatedDate = DateTime.UtcNow
-        });
+            var newValues = $"PropertyId: {tenancy!.PropertyId}, StartDate: {tenancy.StartDate:yyyy-MM-dd}, EndDate: {tenancy.EndDate?.ToString("yyyy-MM-dd") ?? "N/A"}";
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = modifiedByUserId,
+                Action = "Update",
+                EntityType = "Tenancy",
+                EntityId = tenancyId,
+                OldValues = oldValues,
+                NewValues = newValues,
+                CreatedDate = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create audit log: {ex.Message}");
+        }
 
         return await MapToTenancyResponseDtoAsync(tenancy);
     }
