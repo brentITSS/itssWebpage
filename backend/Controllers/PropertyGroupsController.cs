@@ -147,6 +147,79 @@ public class PropertyGroupsController : ControllerBase
     }
 
     /// <summary>
+    /// Get users assigned to a property group. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpGet("{id}/users")]
+    public async Task<ActionResult<List<UserResponseDto>>> GetPropertyGroupUsers(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var users = await _propertyService.GetPropertyGroupUsersAsync(id);
+        return Ok(users);
+    }
+
+    /// <summary>
+    /// Assign user to property group. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPost("{id}/users")]
+    public async Task<ActionResult> AssignUserToPropertyGroup(int id, [FromBody] AssignPropertyGroupUserRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        try
+        {
+            await _propertyService.AssignUserToPropertyGroupAsync(id, request.UserId);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Remove user from property group. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpDelete("{id}/users/{userId}")]
+    public async Task<ActionResult> RemoveUserFromPropertyGroup(int id, int userId)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        await _propertyService.RemoveUserFromPropertyGroupAsync(id, userId);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Check if user has Property Hub workstream access.
     /// Global Admins have access to all workstreams.
     /// </summary>

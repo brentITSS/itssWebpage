@@ -18,4 +18,9 @@ public interface IPropertyService
     Task<PropertyResponseDto> CreatePropertyAsync(CreatePropertyRequest request, int createdByUserId);
     Task<PropertyResponseDto?> UpdatePropertyAsync(int propertyId, UpdatePropertyRequest request, int modifiedByUserId);
     Task<bool> DeletePropertyAsync(int propertyId, int deletedByUserId);
+    
+    // Property Group User management
+    Task<List<UserResponseDto>> GetPropertyGroupUsersAsync(int propertyGroupId);
+    Task AssignUserToPropertyGroupAsync(int propertyGroupId, int userId);
+    Task RemoveUserFromPropertyGroupAsync(int propertyGroupId, int userId);
 }

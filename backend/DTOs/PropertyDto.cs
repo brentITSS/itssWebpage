@@ -37,6 +37,11 @@ public class UpdatePropertyRequest
     public string? PostCode { get; set; }
 }
 
+public class AssignPropertyGroupUserRequest
+{
+    public int UserId { get; set; }
+}
+
 public class PropertyResponseDto
 {
     public int PropertyId { get; set; }

@@ -2,6 +2,7 @@ using System.Linq;
 using backend.DTOs;
 using backend.Models;
 using backend.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services;
 
@@ -9,11 +10,13 @@ public class PropertyService : IPropertyService
 {
     private readonly IPropertyRepository _propertyRepository;
     private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IUserRepository _userRepository;
 
-    public PropertyService(IPropertyRepository propertyRepository, IAuditLogRepository auditLogRepository)
+    public PropertyService(IPropertyRepository propertyRepository, IAuditLogRepository auditLogRepository, IUserRepository userRepository)
     {
         _propertyRepository = propertyRepository;
         _auditLogRepository = auditLogRepository;
+        _userRepository = userRepository;
     }
 
     public async Task<List<PropertyGroupResponseDto>> GetAllPropertyGroupsAsync()
@@ -324,6 +327,64 @@ public class PropertyService : IPropertyService
         }
 
         return result;
+    }
+
+    public async Task<List<UserResponseDto>> GetPropertyGroupUsersAsync(int propertyGroupId)
+    {
+        var propertyGroupUsers = await _propertyRepository.GetPropertyGroupUsersByGroupAsync(propertyGroupId);
+        var userIds = propertyGroupUsers.Select(pgu => pgu.UserId).ToList();
+
+        var users = await _userRepository.GetAllAsync();
+        return users
+            .Where(u => userIds.Contains(u.UserId))
+            .Select(u => new UserResponseDto
+            {
+                UserId = u.UserId,
+                Email = u.Email,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                IsActive = u.IsActive,
+                CreatedDate = DateTime.UtcNow, // Database doesn't have CreatedDate column
+                Roles = u.UserRoles.Select(ur => new RoleDto
+                {
+                    RoleId = ur.RoleTypeId,
+                    RoleName = ur.RoleType?.RoleTypeName ?? "",
+                    RoleTypeName = ur.RoleType?.RoleTypeName ?? ""
+                }).ToList(),
+                WorkstreamAccess = u.WorkstreamUsers
+                    .Select(wu => new WorkstreamAccessDto
+                    {
+                        WorkstreamId = wu.Workstream.WorkstreamId,
+                        WorkstreamName = wu.Workstream.WorkstreamName,
+                        PermissionTypeId = wu.PermissionType.PermissionTypeId,
+                        PermissionTypeName = wu.PermissionType.PermissionTypeName
+                    }).ToList()
+            }).ToList();
+    }
+
+    public async Task AssignUserToPropertyGroupAsync(int propertyGroupId, int userId)
+    {
+        var propertyGroup = await _propertyRepository.GetPropertyGroupByIdAsync(propertyGroupId);
+        if (propertyGroup == null)
+            throw new InvalidOperationException("Property group not found");
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("User not found");
+
+        var propertyGroupUser = new PropertyGroupUser
+        {
+            UserId = userId,
+            PropertyGroupId = propertyGroupId,
+            Active = true
+        };
+
+        await _propertyRepository.AddPropertyGroupUserAsync(propertyGroupUser);
+    }
+
+    public async Task RemoveUserFromPropertyGroupAsync(int propertyGroupId, int userId)
+    {
+        await _propertyRepository.RemovePropertyGroupUserAsync(userId, propertyGroupId);
     }
 
     private PropertyResponseDto MapToPropertyResponseDto(Property property)
