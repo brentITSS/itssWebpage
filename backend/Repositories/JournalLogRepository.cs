@@ -91,6 +91,30 @@ public class JournalLogRepository : IJournalLogRepository
             .FirstOrDefaultAsync(jt => jt.JournalTypeId == journalTypeId);
     }
 
+    public async Task<JournalType> CreateJournalTypeAsync(JournalType journalType)
+    {
+        _context.JournalTypes.Add(journalType);
+        await _context.SaveChangesAsync();
+        return journalType;
+    }
+
+    public async Task<JournalType> UpdateJournalTypeAsync(JournalType journalType)
+    {
+        _context.JournalTypes.Update(journalType);
+        await _context.SaveChangesAsync();
+        return journalType;
+    }
+
+    public async Task<bool> DeleteJournalTypeAsync(int journalTypeId)
+    {
+        var journalType = await _context.JournalTypes.FindAsync(journalTypeId);
+        if (journalType == null) return false;
+
+        _context.JournalTypes.Remove(journalType);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<List<JournalSubType>> GetJournalSubTypesByTypeAsync(int journalTypeId)
     {
         return await _context.JournalSubTypes

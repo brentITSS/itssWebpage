@@ -51,6 +51,26 @@ export interface UpdateTagTypeRequest {
   description?: string;
 }
 
+export interface CreateJournalTypeRequest {
+  journalTypeName: string;
+  description?: string;
+}
+
+export interface UpdateJournalTypeRequest {
+  journalTypeName?: string;
+  description?: string;
+}
+
+export interface CreateContactLogTypeRequest {
+  contactLogTypeName: string;
+  description?: string;
+}
+
+export interface UpdateContactLogTypeRequest {
+  contactLogTypeName?: string;
+  description?: string;
+}
+
 export const propertyAdminService = {
   // Property Groups
   getPropertyGroups: async (): Promise<PropertyGroupResponseDto[]> => {
@@ -173,9 +193,49 @@ export const propertyAdminService = {
     return await apiClient<JournalTypeDto[]>('/lookups/journal-types');
   },
 
+  createJournalType: async (request: CreateJournalTypeRequest): Promise<JournalTypeDto> => {
+    return await apiClient<JournalTypeDto>('/lookups/journal-types', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateJournalType: async (id: number, request: UpdateJournalTypeRequest): Promise<JournalTypeDto> => {
+    return await apiClient<JournalTypeDto>(`/lookups/journal-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  deleteJournalType: async (id: number): Promise<void> => {
+    await apiClient<void>(`/lookups/journal-types/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Lookups - Contact Log Types
   getContactLogTypes: async (): Promise<ContactLogTypeDto[]> => {
     return await apiClient<ContactLogTypeDto[]>('/lookups/contact-log-types');
+  },
+
+  createContactLogType: async (request: CreateContactLogTypeRequest): Promise<ContactLogTypeDto> => {
+    return await apiClient<ContactLogTypeDto>('/lookups/contact-log-types', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateContactLogType: async (id: number, request: UpdateContactLogTypeRequest): Promise<ContactLogTypeDto> => {
+    return await apiClient<ContactLogTypeDto>(`/lookups/contact-log-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  deleteContactLogType: async (id: number): Promise<void> => {
+    await apiClient<void>(`/lookups/contact-log-types/${id}`, {
+      method: 'DELETE',
+    });
   },
 
   // Lookups - Tag Types

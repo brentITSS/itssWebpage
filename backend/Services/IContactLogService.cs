@@ -14,6 +14,9 @@ public interface IContactLogService
     Task<bool> DeleteContactLogAsync(int contactLogId, int deletedByUserId);
     
     Task<List<ContactLogTypeDto>> GetAllContactLogTypesAsync();
+    Task<ContactLogTypeDto> CreateContactLogTypeAsync(CreateContactLogTypeRequest request);
+    Task<ContactLogTypeDto?> UpdateContactLogTypeAsync(int contactLogTypeId, UpdateContactLogTypeRequest request);
+    Task<bool> DeleteContactLogTypeAsync(int contactLogTypeId);
     Task<AttachmentDto> AddAttachmentAsync(int contactLogId, IFormFile file, int createdByUserId);
     Task<bool> DeleteAttachmentAsync(int attachmentId, int deletedByUserId);
 }

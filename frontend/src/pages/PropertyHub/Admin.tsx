@@ -77,7 +77,7 @@ const PropertyHubAdmin: React.FC = () => {
                 </li>
                 <li>
                   <Link
-                    to="/Property Hub/Admin/User Management"
+                    to="/Admin/Users"
                     className="block px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
                   >
                     User Management

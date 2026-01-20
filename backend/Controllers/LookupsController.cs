@@ -57,6 +57,76 @@ public class LookupsController : ControllerBase
         return Ok(journalTypes);
     }
 
+    /// <summary>
+    /// Create journal type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPost("journal-types")]
+    public async Task<ActionResult<JournalTypeDto>> CreateJournalType([FromBody] CreateJournalTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var journalType = await _journalLogService.CreateJournalTypeAsync(request);
+        return Ok(journalType);
+    }
+
+    /// <summary>
+    /// Update journal type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPut("journal-types/{id}")]
+    public async Task<ActionResult<JournalTypeDto>> UpdateJournalType(int id, [FromBody] UpdateJournalTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var journalType = await _journalLogService.UpdateJournalTypeAsync(id, request);
+        if (journalType == null) return NotFound();
+
+        return Ok(journalType);
+    }
+
+    /// <summary>
+    /// Delete journal type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpDelete("journal-types/{id}")]
+    public async Task<ActionResult> DeleteJournalType(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var result = await _journalLogService.DeleteJournalTypeAsync(id);
+        if (!result) return NotFound();
+
+        return NoContent();
+    }
+
     // Contact Log Types
 
     /// <summary>
@@ -79,6 +149,76 @@ public class LookupsController : ControllerBase
 
         var contactLogTypes = await _contactLogService.GetAllContactLogTypesAsync();
         return Ok(contactLogTypes);
+    }
+
+    /// <summary>
+    /// Create contact log type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPost("contact-log-types")]
+    public async Task<ActionResult<ContactLogTypeDto>> CreateContactLogType([FromBody] CreateContactLogTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var contactLogType = await _contactLogService.CreateContactLogTypeAsync(request);
+        return Ok(contactLogType);
+    }
+
+    /// <summary>
+    /// Update contact log type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPut("contact-log-types/{id}")]
+    public async Task<ActionResult<ContactLogTypeDto>> UpdateContactLogType(int id, [FromBody] UpdateContactLogTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var contactLogType = await _contactLogService.UpdateContactLogTypeAsync(id, request);
+        if (contactLogType == null) return NotFound();
+
+        return Ok(contactLogType);
+    }
+
+    /// <summary>
+    /// Delete contact log type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpDelete("contact-log-types/{id}")]
+    public async Task<ActionResult> DeleteContactLogType(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var result = await _contactLogService.DeleteContactLogTypeAsync(id);
+        if (!result) return NotFound();
+
+        return NoContent();
     }
 
     // Tag Types

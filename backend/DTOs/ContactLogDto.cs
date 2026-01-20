@@ -43,3 +43,15 @@ public class ContactLogTypeDto
     public string ContactLogTypeName { get; set; } = string.Empty;
     public string? Description { get; set; }
 }
+
+public class CreateContactLogTypeRequest
+{
+    public string ContactLogTypeName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+}
+
+public class UpdateContactLogTypeRequest
+{
+    public string? ContactLogTypeName { get; set; }
+    public string? Description { get; set; }
+}

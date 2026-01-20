@@ -13,6 +13,9 @@ public interface IJournalLogRepository
     
     Task<List<JournalType>> GetAllJournalTypesAsync();
     Task<JournalType?> GetJournalTypeByIdAsync(int journalTypeId);
+    Task<JournalType> CreateJournalTypeAsync(JournalType journalType);
+    Task<JournalType> UpdateJournalTypeAsync(JournalType journalType);
+    Task<bool> DeleteJournalTypeAsync(int journalTypeId);
     Task<List<JournalSubType>> GetJournalSubTypesByTypeAsync(int journalTypeId);
     
     Task<JournalLogAttachment> AddAttachmentAsync(JournalLogAttachment attachment);

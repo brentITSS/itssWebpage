@@ -58,6 +58,18 @@ public class JournalSubTypeDto
     public string? Description { get; set; }
 }
 
+public class CreateJournalTypeRequest
+{
+    public string JournalTypeName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+}
+
+public class UpdateJournalTypeRequest
+{
+    public string? JournalTypeName { get; set; }
+    public string? Description { get; set; }
+}
+
 public class AttachmentDto
 {
     public int AttachmentId { get; set; }

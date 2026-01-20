@@ -101,6 +101,30 @@ public class ContactLogRepository : IContactLogRepository
         return await _context.ContactLogTypes.FindAsync(contactLogTypeId);
     }
 
+    public async Task<ContactLogType> CreateContactLogTypeAsync(ContactLogType contactLogType)
+    {
+        _context.ContactLogTypes.Add(contactLogType);
+        await _context.SaveChangesAsync();
+        return contactLogType;
+    }
+
+    public async Task<ContactLogType> UpdateContactLogTypeAsync(ContactLogType contactLogType)
+    {
+        _context.ContactLogTypes.Update(contactLogType);
+        await _context.SaveChangesAsync();
+        return contactLogType;
+    }
+
+    public async Task<bool> DeleteContactLogTypeAsync(int contactLogTypeId)
+    {
+        var contactLogType = await _context.ContactLogTypes.FindAsync(contactLogTypeId);
+        if (contactLogType == null) return false;
+
+        _context.ContactLogTypes.Remove(contactLogType);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<ContactLogAttachment> AddAttachmentAsync(ContactLogAttachment attachment)
     {
         _context.ContactLogAttachments.Add(attachment);

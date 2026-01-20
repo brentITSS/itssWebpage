@@ -14,6 +14,9 @@ public interface IContactLogRepository
     
     Task<List<ContactLogType>> GetAllContactLogTypesAsync();
     Task<ContactLogType?> GetContactLogTypeByIdAsync(int contactLogTypeId);
+    Task<ContactLogType> CreateContactLogTypeAsync(ContactLogType contactLogType);
+    Task<ContactLogType> UpdateContactLogTypeAsync(ContactLogType contactLogType);
+    Task<bool> DeleteContactLogTypeAsync(int contactLogTypeId);
     
     Task<ContactLogAttachment> AddAttachmentAsync(ContactLogAttachment attachment);
     Task<List<ContactLogAttachment>> GetAttachmentsByContactLogIdAsync(int contactLogId);

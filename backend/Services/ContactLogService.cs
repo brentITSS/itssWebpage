@@ -180,6 +180,50 @@ public class ContactLogService : IContactLogService
         }).ToList();
     }
 
+    public async Task<ContactLogTypeDto> CreateContactLogTypeAsync(CreateContactLogTypeRequest request)
+    {
+        var contactLogType = new ContactLogType
+        {
+            ContactLogTypeName = request.ContactLogTypeName,
+            Description = request.Description,
+            IsActive = true
+        };
+
+        contactLogType = await _contactLogRepository.CreateContactLogTypeAsync(contactLogType);
+        contactLogType = await _contactLogRepository.GetContactLogTypeByIdAsync(contactLogType.ContactLogTypeId);
+
+        return new ContactLogTypeDto
+        {
+            ContactLogTypeId = contactLogType.ContactLogTypeId,
+            ContactLogTypeName = contactLogType.ContactLogTypeName ?? string.Empty,
+            Description = contactLogType.Description
+        };
+    }
+
+    public async Task<ContactLogTypeDto?> UpdateContactLogTypeAsync(int contactLogTypeId, UpdateContactLogTypeRequest request)
+    {
+        var contactLogType = await _contactLogRepository.GetContactLogTypeByIdAsync(contactLogTypeId);
+        if (contactLogType == null) return null;
+
+        if (request.ContactLogTypeName != null) contactLogType.ContactLogTypeName = request.ContactLogTypeName;
+        if (request.Description != null) contactLogType.Description = request.Description;
+
+        contactLogType = await _contactLogRepository.UpdateContactLogTypeAsync(contactLogType);
+        contactLogType = await _contactLogRepository.GetContactLogTypeByIdAsync(contactLogType.ContactLogTypeId);
+
+        return new ContactLogTypeDto
+        {
+            ContactLogTypeId = contactLogType.ContactLogTypeId,
+            ContactLogTypeName = contactLogType.ContactLogTypeName ?? string.Empty,
+            Description = contactLogType.Description
+        };
+    }
+
+    public async Task<bool> DeleteContactLogTypeAsync(int contactLogTypeId)
+    {
+        return await _contactLogRepository.DeleteContactLogTypeAsync(contactLogTypeId);
+    }
+
     public async Task<AttachmentDto> AddAttachmentAsync(int contactLogId, IFormFile file, int createdByUserId)
     {
         var contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);

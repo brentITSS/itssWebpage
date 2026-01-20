@@ -186,6 +186,59 @@ public class JournalLogService : IJournalLogService
         }).ToList();
     }
 
+    public async Task<JournalTypeDto> CreateJournalTypeAsync(CreateJournalTypeRequest request)
+    {
+        var journalType = new JournalType
+        {
+            JournalTypeName = request.JournalTypeName,
+            Description = request.Description,
+            IsActive = true
+        };
+
+        journalType = await _journalLogRepository.CreateJournalTypeAsync(journalType);
+        journalType = await _journalLogRepository.GetJournalTypeByIdAsync(journalType.JournalTypeId);
+
+        return new JournalTypeDto
+        {
+            JournalTypeId = journalType.JournalTypeId,
+            JournalTypeName = journalType.JournalTypeName ?? string.Empty,
+            Description = journalType.Description,
+            SubTypes = new List<JournalSubTypeDto>()
+        };
+    }
+
+    public async Task<JournalTypeDto?> UpdateJournalTypeAsync(int journalTypeId, UpdateJournalTypeRequest request)
+    {
+        var journalType = await _journalLogRepository.GetJournalTypeByIdAsync(journalTypeId);
+        if (journalType == null) return null;
+
+        if (request.JournalTypeName != null) journalType.JournalTypeName = request.JournalTypeName;
+        if (request.Description != null) journalType.Description = request.Description;
+
+        journalType = await _journalLogRepository.UpdateJournalTypeAsync(journalType);
+        journalType = await _journalLogRepository.GetJournalTypeByIdAsync(journalType.JournalTypeId);
+
+        return new JournalTypeDto
+        {
+            JournalTypeId = journalType.JournalTypeId,
+            JournalTypeName = journalType.JournalTypeName ?? string.Empty,
+            Description = journalType.Description,
+            SubTypes = journalType.JournalSubTypes != null && journalType.JournalSubTypes.Any()
+                ? journalType.JournalSubTypes.Select(jst => new JournalSubTypeDto
+                {
+                    JournalSubTypeId = jst.JournalSubTypeId,
+                    JournalSubTypeName = jst.JournalSubTypeName ?? string.Empty,
+                    Description = jst.Description
+                }).ToList()
+                : new List<JournalSubTypeDto>()
+        };
+    }
+
+    public async Task<bool> DeleteJournalTypeAsync(int journalTypeId)
+    {
+        return await _journalLogRepository.DeleteJournalTypeAsync(journalTypeId);
+    }
+
     public async Task<AttachmentDto> AddAttachmentAsync(int journalLogId, IFormFile file, int createdByUserId)
     {
         var journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
