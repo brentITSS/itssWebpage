@@ -3,9 +3,16 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 
 const PropertyHubLayout: React.FC = () => {
   const location = useLocation();
-  const isAdmin = location.pathname.includes('/Admin');
-  const isJournalLogs = location.pathname.includes('/Journal Logs');
-  const isContactLogs = location.pathname.includes('/Contact Logs');
+  // Normalize pathname for matching (handle URL encoding and trailing slashes)
+  const pathname = decodeURIComponent(location.pathname);
+  
+  // Check active routes - be more specific to avoid false matches
+  const isHome = pathname === '/Property Hub/Home' || pathname === '/Property Hub' || pathname === '/Property Hub/';
+  const isAdmin = pathname.includes('/Property Hub/Admin') && !pathname.includes('/Property Hub/Admin/Property Groups') && !pathname.includes('/Property Hub/Admin/Properties') && !pathname.includes('/Property Hub/Admin/Tenants') && !pathname.includes('/Property Hub/Admin/Tenancies') && !pathname.includes('/Property Hub/Admin/Lookups');
+  // Actually, let's just check if it starts with the path
+  const isAdminActive = pathname.startsWith('/Property Hub/Admin');
+  const isJournalLogs = pathname.startsWith('/Property Hub/Journal Logs');
+  const isContactLogs = pathname.startsWith('/Property Hub/Contact Logs');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -16,13 +23,13 @@ const PropertyHubLayout: React.FC = () => {
             <div className="flex space-x-4">
               <Link
                 to="/Property Hub/Home"
-                className={`${location.pathname === '/Property Hub/Home' ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
+                className={`${isHome ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
               >
                 Home
               </Link>
               <Link
                 to="/Property Hub/Admin"
-                className={`${isAdmin ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
+                className={`${isAdminActive ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
               >
                 Admin
               </Link>
