@@ -93,7 +93,13 @@ public class UserService : IUserService
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
-        if (request.DefaultLoginLandingPage != null) user.DefaultLoginLandingPage = request.DefaultLoginLandingPage;
+        // Allow setting to null/empty to clear the default landing page
+        if (request.DefaultLoginLandingPage != null)
+        {
+            user.DefaultLoginLandingPage = string.IsNullOrWhiteSpace(request.DefaultLoginLandingPage) 
+                ? null 
+                : request.DefaultLoginLandingPage;
+        }
 
         // Update roles if provided
         if (request.RoleIds != null && request.RoleIds.Any())

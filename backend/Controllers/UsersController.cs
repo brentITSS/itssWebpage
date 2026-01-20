@@ -75,10 +75,18 @@ public class UsersController : ControllerBase
         var currentUserId = GetCurrentUserId();
         if (currentUserId == null) return Unauthorized();
 
-        var user = await _userService.UpdateUserAsync(id, request, currentUserId.Value);
-        if (user == null) return NotFound();
+        try
+        {
+            var user = await _userService.UpdateUserAsync(id, request, currentUserId.Value);
+            if (user == null) return NotFound();
 
-        return Ok(user);
+            return Ok(user);
+        }
+        catch (Exception ex)
+        {
+            // Log the exception details for debugging
+            return StatusCode(500, new { error = "An error occurred while updating the user", message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
