@@ -243,15 +243,23 @@ public class TenantService : ITenantService
 
         if (result)
         {
-            await _auditLogRepository.CreateAsync(new AuditLog
+            // Audit log (wrap in try-catch to prevent audit log failures from breaking the operation)
+            try
             {
-                UserId = deletedByUserId,
-                Action = "Delete",
-                EntityType = "Tenancy",
-                EntityId = tenancyId,
-                OldValues = $"PropertyId: {tenancy.PropertyId}",
-                CreatedDate = DateTime.UtcNow
-            });
+                await _auditLogRepository.CreateAsync(new AuditLog
+                {
+                    UserId = deletedByUserId,
+                    Action = "Delete",
+                    EntityType = "Tenancy",
+                    EntityId = tenancyId,
+                    OldValues = $"PropertyId: {tenancy.PropertyId}",
+                    CreatedDate = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to create audit log: {ex.Message}");
+            }
         }
 
         return result;
