@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { propertyService, PropertyGroupResponseDto, PropertyResponseDto } from '../../services/propertyService';
 
 const PropertyHubHome: React.FC = () => {
+  const navigate = useNavigate();
   const [propertyGroups, setPropertyGroups] = useState<PropertyGroupResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,8 +113,7 @@ const PropertyHubHome: React.FC = () => {
                               className="text-xs text-blue-600 hover:text-blue-800"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Placeholder for journal logs navigation
-                                console.log('Navigate to journal logs for property:', property.propertyId);
+                                navigate(`/Property Hub/Journal Logs?propertyId=${property.propertyId}`);
                               }}
                             >
                               Journal Logs
@@ -122,8 +123,7 @@ const PropertyHubHome: React.FC = () => {
                               className="text-xs text-blue-600 hover:text-blue-800"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Placeholder for contact logs navigation
-                                console.log('Navigate to contact logs for property:', property.propertyId);
+                                navigate(`/Property Hub/Contact Logs?propertyId=${property.propertyId}`);
                               }}
                             >
                               Contact Logs

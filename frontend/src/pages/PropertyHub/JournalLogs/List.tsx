@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalService, JournalLogResponseDto } from '../../../services/journalService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 
 const JournalLogsList: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [journalLogs, setJournalLogs] = useState<JournalLogResponseDto[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<JournalLogResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
@@ -12,8 +13,9 @@ const JournalLogsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [filterPropertyId, setFilterPropertyId] = useState<number | ''>('');
+  // Filters - initialize from URL query parameter if present
+  const propertyIdFromUrl = searchParams.get('propertyId');
+  const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(propertyIdFromUrl ? parseInt(propertyIdFromUrl) : '');
   const [filterJournalTypeId, setFilterJournalTypeId] = useState<number | ''>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
@@ -115,7 +117,7 @@ const JournalLogsList: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
             <select
-              value={filterPropertyId}
+              value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
               onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value) : '')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
