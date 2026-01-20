@@ -4,12 +4,12 @@
 IF NOT EXISTS (
     SELECT 1 
     FROM sys.columns 
-    WHERE object_id = OBJECT_ID('tblUser') 
+    WHERE object_id = OBJECT_ID('[dbo].[tblUser]') 
     AND name = 'defaultLoginLandingPage'
 )
 BEGIN
-    ALTER TABLE tblUser
-    ADD defaultLoginLandingPage NVARCHAR(255) NULL;
+    ALTER TABLE [dbo].[tblUser]
+    ADD [defaultLoginLandingPage] NVARCHAR(255) NULL;
     
     PRINT 'Column defaultLoginLandingPage added to tblUser table';
 END
