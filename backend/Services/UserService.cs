@@ -88,17 +88,19 @@ public class UserService : IUserService
 
         // Get old values for audit log (with navigation properties)
         var oldUser = await _userRepository.GetByIdAsync(userId);
-        var oldValues = $"Email: {oldUser!.Email}, FirstName: {oldUser.FirstName}, LastName: {oldUser.LastName}, IsActive: {oldUser.IsActive}";
+        var oldValues = $"Email: {oldUser!.Email}, FirstName: {oldUser.FirstName}, LastName: {oldUser.LastName}, IsActive: {oldUser.IsActive}, DefaultLoginLandingPage: {oldUser.DefaultLoginLandingPage ?? "null"}";
 
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
-        // Allow setting to null/empty to clear the default landing page
+        // Handle default landing page - allow setting to null/empty to clear it
+        // If the property is present in the request (even if empty), update it
+        // This allows clearing the field by sending an empty string
         if (request.DefaultLoginLandingPage != null)
         {
             user.DefaultLoginLandingPage = string.IsNullOrWhiteSpace(request.DefaultLoginLandingPage) 
                 ? null 
-                : request.DefaultLoginLandingPage;
+                : request.DefaultLoginLandingPage.Trim();
         }
 
         // Update roles if provided
@@ -134,7 +136,7 @@ public class UserService : IUserService
         user = await _userRepository.GetByIdAsync(userId);
 
         // Audit log
-        var newValues = $"Email: {user!.Email}, FirstName: {user.FirstName}, LastName: {user.LastName}, IsActive: {user.IsActive}";
+        var newValues = $"Email: {user!.Email}, FirstName: {user.FirstName}, LastName: {user.LastName}, IsActive: {user.IsActive}, DefaultLoginLandingPage: {user.DefaultLoginLandingPage ?? "null"}";
         await _auditLogRepository.CreateAsync(new AuditLog
         {
             UserId = modifiedByUserId,

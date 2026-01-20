@@ -51,11 +51,14 @@ const Users: React.FC = () => {
     if (!editingUser) return;
 
     const formData = new FormData(e.currentTarget);
+    const defaultLandingPageValue = formData.get('defaultLoginLandingPage') as string | null;
     const request: UpdateUserRequest = {
       firstName: formData.get('firstName') as string || undefined,
       lastName: formData.get('lastName') as string || undefined,
       isActive: formData.get('isActive') === 'true',
-      defaultLoginLandingPage: formData.get('defaultLoginLandingPage') as string || undefined,
+      defaultLoginLandingPage: defaultLandingPageValue && defaultLandingPageValue.trim() !== '' 
+        ? defaultLandingPageValue.trim() 
+        : undefined,
       roleIds: [], // TODO: Add role selection UI
     };
 
