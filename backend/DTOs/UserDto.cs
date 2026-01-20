@@ -6,6 +6,7 @@ public class CreateUserRequest
     public string Password { get; set; } = string.Empty;
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+    public string? DefaultLoginLandingPage { get; set; }
     public List<int> RoleIds { get; set; } = new();
 }
 
@@ -14,6 +15,7 @@ public class UpdateUserRequest
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public bool? IsActive { get; set; }
+    public string? DefaultLoginLandingPage { get; set; }
     public List<int> RoleIds { get; set; } = new();
 }
 
@@ -29,6 +31,7 @@ public class UserResponseDto
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public bool IsActive { get; set; }
+    public string? DefaultLoginLandingPage { get; set; }
     public DateTime CreatedDate { get; set; }
     public List<RoleDto> Roles { get; set; } = new();
     public List<WorkstreamAccessDto> WorkstreamAccess { get; set; } = new();

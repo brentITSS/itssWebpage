@@ -7,6 +7,7 @@ export interface UserResponseDto {
   firstName?: string;
   lastName?: string;
   isActive: boolean;
+  defaultLoginLandingPage?: string;
   createdDate: string;
   roles: RoleDto[];
   workstreamAccess: WorkstreamAccessDto[];
@@ -17,6 +18,7 @@ export interface CreateUserRequest {
   password: string;
   firstName?: string;
   lastName?: string;
+  defaultLoginLandingPage?: string;
   roleIds: number[];
 }
 
@@ -24,6 +26,7 @@ export interface UpdateUserRequest {
   firstName?: string;
   lastName?: string;
   isActive?: boolean;
+  defaultLoginLandingPage?: string;
   roleIds?: number[];
 }
 

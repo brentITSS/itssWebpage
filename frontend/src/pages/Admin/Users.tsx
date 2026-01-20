@@ -33,6 +33,7 @@ const Users: React.FC = () => {
       password: formData.get('password') as string,
       firstName: formData.get('firstName') as string || undefined,
       lastName: formData.get('lastName') as string || undefined,
+      defaultLoginLandingPage: formData.get('defaultLoginLandingPage') as string || undefined,
       roleIds: [], // TODO: Add role selection UI
     };
 
@@ -54,6 +55,7 @@ const Users: React.FC = () => {
       firstName: formData.get('firstName') as string || undefined,
       lastName: formData.get('lastName') as string || undefined,
       isActive: formData.get('isActive') === 'true',
+      defaultLoginLandingPage: formData.get('defaultLoginLandingPage') as string || undefined,
       roleIds: [], // TODO: Add role selection UI
     };
 
@@ -132,6 +134,9 @@ const Users: React.FC = () => {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Default Landing Page
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -160,6 +165,9 @@ const Users: React.FC = () => {
                   >
                     {user.isActive ? 'Active' : 'Inactive'}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {user.defaultLoginLandingPage || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                   <button
@@ -239,6 +247,20 @@ const Users: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Default Landing Page
+                </label>
+                <input
+                  type="text"
+                  name="defaultLoginLandingPage"
+                  placeholder="e.g., /Admin, /Property Hub/Home"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Path to redirect user after login (e.g., /Admin, /Property Hub/Home)
+                </p>
+              </div>
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
@@ -310,6 +332,21 @@ const Users: React.FC = () => {
                   <option value="true">Active</option>
                   <option value="false">Inactive</option>
                 </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Default Landing Page
+                </label>
+                <input
+                  type="text"
+                  name="defaultLoginLandingPage"
+                  defaultValue={editingUser.defaultLoginLandingPage || ''}
+                  placeholder="e.g., /Admin, /Property Hub/Home"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Path to redirect user after login (e.g., /Admin, /Property Hub/Home)
+                </p>
               </div>
               <div className="flex justify-end space-x-2">
                 <button

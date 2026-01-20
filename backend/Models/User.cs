@@ -31,6 +31,10 @@ public class User
     [Column("active")]
     public bool IsActive { get; set; } = true;
 
+    [MaxLength(255)]
+    [Column("defaultLoginLandingPage")]
+    public string? DefaultLoginLandingPage { get; set; }
+
     // Navigation properties
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public virtual ICollection<WorkstreamUser> WorkstreamUsers { get; set; } = new List<WorkstreamUser>();

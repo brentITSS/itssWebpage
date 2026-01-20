@@ -16,6 +16,7 @@ export interface UserDto {
   firstName?: string;
   lastName?: string;
   isActive: boolean;
+  defaultLoginLandingPage?: string;
   roles: string[];
   workstreamAccess: WorkstreamAccessDto[];
   propertyGroupAccess: PropertyGroupAccessDto[];

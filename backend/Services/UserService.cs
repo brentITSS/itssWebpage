@@ -46,6 +46,7 @@ public class UserService : IUserService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FirstName = request.FirstName,
             LastName = request.LastName,
+            DefaultLoginLandingPage = request.DefaultLoginLandingPage,
             IsActive = true
         };
 
@@ -92,6 +93,7 @@ public class UserService : IUserService
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
+        if (request.DefaultLoginLandingPage != null) user.DefaultLoginLandingPage = request.DefaultLoginLandingPage;
 
         // Update roles if provided
         if (request.RoleIds != null && request.RoleIds.Any())
@@ -218,6 +220,7 @@ public class UserService : IUserService
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsActive = user.IsActive,
+            DefaultLoginLandingPage = user.DefaultLoginLandingPage,
             CreatedDate = DateTime.UtcNow, // Database doesn't have CreatedDate column, using current time as placeholder
             Roles = roles,
             WorkstreamAccess = workstreamAccess

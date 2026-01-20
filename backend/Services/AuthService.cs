@@ -236,6 +236,7 @@ public class AuthService : IAuthService
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsActive = user.IsActive,
+            DefaultLoginLandingPage = user.DefaultLoginLandingPage,
             Roles = roles,
             WorkstreamAccess = workstreamAccess,
             PropertyGroupAccess = propertyGroupAccess,

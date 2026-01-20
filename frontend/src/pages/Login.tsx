@@ -18,8 +18,9 @@ const Login: React.FC = () => {
       const response = await authService.login({ email, password });
       if (response && response.token) {
         // Token is already stored by authService.login
-        // Redirect to admin dashboard
-        navigate('/Admin');
+        // Redirect to user's default landing page, or fallback to /Admin
+        const landingPage = response.user.defaultLoginLandingPage || '/Admin';
+        navigate(landingPage);
       } else {
         setError('Invalid email or password');
       }
