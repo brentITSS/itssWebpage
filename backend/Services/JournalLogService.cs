@@ -212,16 +212,14 @@ public class JournalLogService : IJournalLogService
             Description = journalLog.Description,
             TransactionDate = journalLog.TransactionDate ?? DateTime.UtcNow,
             CreatedDate = DateTime.UtcNow,
-            // Temporarily disabled - load attachments separately if needed
-            Attachments = new List<AttachmentDto>()
-            // Attachments = journalLog.Attachments.Select(a => new AttachmentDto
-            // {
-            //     AttachmentId = a.JournalLogAttachmentId,
-            //     FileName = a.FileName,
-            //     FileType = a.FileType,
-            //     FileSize = a.FileSize ?? 0,
-            //     CreatedDate = DateTime.UtcNow
-            // }).ToList()
+            Attachments = journalLog.Attachments.Select(a => new AttachmentDto
+            {
+                AttachmentId = a.JournalLogAttachmentId,
+                FileName = a.FileName ?? "Unknown",
+                FileType = a.FileType,
+                FileSize = a.FileSize ?? 0,
+                CreatedDate = a.DateAttached ?? DateTime.UtcNow
+            }).ToList()
         };
     }
 }

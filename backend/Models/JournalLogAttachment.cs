@@ -7,14 +7,20 @@ namespace backend.Models;
 public class JournalLogAttachment
 {
     [Key]
-    [Column("journalLogAttachmentID")]
+    [Column("journalAttachmentID")]
     public int JournalLogAttachmentId { get; set; }
 
     [Column("journalLogID")]
     public int? JournalLogId { get; set; }
 
-    // Note: Database schema not provided - using computed properties for file fields
-    // If these columns exist in DB, they should be mapped here
+    [Column("dateAttached")]
+    public DateTime? DateAttached { get; set; }
+
+    [MaxLength(255)]
+    [Column("attachedBy")]
+    public string? AttachedBy { get; set; }
+
+    // File-related properties don't exist in database - using NotMapped for backward compatibility
     [NotMapped]
     public string? FileName { get; set; }
 
