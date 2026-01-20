@@ -12,6 +12,7 @@ import PropertyHubAdmin from '../pages/PropertyHub/Admin';
 import PropertyGroups from '../pages/PropertyHub/Admin/PropertyGroups';
 import Properties from '../pages/PropertyHub/Admin/Properties';
 import Tenants from '../pages/PropertyHub/Admin/Tenants';
+import Tenancies from '../pages/PropertyHub/Admin/Tenancies';
 import Lookups from '../pages/PropertyHub/Admin/Lookups';
 import JournalLogsList from '../pages/PropertyHub/JournalLogs/List';
 import JournalLogForm from '../pages/PropertyHub/JournalLogs/Form';
@@ -73,6 +74,7 @@ const AppRoutes: React.FC = () => {
           <Route path="Property Groups" element={<PropertyGroups />} />
           <Route path="Properties" element={<Properties />} />
           <Route path="Tenants" element={<Tenants />} />
+          <Route path="Tenancies" element={<Tenancies />} />
           <Route path="Lookups" element={<Lookups />} />
           {/* User Management route will be added later */}
         </Route>
