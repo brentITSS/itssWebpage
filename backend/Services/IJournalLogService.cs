@@ -16,6 +16,9 @@ public interface IJournalLogService
     Task<JournalTypeDto> CreateJournalTypeAsync(CreateJournalTypeRequest request);
     Task<JournalTypeDto?> UpdateJournalTypeAsync(int journalTypeId, UpdateJournalTypeRequest request);
     Task<bool> DeleteJournalTypeAsync(int journalTypeId);
+    Task<JournalSubTypeDto> CreateJournalSubTypeAsync(CreateJournalSubTypeRequest request);
+    Task<JournalSubTypeDto?> UpdateJournalSubTypeAsync(int journalSubTypeId, UpdateJournalSubTypeRequest request);
+    Task<bool> DeleteJournalSubTypeAsync(int journalSubTypeId);
     Task<AttachmentDto> AddAttachmentAsync(int journalLogId, IFormFile file, int createdByUserId);
     Task<bool> DeleteAttachmentAsync(int attachmentId, int deletedByUserId);
 }

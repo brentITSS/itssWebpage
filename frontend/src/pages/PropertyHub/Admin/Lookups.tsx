@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { propertyAdminService, JournalTypeDto, ContactLogTypeDto, TagTypeResponseDto, CreateTagTypeRequest, UpdateTagTypeRequest, CreateJournalTypeRequest, UpdateJournalTypeRequest, CreateContactLogTypeRequest, UpdateContactLogTypeRequest } from '../../../services/propertyAdminService';
+import { propertyAdminService, JournalTypeDto, ContactLogTypeDto, TagTypeResponseDto, CreateTagTypeRequest, UpdateTagTypeRequest, CreateJournalTypeRequest, UpdateJournalTypeRequest, CreateContactLogTypeRequest, UpdateContactLogTypeRequest, CreateJournalSubTypeRequest, UpdateJournalSubTypeRequest, JournalSubTypeDto } from '../../../services/propertyAdminService';
 
 const Lookups: React.FC = () => {
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
@@ -10,6 +10,9 @@ const Lookups: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'journal' | 'contact' | 'tag'>('journal');
   const [showJournalModal, setShowJournalModal] = useState(false);
   const [editingJournalType, setEditingJournalType] = useState<JournalTypeDto | null>(null);
+  const [showJournalSubTypeModal, setShowJournalSubTypeModal] = useState(false);
+  const [selectedJournalTypeForSubType, setSelectedJournalTypeForSubType] = useState<number | null>(null);
+  const [editingJournalSubType, setEditingJournalSubType] = useState<{ subType: JournalSubTypeDto; journalTypeId: number } | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
   const [editingContactLogType, setEditingContactLogType] = useState<ContactLogTypeDto | null>(null);
   const [showTagModal, setShowTagModal] = useState(false);
@@ -175,6 +178,55 @@ const Lookups: React.FC = () => {
     }
   };
 
+  const handleCreateJournalSubType = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedJournalTypeForSubType) return;
+
+    const formData = new FormData(e.currentTarget);
+    const request: CreateJournalSubTypeRequest = {
+      journalTypeId: selectedJournalTypeForSubType,
+      journalSubTypeName: formData.get('journalSubTypeName') as string,
+      description: formData.get('description') as string || undefined,
+    };
+
+    try {
+      await propertyAdminService.createJournalSubType(request);
+      setShowJournalSubTypeModal(false);
+      setSelectedJournalTypeForSubType(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create journal sub type');
+    }
+  };
+
+  const handleUpdateJournalSubType = async (id: number, e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const request: UpdateJournalSubTypeRequest = {
+      journalSubTypeName: formData.get('journalSubTypeName') as string || undefined,
+      description: formData.get('description') as string || undefined,
+    };
+
+    try {
+      await propertyAdminService.updateJournalSubType(id, request);
+      setEditingJournalSubType(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update journal sub type');
+    }
+  };
+
+  const handleDeleteJournalSubType = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this journal sub type?')) return;
+
+    try {
+      await propertyAdminService.deleteJournalSubType(id);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete journal sub type');
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -276,7 +328,40 @@ const Lookups: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{type.journalTypeName}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {type.subTypes.map(st => st.journalSubTypeName).join(', ') || '-'}
+                      <div className="space-y-2">
+                        {type.subTypes.length > 0 ? (
+                          type.subTypes.map((st) => (
+                            <div key={st.journalSubTypeId} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
+                              <span>{st.journalSubTypeName}</span>
+                              <div className="space-x-2">
+                                <button
+                                  onClick={() => setEditingJournalSubType({ subType: st, journalTypeId: type.journalTypeId })}
+                                  className="text-blue-600 hover:text-blue-900 text-xs"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteJournalSubType(st.journalSubTypeId)}
+                                  className="text-red-600 hover:text-red-900 text-xs"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                        <button
+                          onClick={() => {
+                            setSelectedJournalTypeForSubType(type.journalTypeId);
+                            setShowJournalSubTypeModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 text-xs font-medium"
+                        >
+                          + Add Sub Type
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button onClick={() => setEditingJournalType(type)} className="text-blue-600 hover:text-blue-900">Edit</button>

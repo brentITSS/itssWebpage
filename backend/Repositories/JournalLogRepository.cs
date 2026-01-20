@@ -122,6 +122,35 @@ public class JournalLogRepository : IJournalLogRepository
             .ToListAsync();
     }
 
+    public async Task<JournalSubType?> GetJournalSubTypeByIdAsync(int journalSubTypeId)
+    {
+        return await _context.JournalSubTypes.FindAsync(journalSubTypeId);
+    }
+
+    public async Task<JournalSubType> CreateJournalSubTypeAsync(JournalSubType journalSubType)
+    {
+        _context.JournalSubTypes.Add(journalSubType);
+        await _context.SaveChangesAsync();
+        return journalSubType;
+    }
+
+    public async Task<JournalSubType> UpdateJournalSubTypeAsync(JournalSubType journalSubType)
+    {
+        _context.JournalSubTypes.Update(journalSubType);
+        await _context.SaveChangesAsync();
+        return journalSubType;
+    }
+
+    public async Task<bool> DeleteJournalSubTypeAsync(int journalSubTypeId)
+    {
+        var journalSubType = await _context.JournalSubTypes.FindAsync(journalSubTypeId);
+        if (journalSubType == null) return false;
+
+        _context.JournalSubTypes.Remove(journalSubType);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<JournalLogAttachment> AddAttachmentAsync(JournalLogAttachment attachment)
     {
         _context.JournalLogAttachments.Add(attachment);

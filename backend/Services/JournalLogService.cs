@@ -239,6 +239,51 @@ public class JournalLogService : IJournalLogService
         return await _journalLogRepository.DeleteJournalTypeAsync(journalTypeId);
     }
 
+    public async Task<JournalSubTypeDto> CreateJournalSubTypeAsync(CreateJournalSubTypeRequest request)
+    {
+        var journalSubType = new JournalSubType
+        {
+            JournalTypeId = request.JournalTypeId,
+            JournalSubTypeName = request.JournalSubTypeName,
+            Description = request.Description,
+            IsActive = true
+        };
+
+        journalSubType = await _journalLogRepository.CreateJournalSubTypeAsync(journalSubType);
+        journalSubType = await _journalLogRepository.GetJournalSubTypeByIdAsync(journalSubType.JournalSubTypeId);
+
+        return new JournalSubTypeDto
+        {
+            JournalSubTypeId = journalSubType.JournalSubTypeId,
+            JournalSubTypeName = journalSubType.JournalSubTypeName ?? string.Empty,
+            Description = journalSubType.Description
+        };
+    }
+
+    public async Task<JournalSubTypeDto?> UpdateJournalSubTypeAsync(int journalSubTypeId, UpdateJournalSubTypeRequest request)
+    {
+        var journalSubType = await _journalLogRepository.GetJournalSubTypeByIdAsync(journalSubTypeId);
+        if (journalSubType == null) return null;
+
+        if (request.JournalSubTypeName != null) journalSubType.JournalSubTypeName = request.JournalSubTypeName;
+        if (request.Description != null) journalSubType.Description = request.Description;
+
+        journalSubType = await _journalLogRepository.UpdateJournalSubTypeAsync(journalSubType);
+        journalSubType = await _journalLogRepository.GetJournalSubTypeByIdAsync(journalSubType.JournalSubTypeId);
+
+        return new JournalSubTypeDto
+        {
+            JournalSubTypeId = journalSubType.JournalSubTypeId,
+            JournalSubTypeName = journalSubType.JournalSubTypeName ?? string.Empty,
+            Description = journalSubType.Description
+        };
+    }
+
+    public async Task<bool> DeleteJournalSubTypeAsync(int journalSubTypeId)
+    {
+        return await _journalLogRepository.DeleteJournalSubTypeAsync(journalSubTypeId);
+    }
+
     public async Task<AttachmentDto> AddAttachmentAsync(int journalLogId, IFormFile file, int createdByUserId)
     {
         var journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);

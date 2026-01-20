@@ -315,6 +315,78 @@ public class LookupsController : ControllerBase
         return NoContent();
     }
 
+    // Journal Sub Types
+
+    /// <summary>
+    /// Create journal sub type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPost("journal-sub-types")]
+    public async Task<ActionResult<JournalSubTypeDto>> CreateJournalSubType([FromBody] CreateJournalSubTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var journalSubType = await _journalLogService.CreateJournalSubTypeAsync(request);
+        return Ok(journalSubType);
+    }
+
+    /// <summary>
+    /// Update journal sub type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPut("journal-sub-types/{id}")]
+    public async Task<ActionResult<JournalSubTypeDto>> UpdateJournalSubType(int id, [FromBody] UpdateJournalSubTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var journalSubType = await _journalLogService.UpdateJournalSubTypeAsync(id, request);
+        if (journalSubType == null) return NotFound();
+
+        return Ok(journalSubType);
+    }
+
+    /// <summary>
+    /// Delete journal sub type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpDelete("journal-sub-types/{id}")]
+    public async Task<ActionResult> DeleteJournalSubType(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        // Check Property Hub Admin access
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var result = await _journalLogService.DeleteJournalSubTypeAsync(id);
+        if (!result) return NotFound();
+
+        return NoContent();
+    }
+
     /// <summary>
     /// Check if user has Property Hub workstream access.
     /// </summary>

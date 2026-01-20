@@ -71,6 +71,17 @@ export interface UpdateContactLogTypeRequest {
   description?: string;
 }
 
+export interface CreateJournalSubTypeRequest {
+  journalTypeId: number;
+  journalSubTypeName: string;
+  description?: string;
+}
+
+export interface UpdateJournalSubTypeRequest {
+  journalSubTypeName?: string;
+  description?: string;
+}
+
 export const propertyAdminService = {
   // Property Groups
   getPropertyGroups: async (): Promise<PropertyGroupResponseDto[]> => {
@@ -209,6 +220,26 @@ export const propertyAdminService = {
 
   deleteJournalType: async (id: number): Promise<void> => {
     await apiClient<void>(`/lookups/journal-types/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  createJournalSubType: async (request: CreateJournalSubTypeRequest): Promise<JournalSubTypeDto> => {
+    return await apiClient<JournalSubTypeDto>('/lookups/journal-sub-types', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateJournalSubType: async (id: number, request: UpdateJournalSubTypeRequest): Promise<JournalSubTypeDto> => {
+    return await apiClient<JournalSubTypeDto>(`/lookups/journal-sub-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  deleteJournalSubType: async (id: number): Promise<void> => {
+    await apiClient<void>(`/lookups/journal-sub-types/${id}`, {
       method: 'DELETE',
     });
   },
