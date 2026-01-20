@@ -57,5 +57,6 @@ public class JournalLog
     [ForeignKey("JournalSubTypeId")]
     public virtual JournalSubType? JournalSubType { get; set; }
 
-    public virtual ICollection<JournalLogAttachment> Attachments { get; set; } = new List<JournalLogAttachment>();
+    // Temporarily removed navigation property until table schema is verified
+    // public virtual ICollection<JournalLogAttachment> Attachments { get; set; } = new List<JournalLogAttachment>();
 }
