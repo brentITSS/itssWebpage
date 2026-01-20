@@ -3,13 +3,11 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 
 const PropertyHubLayout: React.FC = () => {
   const location = useLocation();
-  // Normalize pathname for matching (handle URL encoding and trailing slashes)
+  // Normalize pathname for matching (handle URL encoding)
   const pathname = decodeURIComponent(location.pathname);
   
-  // Check active routes - be more specific to avoid false matches
+  // Check active routes using startsWith for consistent matching
   const isHome = pathname === '/Property Hub/Home' || pathname === '/Property Hub' || pathname === '/Property Hub/';
-  const isAdmin = pathname.includes('/Property Hub/Admin') && !pathname.includes('/Property Hub/Admin/Property Groups') && !pathname.includes('/Property Hub/Admin/Properties') && !pathname.includes('/Property Hub/Admin/Tenants') && !pathname.includes('/Property Hub/Admin/Tenancies') && !pathname.includes('/Property Hub/Admin/Lookups');
-  // Actually, let's just check if it starts with the path
   const isAdminActive = pathname.startsWith('/Property Hub/Admin');
   const isJournalLogs = pathname.startsWith('/Property Hub/Journal Logs');
   const isContactLogs = pathname.startsWith('/Property Hub/Contact Logs');
