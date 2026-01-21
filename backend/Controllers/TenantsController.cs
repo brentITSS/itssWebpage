@@ -2,6 +2,7 @@ using backend.DTOs;
 using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace backend.Controllers;
@@ -70,10 +71,15 @@ public class TenantsController : ControllerBase
     /// Create tenant. Only accessible to Property Hub Admin or Global Admins.
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<TenantResponseDto>> CreateTenant([FromBody] CreateTenantRequest request)
+    public async Task<ActionResult<TenantResponseDto>> CreateTenant([FromBody] CreateTenantRequest? request)
     {
         try
         {
+            if (request == null)
+            {
+                return BadRequest(new { message = "Request body is required" });
+            }
+
             var currentUserId = GetCurrentUserId();
             if (currentUserId == null) return Unauthorized();
 
@@ -89,22 +95,49 @@ public class TenantsController : ControllerBase
             // Validate required fields
             if (string.IsNullOrWhiteSpace(request.FirstName))
             {
-                return BadRequest("First Name is required");
+                return BadRequest(new { message = "First Name is required" });
             }
 
             if (string.IsNullOrWhiteSpace(request.LastName))
             {
-                return BadRequest("Last Name is required");
+                return BadRequest(new { message = "Last Name is required" });
+            }
+
+            // Validate date of birth
+            if (request.TenantDOB == default(DateTime))
+            {
+                return BadRequest(new { message = "Date of Birth is required" });
+            }
+
+            // Check if date is reasonable (not in the future, not too old)
+            if (request.TenantDOB > DateTime.UtcNow)
+            {
+                return BadRequest(new { message = "Date of Birth cannot be in the future" });
+            }
+
+            if (request.TenantDOB < DateTime.UtcNow.AddYears(-150))
+            {
+                return BadRequest(new { message = "Date of Birth is invalid" });
             }
 
             var tenant = await _tenantService.CreateTenantAsync(request, currentUserId.Value);
             return CreatedAtAction(nameof(GetTenant), new { id = tenant.TenantId }, tenant);
         }
+        catch (DbUpdateException dbEx)
+        {
+            Console.WriteLine($"Database error creating tenant: {dbEx.Message}");
+            Console.WriteLine($"Inner exception: {dbEx.InnerException?.Message}");
+            return StatusCode(500, new { message = "Database error occurred while creating the tenant", error = dbEx.InnerException?.Message ?? dbEx.Message });
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"Error creating tenant: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new { message = "An error occurred while creating the tenant", error = ex.Message });
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            }
+            return StatusCode(500, new { message = "An error occurred while creating the tenant", error = ex.Message, innerError = ex.InnerException?.Message });
         }
     }
 
