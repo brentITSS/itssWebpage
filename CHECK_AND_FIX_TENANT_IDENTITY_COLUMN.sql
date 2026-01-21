@@ -2,11 +2,12 @@
 SELECT 
     c.name AS ColumnName,
     c.is_identity AS IsIdentity,
-    c.seed_value AS SeedValue,
-    c.increment_value AS IncrementValue
+    ISNULL(ic.seed_value, 0) AS SeedValue,
+    ISNULL(ic.increment_value, 0) AS IncrementValue
 FROM sys.columns c
 INNER JOIN sys.tables t ON c.object_id = t.object_id
 INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+LEFT JOIN sys.identity_columns ic ON c.object_id = ic.object_id AND c.column_id = ic.column_id
 WHERE s.name = 'dbo'
     AND t.name = 'tblTenant'
     AND c.name = 'tenantID';
