@@ -31,7 +31,9 @@ const Tenants: React.FC = () => {
     const request: CreateTenantRequest = {
       firstName: formData.get('firstName') as string,
       lastName: formData.get('lastName') as string,
+      tenantDOB: new Date(formData.get('tenantDOB') as string).toISOString(),
       email: formData.get('email') as string || undefined,
+      identification: formData.get('identification') as string || undefined,
       phone: formData.get('phone') as string || undefined,
     };
 
@@ -50,7 +52,9 @@ const Tenants: React.FC = () => {
     const request: UpdateTenantRequest = {
       firstName: formData.get('firstName') as string || undefined,
       lastName: formData.get('lastName') as string || undefined,
+      tenantDOB: formData.get('tenantDOB') ? new Date(formData.get('tenantDOB') as string).toISOString() : undefined,
       email: formData.get('email') as string || undefined,
+      identification: formData.get('identification') as string || undefined,
       phone: formData.get('phone') as string || undefined,
     };
 
@@ -141,8 +145,16 @@ const Tenants: React.FC = () => {
                 <input type="text" name="lastName" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                <input type="date" name="tenantDOB" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input type="email" name="email" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Identification</label>
+                <input type="text" name="identification" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
@@ -172,8 +184,16 @@ const Tenants: React.FC = () => {
                 <input type="text" name="lastName" defaultValue={editingTenant.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                <input type="date" name="tenantDOB" defaultValue={editingTenant.tenantDOB ? new Date(editingTenant.tenantDOB).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input type="email" name="email" defaultValue={editingTenant.email || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Identification</label>
+                <input type="text" name="identification" defaultValue={editingTenant.identification || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
