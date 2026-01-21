@@ -35,9 +35,10 @@ public class TenantService : ITenantService
         {
             FirstName = request.FirstName,
             LastName = request.LastName,
+            TenantDOB = request.TenantDOB,
             Email = request.Email,
+            Identification = request.Identification,
             Phone = request.Phone,
-            TenantDOB = DateTime.UtcNow, // Default DOB, should be provided in request
             TenancyId = request.TenancyId
         };
 
@@ -73,7 +74,9 @@ public class TenantService : ITenantService
 
         if (request.FirstName != null) tenant.FirstName = request.FirstName;
         if (request.LastName != null) tenant.LastName = request.LastName;
+        if (request.TenantDOB.HasValue) tenant.TenantDOB = request.TenantDOB.Value;
         if (request.Email != null) tenant.Email = request.Email;
+        if (request.Identification != null) tenant.Identification = request.Identification;
         if (request.Phone != null) tenant.Phone = request.Phone;
 
         tenant = await _tenantRepository.UpdateAsync(tenant);
@@ -272,7 +275,9 @@ public class TenantService : ITenantService
             TenantId = tenant.TenantId,
             FirstName = tenant.FirstName,
             LastName = tenant.LastName,
+            TenantDOB = tenant.TenantDOB,
             Email = tenant.Email,
+            Identification = tenant.Identification,
             Phone = tenant.Phone,
             CreatedDate = DateTime.UtcNow
         };

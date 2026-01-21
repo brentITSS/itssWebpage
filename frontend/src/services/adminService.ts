@@ -109,14 +109,18 @@ export interface CreateTenantRequest {
   tenancyId?: number;
   firstName: string;
   lastName: string;
+  tenantDOB: string;
   email?: string;
+  identification?: string;
   phone?: string;
 }
 
 export interface UpdateTenantRequest {
   firstName?: string;
   lastName?: string;
+  tenantDOB?: string;
   email?: string;
+  identification?: string;
   phone?: string;
 }
 
@@ -124,7 +128,9 @@ export interface TenantResponseDto {
   tenantId: number;
   firstName: string;
   lastName: string;
+  tenantDOB: string;
   email?: string;
+  identification?: string;
   phone?: string;
   createdDate: string;
 }

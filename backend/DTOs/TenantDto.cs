@@ -5,7 +5,9 @@ public class CreateTenantRequest
     public int? TenancyId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
+    public DateTime TenantDOB { get; set; }
     public string? Email { get; set; }
+    public string? Identification { get; set; }
     public string? Phone { get; set; }
 }
 
@@ -13,7 +15,9 @@ public class UpdateTenantRequest
 {
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+    public DateTime? TenantDOB { get; set; }
     public string? Email { get; set; }
+    public string? Identification { get; set; }
     public string? Phone { get; set; }
 }
 
@@ -22,7 +26,9 @@ public class TenantResponseDto
     public int TenantId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
+    public DateTime TenantDOB { get; set; }
     public string? Email { get; set; }
+    public string? Identification { get; set; }
     public string? Phone { get; set; }
     public DateTime CreatedDate { get; set; }
 }
