@@ -33,6 +33,7 @@ public class TenantService : ITenantService
     {
         var tenant = new Tenant
         {
+            TenantId = 0, // Explicitly set to 0 so EF knows to generate it
             FirstName = request.FirstName,
             LastName = request.LastName,
             TenantDOB = request.TenantDOB,

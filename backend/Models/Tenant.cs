@@ -7,6 +7,7 @@ namespace backend.Models;
 public class Tenant
 {
     [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Column("tenantID")]
     public int TenantId { get; set; }
 
