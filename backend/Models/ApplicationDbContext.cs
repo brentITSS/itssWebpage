@@ -85,6 +85,11 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(t => t.TenancyId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Configure TenantId as identity column
+        modelBuilder.Entity<Tenant>()
+            .Property(t => t.TenantId)
+            .ValueGeneratedOnAdd();
+
         // TagLog relationships
         modelBuilder.Entity<TagLog>()
             .HasOne(tl => tl.Tenancy)
