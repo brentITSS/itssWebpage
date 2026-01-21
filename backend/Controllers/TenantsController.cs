@@ -72,20 +72,40 @@ public class TenantsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TenantResponseDto>> CreateTenant([FromBody] CreateTenantRequest request)
     {
-        var currentUserId = GetCurrentUserId();
-        if (currentUserId == null) return Unauthorized();
-
-        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
-        if (currentUser == null) return Unauthorized();
-
-        // Check Property Hub Admin access
-        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        try
         {
-            return Forbid("Access denied: Property Hub Admin permission required");
-        }
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == null) return Unauthorized();
 
-        var tenant = await _tenantService.CreateTenantAsync(request, currentUserId.Value);
-        return CreatedAtAction(nameof(GetTenant), new { id = tenant.TenantId }, tenant);
+            var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+            if (currentUser == null) return Unauthorized();
+
+            // Check Property Hub Admin access
+            if (!_authService.HasPropertyHubAdminAccess(currentUser))
+            {
+                return Forbid("Access denied: Property Hub Admin permission required");
+            }
+
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(request.FirstName))
+            {
+                return BadRequest("First Name is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.LastName))
+            {
+                return BadRequest("Last Name is required");
+            }
+
+            var tenant = await _tenantService.CreateTenantAsync(request, currentUserId.Value);
+            return CreatedAtAction(nameof(GetTenant), new { id = tenant.TenantId }, tenant);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating tenant: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new { message = "An error occurred while creating the tenant", error = ex.Message });
+        }
     }
 
     /// <summary>
