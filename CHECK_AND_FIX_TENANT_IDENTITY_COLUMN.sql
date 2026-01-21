@@ -16,7 +16,7 @@ WHERE s.name = 'dbo'
 -- Only run this if you're sure the table is empty or you've backed up the data
 
 -- Step 1: Check if table has data (if it does, you'll need to back it up first)
-SELECT COUNT(*) AS RowCount FROM [dbo].[tblTenant];
+SELECT COUNT(*) AS [RowCount] FROM [dbo].[tblTenant];
 
 -- Step 2: If table is empty or you've backed up, run these commands:
 -- (Uncomment and run if needed)
