@@ -40,7 +40,13 @@ public class TenantService : ITenantService
             Email = request.Email,
             Identification = request.Identification,
             Phone = request.Phone,
-            TenancyId = request.TenancyId
+            TenancyId = request.TenancyId,
+            CurrentEmployer = request.CurrentEmployer,
+            CurrentDeclaredGross = request.CurrentDeclaredGross,
+            ExpenditurePerMonth = request.ExpenditurePerMonth,
+            LiveIn = request.LiveIn,
+            RentalCommitment = request.RentalCommitment,
+            TenantActive = request.TenantActive
         };
 
         tenant = await _tenantRepository.CreateAsync(tenant);
@@ -79,6 +85,12 @@ public class TenantService : ITenantService
         if (request.Email != null) tenant.Email = request.Email;
         if (request.Identification != null) tenant.Identification = request.Identification;
         if (request.Phone != null) tenant.Phone = request.Phone;
+        if (request.CurrentEmployer != null) tenant.CurrentEmployer = request.CurrentEmployer;
+        if (request.CurrentDeclaredGross.HasValue) tenant.CurrentDeclaredGross = request.CurrentDeclaredGross.Value;
+        if (request.ExpenditurePerMonth.HasValue) tenant.ExpenditurePerMonth = request.ExpenditurePerMonth.Value;
+        if (request.LiveIn.HasValue) tenant.LiveIn = request.LiveIn.Value;
+        if (request.RentalCommitment.HasValue) tenant.RentalCommitment = request.RentalCommitment.Value;
+        if (request.TenantActive.HasValue) tenant.TenantActive = request.TenantActive.Value;
 
         tenant = await _tenantRepository.UpdateAsync(tenant);
 
@@ -280,6 +292,12 @@ public class TenantService : ITenantService
             Email = tenant.Email,
             Identification = tenant.Identification,
             Phone = tenant.Phone,
+            CurrentEmployer = tenant.CurrentEmployer,
+            CurrentDeclaredGross = tenant.CurrentDeclaredGross,
+            ExpenditurePerMonth = tenant.ExpenditurePerMonth,
+            LiveIn = tenant.LiveIn,
+            RentalCommitment = tenant.RentalCommitment,
+            TenantActive = tenant.TenantActive,
             CreatedDate = DateTime.UtcNow
         };
     }

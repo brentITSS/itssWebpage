@@ -98,6 +98,12 @@ const Tenancies: React.FC = () => {
       email: formData.get('email') as string || undefined,
       identification: formData.get('identification') as string || undefined,
       phone: formData.get('phone') as string || undefined,
+      currentEmployer: formData.get('currentEmployer') as string || undefined,
+      currentDeclaredGross: formData.get('currentDeclaredGross') ? parseFloat(formData.get('currentDeclaredGross') as string) : undefined,
+      expenditurePerMonth: formData.get('expenditurePerMonth') ? parseFloat(formData.get('expenditurePerMonth') as string) : undefined,
+      liveIn: formData.get('liveIn') === 'true' ? true : formData.get('liveIn') === 'false' ? false : undefined,
+      rentalCommitment: formData.get('rentalCommitment') ? parseFloat(formData.get('rentalCommitment') as string) : undefined,
+      tenantActive: formData.get('tenantActive') === 'true' ? true : formData.get('tenantActive') === 'false' ? false : undefined,
     };
 
     try {
@@ -120,6 +126,12 @@ const Tenancies: React.FC = () => {
       email: formData.get('email') as string || undefined,
       identification: formData.get('identification') as string || undefined,
       phone: formData.get('phone') as string || undefined,
+      currentEmployer: formData.get('currentEmployer') as string || undefined,
+      currentDeclaredGross: formData.get('currentDeclaredGross') ? parseFloat(formData.get('currentDeclaredGross') as string) : undefined,
+      expenditurePerMonth: formData.get('expenditurePerMonth') ? parseFloat(formData.get('expenditurePerMonth') as string) : undefined,
+      liveIn: formData.get('liveIn') === 'true' ? true : formData.get('liveIn') === 'false' ? false : undefined,
+      rentalCommitment: formData.get('rentalCommitment') ? parseFloat(formData.get('rentalCommitment') as string) : undefined,
+      tenantActive: formData.get('tenantActive') === 'true' ? true : formData.get('tenantActive') === 'false' ? false : undefined,
     };
 
     try {
@@ -303,6 +315,38 @@ const Tenancies: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <input type="tel" name="phone" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Current Employer</label>
+                <input type="text" name="currentEmployer" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Current Declared Gross (R)</label>
+                <input type="number" step="0.01" name="currentDeclaredGross" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expenditure Per Month (R)</label>
+                <input type="number" step="0.01" name="expenditurePerMonth" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rental Commitment (R)</label>
+                <input type="number" step="0.01" name="rentalCommitment" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Live In</label>
+                <select name="liveIn" className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">Not Set</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tenant Active</label>
+                <select name="tenantActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">Not Set</option>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
@@ -350,6 +394,38 @@ const Tenancies: React.FC = () => {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <input type="tel" name="phone" defaultValue={editingTenant.tenant.phone || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Current Employer</label>
+                <input type="text" name="currentEmployer" defaultValue={editingTenant.tenant.currentEmployer || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Current Declared Gross (R)</label>
+                <input type="number" step="0.01" name="currentDeclaredGross" defaultValue={editingTenant.tenant.currentDeclaredGross || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expenditure Per Month (R)</label>
+                <input type="number" step="0.01" name="expenditurePerMonth" defaultValue={editingTenant.tenant.expenditurePerMonth || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rental Commitment (R)</label>
+                <input type="number" step="0.01" name="rentalCommitment" defaultValue={editingTenant.tenant.rentalCommitment || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Live In</label>
+                <select name="liveIn" defaultValue={editingTenant.tenant.liveIn === true ? 'true' : editingTenant.tenant.liveIn === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">Not Set</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tenant Active</label>
+                <select name="tenantActive" defaultValue={editingTenant.tenant.tenantActive === true ? 'true' : editingTenant.tenant.tenantActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">Not Set</option>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
               </div>
               <div className="flex justify-end space-x-2">
                 <button type="button" onClick={() => setEditingTenant(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>

@@ -113,6 +113,12 @@ export interface CreateTenantRequest {
   email?: string;
   identification?: string;
   phone?: string;
+  currentEmployer?: string;
+  currentDeclaredGross?: number;
+  expenditurePerMonth?: number;
+  liveIn?: boolean;
+  rentalCommitment?: number;
+  tenantActive?: boolean;
 }
 
 export interface UpdateTenantRequest {
@@ -122,6 +128,12 @@ export interface UpdateTenantRequest {
   email?: string;
   identification?: string;
   phone?: string;
+  currentEmployer?: string;
+  currentDeclaredGross?: number;
+  expenditurePerMonth?: number;
+  liveIn?: boolean;
+  rentalCommitment?: number;
+  tenantActive?: boolean;
 }
 
 export interface TenantResponseDto {
@@ -132,6 +144,12 @@ export interface TenantResponseDto {
   email?: string;
   identification?: string;
   phone?: string;
+  currentEmployer?: string;
+  currentDeclaredGross?: number;
+  expenditurePerMonth?: number;
+  liveIn?: boolean;
+  rentalCommitment?: number;
+  tenantActive?: boolean;
   createdDate: string;
 }
 

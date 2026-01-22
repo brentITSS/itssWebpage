@@ -9,6 +9,12 @@ public class CreateTenantRequest
     public string? Email { get; set; }
     public string? Identification { get; set; }
     public string? Phone { get; set; }
+    public string? CurrentEmployer { get; set; }
+    public decimal? CurrentDeclaredGross { get; set; }
+    public decimal? ExpenditurePerMonth { get; set; }
+    public bool? LiveIn { get; set; }
+    public decimal? RentalCommitment { get; set; }
+    public bool? TenantActive { get; set; }
 }
 
 public class UpdateTenantRequest
@@ -19,6 +25,12 @@ public class UpdateTenantRequest
     public string? Email { get; set; }
     public string? Identification { get; set; }
     public string? Phone { get; set; }
+    public string? CurrentEmployer { get; set; }
+    public decimal? CurrentDeclaredGross { get; set; }
+    public decimal? ExpenditurePerMonth { get; set; }
+    public bool? LiveIn { get; set; }
+    public decimal? RentalCommitment { get; set; }
+    public bool? TenantActive { get; set; }
 }
 
 public class TenantResponseDto
@@ -30,6 +42,12 @@ public class TenantResponseDto
     public string? Email { get; set; }
     public string? Identification { get; set; }
     public string? Phone { get; set; }
+    public string? CurrentEmployer { get; set; }
+    public decimal? CurrentDeclaredGross { get; set; }
+    public decimal? ExpenditurePerMonth { get; set; }
+    public bool? LiveIn { get; set; }
+    public decimal? RentalCommitment { get; set; }
+    public bool? TenantActive { get; set; }
     public DateTime CreatedDate { get; set; }
 }
 

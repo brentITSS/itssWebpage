@@ -40,6 +40,25 @@ public class Tenant
     [Column("mobile")]
     public string? Phone { get; set; }
 
+    [MaxLength(255)]
+    [Column("currentEmployer")]
+    public string? CurrentEmployer { get; set; }
+
+    [Column("currentDeclaredGross", TypeName = "money")]
+    public decimal? CurrentDeclaredGross { get; set; }
+
+    [Column("expenditurePerMonth", TypeName = "money")]
+    public decimal? ExpenditurePerMonth { get; set; }
+
+    [Column("liveIn")]
+    public bool? LiveIn { get; set; }
+
+    [Column("rentalCommitment", TypeName = "money")]
+    public decimal? RentalCommitment { get; set; }
+
+    [Column("tenantActive")]
+    public bool? TenantActive { get; set; }
+
     // Navigation properties
     [ForeignKey("TenancyId")]
     public virtual Tenancy? Tenancy { get; set; }
