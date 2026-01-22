@@ -288,77 +288,107 @@ const Tenancies: React.FC = () => {
       {/* Create Tenant Modal */}
       {showTenantModal && selectedTenancyForTenant && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold mb-4">Create Tenant</h3>
-            <form onSubmit={handleCreateTenant}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-                <input type="text" name="firstName" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          <div className="relative top-10 mx-auto p-6 border max-w-4xl w-full shadow-lg rounded-md bg-white my-10">
+            <h3 className="text-xl font-bold mb-6 text-gray-900">Create Tenant</h3>
+            <form onSubmit={handleCreateTenant} className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+              {/* Personal Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Personal Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                    <input type="text" name="firstName" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                    <input type="text" name="lastName" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                    <input type="date" name="tenantDOB" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Identification</label>
+                    <input type="text" name="identification" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                <input type="text" name="lastName" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Contact Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Contact Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" name="email" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input type="tel" name="phone" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
-                <input type="date" name="tenantDOB" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Employment & Financial Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Employment & Financial Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Employer</label>
+                    <input type="text" name="currentEmployer" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Declared Gross (R)</label>
+                    <input type="number" step="0.01" name="currentDeclaredGross" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Expenditure Per Month (R)</label>
+                    <input type="number" step="0.01" name="expenditurePerMonth" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rental Commitment (R)</label>
+                    <input type="number" step="0.01" name="rentalCommitment" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" name="email" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Status */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Status</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Live In</label>
+                    <select name="liveIn" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Not Set</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tenant Active</label>
+                    <select name="tenantActive" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Identification</label>
-                <input type="text" name="identification" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input type="tel" name="phone" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Current Employer</label>
-                <input type="text" name="currentEmployer" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Current Declared Gross (R)</label>
-                <input type="number" step="0.01" name="currentDeclaredGross" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expenditure Per Month (R)</label>
-                <input type="number" step="0.01" name="expenditurePerMonth" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rental Commitment (R)</label>
-                <input type="number" step="0.01" name="rentalCommitment" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Live In</label>
-                <select name="liveIn" className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option value="">Not Set</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tenant Active</label>
-                <select name="tenantActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option value="">Not Set</option>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-2">
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
                 <button
                   type="button"
                   onClick={() => {
                     setShowTenantModal(false);
                     setSelectedTenancyForTenant(null);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-md"
+                  className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Create</button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500">
+                  Create Tenant
+                </button>
               </div>
             </form>
           </div>
@@ -368,68 +398,100 @@ const Tenancies: React.FC = () => {
       {/* Edit Tenant Modal */}
       {editingTenant && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold mb-4">Edit Tenant</h3>
-            <form onSubmit={(e) => handleUpdateTenant(editingTenant.tenant.tenantId, e)}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                <input type="text" name="firstName" defaultValue={editingTenant.tenant.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          <div className="relative top-10 mx-auto p-6 border max-w-4xl w-full shadow-lg rounded-md bg-white my-10">
+            <h3 className="text-xl font-bold mb-6 text-gray-900">Edit Tenant</h3>
+            <form onSubmit={(e) => handleUpdateTenant(editingTenant.tenant.tenantId, e)} className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+              {/* Personal Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Personal Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <input type="text" name="firstName" defaultValue={editingTenant.tenant.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <input type="text" name="lastName" defaultValue={editingTenant.tenant.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <input type="date" name="tenantDOB" defaultValue={editingTenant.tenant.tenantDOB ? new Date(editingTenant.tenant.tenantDOB).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Identification</label>
+                    <input type="text" name="identification" defaultValue={editingTenant.tenant.identification || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <input type="text" name="lastName" defaultValue={editingTenant.tenant.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Contact Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Contact Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" name="email" defaultValue={editingTenant.tenant.email || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input type="tel" name="phone" defaultValue={editingTenant.tenant.phone || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                <input type="date" name="tenantDOB" defaultValue={editingTenant.tenant.tenantDOB ? new Date(editingTenant.tenant.tenantDOB).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Employment & Financial Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Employment & Financial Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Employer</label>
+                    <input type="text" name="currentEmployer" defaultValue={editingTenant.tenant.currentEmployer || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Declared Gross (R)</label>
+                    <input type="number" step="0.01" name="currentDeclaredGross" defaultValue={editingTenant.tenant.currentDeclaredGross || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Expenditure Per Month (R)</label>
+                    <input type="number" step="0.01" name="expenditurePerMonth" defaultValue={editingTenant.tenant.expenditurePerMonth || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rental Commitment (R)</label>
+                    <input type="number" step="0.01" name="rentalCommitment" defaultValue={editingTenant.tenant.rentalCommitment || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" name="email" defaultValue={editingTenant.tenant.email || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Status */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Status</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Live In</label>
+                    <select name="liveIn" defaultValue={editingTenant.tenant.liveIn === true ? 'true' : editingTenant.tenant.liveIn === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Not Set</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tenant Active</label>
+                    <select name="tenantActive" defaultValue={editingTenant.tenant.tenantActive === true ? 'true' : editingTenant.tenant.tenantActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Identification</label>
-                <input type="text" name="identification" defaultValue={editingTenant.tenant.identification || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input type="tel" name="phone" defaultValue={editingTenant.tenant.phone || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Current Employer</label>
-                <input type="text" name="currentEmployer" defaultValue={editingTenant.tenant.currentEmployer || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Current Declared Gross (R)</label>
-                <input type="number" step="0.01" name="currentDeclaredGross" defaultValue={editingTenant.tenant.currentDeclaredGross || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expenditure Per Month (R)</label>
-                <input type="number" step="0.01" name="expenditurePerMonth" defaultValue={editingTenant.tenant.expenditurePerMonth || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rental Commitment (R)</label>
-                <input type="number" step="0.01" name="rentalCommitment" defaultValue={editingTenant.tenant.rentalCommitment || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Live In</label>
-                <select name="liveIn" defaultValue={editingTenant.tenant.liveIn === true ? 'true' : editingTenant.tenant.liveIn === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option value="">Not Set</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tenant Active</label>
-                <select name="tenantActive" defaultValue={editingTenant.tenant.tenantActive === true ? 'true' : editingTenant.tenant.tenantActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option value="">Not Set</option>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button type="button" onClick={() => setEditingTenant(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Update</button>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" onClick={() => setEditingTenant(null)} className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500">
+                  Update Tenant
+                </button>
               </div>
             </form>
           </div>
