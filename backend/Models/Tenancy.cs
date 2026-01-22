@@ -24,15 +24,13 @@ public class Tenancy
     [Column("tenancyActive")]
     public bool? IsActive { get; set; }
 
-    [MaxLength(500)]
-    [Column("description")]
+    [Column("description", TypeName = "nvarchar(max)")]
     public string? Description { get; set; }
 
     [Column("monthlyRentalCharge", TypeName = "money")]
     public decimal? MonthlyRent { get; set; }
 
-    [MaxLength(1000)]
-    [Column("specialConditions")]
+    [Column("specialConditions", TypeName = "nvarchar(max)")]
     public string? SpecialConditions { get; set; }
 
     // Navigation properties

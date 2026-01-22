@@ -160,6 +160,9 @@ export interface CreateTenancyRequest {
   startDate: string;
   endDate?: string;
   monthlyRent?: number;
+  isActive?: boolean;
+  description?: string;
+  specialConditions?: string;
 }
 
 export interface UpdateTenancyRequest {
@@ -168,6 +171,9 @@ export interface UpdateTenancyRequest {
   startDate?: string;
   endDate?: string;
   monthlyRent?: number;
+  isActive?: boolean;
+  description?: string;
+  specialConditions?: string;
 }
 
 export interface TenancyResponseDto {
@@ -177,6 +183,9 @@ export interface TenancyResponseDto {
   startDate: string;
   endDate?: string;
   monthlyRent?: number;
+  isActive?: boolean;
+  description?: string;
+  specialConditions?: string;
   createdDate: string;
   tenants: TenantResponseDto[];
 }

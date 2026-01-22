@@ -58,6 +58,9 @@ public class CreateTenancyRequest
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public decimal? MonthlyRent { get; set; }
+    public bool? IsActive { get; set; }
+    public string? Description { get; set; }
+    public string? SpecialConditions { get; set; }
 }
 
 public class UpdateTenancyRequest
@@ -67,6 +70,9 @@ public class UpdateTenancyRequest
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public decimal? MonthlyRent { get; set; }
+    public bool? IsActive { get; set; }
+    public string? Description { get; set; }
+    public string? SpecialConditions { get; set; }
 }
 
 public class TenancyResponseDto
@@ -77,6 +83,9 @@ public class TenancyResponseDto
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public decimal? MonthlyRent { get; set; }
+    public bool? IsActive { get; set; }
+    public string? Description { get; set; }
+    public string? SpecialConditions { get; set; }
     public DateTime CreatedDate { get; set; }
     public List<TenantResponseDto> Tenants { get; set; } = new();
 }

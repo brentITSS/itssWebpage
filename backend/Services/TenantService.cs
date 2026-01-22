@@ -174,7 +174,10 @@ public class TenantService : ITenantService
             PropertyId = request.PropertyId,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
-            MonthlyRent = request.MonthlyRent
+            MonthlyRent = request.MonthlyRent,
+            IsActive = request.IsActive,
+            Description = request.Description,
+            SpecialConditions = request.SpecialConditions
         };
 
         tenancy = await _tenantRepository.CreateTenancyAsync(tenancy);
@@ -223,6 +226,9 @@ public class TenantService : ITenantService
         if (request.StartDate.HasValue) tenancy.StartDate = request.StartDate.Value;
         if (request.EndDate.HasValue) tenancy.EndDate = request.EndDate;
         if (request.MonthlyRent.HasValue) tenancy.MonthlyRent = request.MonthlyRent;
+        if (request.IsActive.HasValue) tenancy.IsActive = request.IsActive.Value;
+        if (request.Description != null) tenancy.Description = request.Description;
+        if (request.SpecialConditions != null) tenancy.SpecialConditions = request.SpecialConditions;
 
         tenancy = await _tenantRepository.UpdateTenancyAsync(tenancy);
         tenancy = await _tenantRepository.GetTenancyByIdAsync(tenancyId);
@@ -316,6 +322,9 @@ public class TenantService : ITenantService
             StartDate = tenancy.StartDate,
             EndDate = tenancy.EndDate,
             MonthlyRent = tenancy.MonthlyRent ?? 0,
+            IsActive = tenancy.IsActive,
+            Description = tenancy.Description,
+            SpecialConditions = tenancy.SpecialConditions,
             CreatedDate = DateTime.UtcNow,
             Tenants = relatedTenants.Select(MapToTenantResponseDto).ToList()
         };

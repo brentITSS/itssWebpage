@@ -43,6 +43,12 @@ const Tenancies: React.FC = () => {
       startDate: new Date(formData.get('startDate') as string).toISOString(),
       endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string).toISOString() : undefined,
       monthlyRent: formData.get('monthlyRent') ? parseFloat(formData.get('monthlyRent') as string) : undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+      description: (formData.get('description') as string) || undefined,
+      specialConditions: (formData.get('specialConditions') as string) || undefined,
     };
 
     try {
@@ -63,6 +69,12 @@ const Tenancies: React.FC = () => {
       startDate: formData.get('startDate') ? new Date(formData.get('startDate') as string).toISOString() : undefined,
       endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string).toISOString() : undefined,
       monthlyRent: formData.get('monthlyRent') ? parseFloat(formData.get('monthlyRent') as string) : undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+      description: (formData.get('description') as string) || undefined,
+      specialConditions: (formData.get('specialConditions') as string) || undefined,
     };
 
     try {
@@ -252,33 +264,74 @@ const Tenancies: React.FC = () => {
       {/* Create/Edit Modal */}
       {(showModal || editingTenancy) && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold mb-4">{editingTenancy ? 'Edit' : 'Create'} Tenancy</h3>
-            <form onSubmit={editingTenancy ? (e) => handleUpdate(editingTenancy.tenancyId, e) : handleCreate}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
-                <select name="propertyId" required defaultValue={editingTenancy?.propertyId} className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option value="">Select Property</option>
-                  {properties.map(p => (
-                    <option key={p.propertyId} value={p.propertyId}>{p.propertyName}</option>
-                  ))}
-                </select>
+          <div className="relative top-10 mx-auto p-6 border max-w-4xl w-full shadow-lg rounded-md bg-white my-10">
+            <h3 className="text-xl font-bold mb-6 text-gray-900">{editingTenancy ? 'Edit' : 'Create'} Tenancy</h3>
+            <form onSubmit={editingTenancy ? (e) => handleUpdate(editingTenancy.tenancyId, e) : handleCreate} className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+              {/* Basic Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Basic Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
+                    <select name="propertyId" required defaultValue={editingTenancy?.propertyId} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Select Property</option>
+                      {properties.map(p => (
+                        <option key={p.propertyId} value={p.propertyId}>{p.propertyName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tenancy Active</label>
+                    <select name="isActive" defaultValue={editingTenancy?.isActive === true ? 'true' : editingTenancy?.isActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
-                <input type="date" name="startDate" required defaultValue={editingTenancy ? new Date(editingTenancy.startDate).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Dates & Financial */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Dates & Financial</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                    <input type="date" name="startDate" required defaultValue={editingTenancy ? new Date(editingTenancy.startDate).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input type="date" name="endDate" defaultValue={editingTenancy?.endDate ? new Date(editingTenancy.endDate).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Rent (R)</label>
+                    <input type="number" step="0.01" name="monthlyRent" defaultValue={editingTenancy?.monthlyRent || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input type="date" name="endDate" defaultValue={editingTenancy?.endDate ? new Date(editingTenancy.endDate).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+
+              {/* Additional Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Additional Information</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows={3} defaultValue={editingTenancy?.description || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter tenancy description..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Special Conditions</label>
+                    <textarea name="specialConditions" rows={3} defaultValue={editingTenancy?.specialConditions || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter any special conditions..." />
+                  </div>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Rent</label>
-                <input type="number" step="0.01" name="monthlyRent" defaultValue={editingTenancy?.monthlyRent || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button type="button" onClick={() => { setShowModal(false); setEditingTenancy(null); }} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{editingTenancy ? 'Update' : 'Create'}</button>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" onClick={() => { setShowModal(false); setEditingTenancy(null); }} className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500">
+                  {editingTenancy ? 'Update Tenancy' : 'Create Tenancy'}
+                </button>
               </div>
             </form>
           </div>
