@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { contactLogService, CreateContactLogRequest, UpdateContactLogRequest, ContactLogResponseDto, AttachmentDto } from '../../../services/contactLogService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
-import { propertyAdminService, TenantResponseDto } from '../../../services/propertyAdminService';
+import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../../../services/propertyAdminService';
 
 const ContactLogForm: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ const ContactLogForm: React.FC = () => {
 
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
+  const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [contactLogTypes, setContactLogTypes] = useState<any[]>([]);
   const [contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
   const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
@@ -37,14 +38,16 @@ const ContactLogForm: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [propertiesData, tenantsData, typesData] = await Promise.all([
+      const [propertiesData, tenantsData, tenanciesData, typesData] = await Promise.all([
         propertyService.getProperties(),
         propertyAdminService.getTenants(),
+        propertyAdminService.getTenancies(),
         contactLogService.getContactLogTypes(),
       ]);
 
       setProperties(propertiesData);
       setTenants(tenantsData);
+      setTenancies(tenanciesData);
       setContactLogTypes(typesData);
 
       if (isEdit && contactLogId) {
@@ -142,6 +145,16 @@ const ContactLogForm: React.FC = () => {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
+  // Filter tenancies by selected property
+  const availableTenancies = formData.propertyId
+    ? tenancies.filter(t => t.propertyId === formData.propertyId)
+    : [];
+
+  // Filter tenants by selected property through tenancies
+  const availableTenants = formData.propertyId
+    ? tenants.filter(t => availableTenancies.some(ten => ten.tenants.some(tenant => tenant.tenantId === t.tenantId)))
+    : [];
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -207,14 +220,18 @@ const ContactLogForm: React.FC = () => {
                 tenantId: e.target.value ? parseInt(e.target.value) : undefined,
               })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              disabled={!formData.propertyId || formData.propertyId === 0}
             >
               <option value="">None</option>
-              {tenants.map(t => (
+              {availableTenants.map(t => (
                 <option key={t.tenantId} value={t.tenantId}>
                   {t.firstName} {t.lastName}
                 </option>
               ))}
             </select>
+            {(!formData.propertyId || formData.propertyId === 0) && (
+              <p className="mt-1 text-xs text-gray-500">Please select a property first</p>
+            )}
           </div>
 
           <div>
