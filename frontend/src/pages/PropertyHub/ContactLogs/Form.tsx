@@ -18,7 +18,6 @@ const ContactLogForm: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [contactLogTypes, setContactLogTypes] = useState<any[]>([]);
-  const [_contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
   const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
   const [tags, setTags] = useState<TagDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +56,6 @@ const ContactLogForm: React.FC = () => {
 
       if (isEdit && contactLogId) {
         const logData = await contactLogService.getContactLog(contactLogId);
-        setContactLog(logData);
         setAttachments(logData.attachments || []);
         setCurrentLogId(contactLogId);
         // Load tags for this contact log
@@ -107,7 +105,6 @@ const ContactLogForm: React.FC = () => {
         setCurrentLogId(savedLogId);
         // Load the created log to get attachments and tags
         const logData = await contactLogService.getContactLog(savedLogId);
-        setContactLog(logData);
         setAttachments(logData.attachments || []);
         const tagData = await tagService.getTagLogsByEntity('ContactLog', savedLogId);
         setTags(tagData);

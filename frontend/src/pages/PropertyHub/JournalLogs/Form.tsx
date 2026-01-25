@@ -18,7 +18,6 @@ const JournalLogForm: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
-  const [_journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
   const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
   const [tags, setTags] = useState<TagDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +58,6 @@ const JournalLogForm: React.FC = () => {
 
       if (isEdit && journalLogId) {
         const logData = await journalService.getJournalLog(journalLogId);
-        setJournalLog(logData);
         setAttachments(logData.attachments || []);
         setCurrentLogId(journalLogId);
         // Load tags for this journal log
@@ -113,7 +111,6 @@ const JournalLogForm: React.FC = () => {
         setCurrentLogId(savedLogId);
         // Load the created log to get attachments and tags
         const logData = await journalService.getJournalLog(savedLogId);
-        setJournalLog(logData);
         setAttachments(logData.attachments || []);
         const tagData = await tagService.getTagLogsByEntity('JournalLog', savedLogId);
         setTags(tagData);
