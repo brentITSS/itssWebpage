@@ -4,17 +4,20 @@ import apiClient from './api';
 export interface CreatePropertyGroupRequest {
   propertyGroupName: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface UpdatePropertyGroupRequest {
   propertyGroupName?: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface PropertyGroupResponseDto {
   propertyGroupId: number;
   propertyGroupName: string;
   description?: string;
+  isActive?: boolean;
   createdDate: string;
   propertyCount: number;
 }

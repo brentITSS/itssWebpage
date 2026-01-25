@@ -4,12 +4,14 @@ public class CreatePropertyGroupRequest
 {
     public string PropertyGroupName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class UpdatePropertyGroupRequest
 {
     public string? PropertyGroupName { get; set; }
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class PropertyGroupResponseDto
@@ -17,6 +19,7 @@ public class PropertyGroupResponseDto
     public int PropertyGroupId { get; set; }
     public string PropertyGroupName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
     public DateTime CreatedDate { get; set; }
     public int PropertyCount { get; set; }
 }

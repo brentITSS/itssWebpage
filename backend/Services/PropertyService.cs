@@ -44,6 +44,7 @@ public class PropertyService : IPropertyService
                 PropertyGroupId = pg.PropertyGroupId,
                 PropertyGroupName = pg.PropertyGroupName ?? string.Empty,
                 Description = null,
+                IsActive = pg.IsActive,
                 CreatedDate = DateTime.UtcNow,
                 PropertyCount = pg.Properties.Count
             }).ToList();
@@ -60,6 +61,7 @@ public class PropertyService : IPropertyService
                 PropertyGroupId = pg.PropertyGroupId,
                 PropertyGroupName = pg.PropertyGroupName ?? string.Empty,
                 Description = null,
+                IsActive = pg.IsActive,
                 CreatedDate = DateTime.UtcNow,
                 PropertyCount = pg.Properties.Count
             }).ToList();
@@ -73,6 +75,7 @@ public class PropertyService : IPropertyService
                 PropertyGroupId = pg.PropertyGroupId,
                 PropertyGroupName = pg.PropertyGroupName ?? string.Empty,
                 Description = null,
+                IsActive = pg.IsActive,
                 CreatedDate = DateTime.UtcNow,
                 PropertyCount = pg.Properties.Count
             }).ToList();
@@ -88,6 +91,7 @@ public class PropertyService : IPropertyService
             PropertyGroupId = propertyGroup.PropertyGroupId,
             PropertyGroupName = propertyGroup.PropertyGroupName ?? string.Empty,
             Description = null,
+            IsActive = propertyGroup.IsActive,
             CreatedDate = DateTime.UtcNow,
             PropertyCount = propertyGroup.Properties.Count
         };
@@ -98,7 +102,7 @@ public class PropertyService : IPropertyService
         var propertyGroup = new PropertyGroup
         {
             PropertyGroupName = request.PropertyGroupName,
-            IsActive = true
+            IsActive = request.IsActive ?? true
         };
 
         propertyGroup = await _propertyRepository.CreatePropertyGroupAsync(propertyGroup);
@@ -119,6 +123,7 @@ public class PropertyService : IPropertyService
             PropertyGroupId = propertyGroup.PropertyGroupId,
             PropertyGroupName = propertyGroup.PropertyGroupName ?? string.Empty,
             Description = null,
+            IsActive = propertyGroup.IsActive,
             CreatedDate = DateTime.UtcNow,
             PropertyCount = 0
         };
@@ -132,6 +137,7 @@ public class PropertyService : IPropertyService
         var oldValues = $"Name: {propertyGroup.PropertyGroupName}";
 
         if (request.PropertyGroupName != null) propertyGroup.PropertyGroupName = request.PropertyGroupName;
+        if (request.IsActive.HasValue) propertyGroup.IsActive = request.IsActive.Value;
 
         propertyGroup = await _propertyRepository.UpdatePropertyGroupAsync(propertyGroup);
 
@@ -153,6 +159,7 @@ public class PropertyService : IPropertyService
             PropertyGroupId = propertyGroup.PropertyGroupId,
             PropertyGroupName = propertyGroup.PropertyGroupName ?? string.Empty,
             Description = null,
+            IsActive = propertyGroup.IsActive,
             CreatedDate = DateTime.UtcNow,
             PropertyCount = propertyGroup.Properties.Count
         };
