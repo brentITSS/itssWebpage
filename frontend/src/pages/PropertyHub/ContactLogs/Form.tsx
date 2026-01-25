@@ -177,13 +177,13 @@ const ContactLogForm: React.FC = () => {
   };
 
   // Filter tenancies by selected property
-  const availableTenancies = formData.propertyId
+  const availableTenancies = formData.propertyId && formData.propertyId > 0
     ? tenancies.filter(t => t.propertyId === formData.propertyId)
     : [];
 
   // Filter tenants by selected property through tenancies
-  const availableTenants = formData.propertyId
-    ? tenants.filter(t => availableTenancies.some(ten => ten.tenants.some(tenant => tenant.tenantId === t.tenantId)))
+  const availableTenants = formData.propertyId && formData.propertyId > 0
+    ? tenants.filter(t => availableTenancies.some(ten => ten.tenants && ten.tenants.some(tenant => tenant.tenantId === t.tenantId)))
     : [];
 
   if (loading) {
@@ -211,12 +211,15 @@ const ContactLogForm: React.FC = () => {
               Property *
             </label>
             <select
-              value={formData.propertyId}
-              onChange={(e) => setFormData({
-                ...formData,
-                propertyId: parseInt(e.target.value),
-                tenantId: undefined, // Reset tenant when property changes
-              })}
+              value={formData.propertyId || 0}
+              onChange={(e) => {
+                const newPropertyId = parseInt(e.target.value);
+                setFormData({
+                  ...formData,
+                  propertyId: newPropertyId,
+                  tenantId: undefined, // Reset tenant when property changes
+                });
+              }}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
