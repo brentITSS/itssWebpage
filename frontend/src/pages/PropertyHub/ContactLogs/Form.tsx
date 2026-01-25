@@ -267,14 +267,21 @@ const ContactLogForm: React.FC = () => {
               disabled={!formData.propertyId || formData.propertyId === 0}
             >
               <option value="">None</option>
-              {availableTenants.map(t => (
-                <option key={t.tenantId} value={t.tenantId}>
-                  {t.firstName} {t.lastName}
-                </option>
-              ))}
+              {availableTenants.length === 0 && formData.propertyId && formData.propertyId > 0 ? (
+                <option value="" disabled>No tenants found for this property</option>
+              ) : (
+                availableTenants.map(t => (
+                  <option key={t.tenantId} value={t.tenantId}>
+                    {t.firstName} {t.lastName}
+                  </option>
+                ))
+              )}
             </select>
             {(!formData.propertyId || formData.propertyId === 0) && (
               <p className="mt-1 text-xs text-gray-500">Please select a property first</p>
+            )}
+            {formData.propertyId && formData.propertyId > 0 && availableTenants.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">No tenants found for the selected property</p>
             )}
           </div>
 
