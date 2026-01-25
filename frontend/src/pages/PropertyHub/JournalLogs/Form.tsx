@@ -18,7 +18,7 @@ const JournalLogForm: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
-  const [journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
+  const [_journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
   const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
   const [tags, setTags] = useState<TagDto[]>([]);
   const [loading, setLoading] = useState(true);

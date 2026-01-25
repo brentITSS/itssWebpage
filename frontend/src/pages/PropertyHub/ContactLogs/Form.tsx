@@ -18,7 +18,7 @@ const ContactLogForm: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [contactLogTypes, setContactLogTypes] = useState<any[]>([]);
-  const [contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
+  const [_contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
   const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
   const [tags, setTags] = useState<TagDto[]>([]);
   const [loading, setLoading] = useState(true);
