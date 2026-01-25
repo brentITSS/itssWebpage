@@ -175,12 +175,14 @@ public class JournalLogService : IJournalLogService
             JournalTypeId = jt.JournalTypeId,
             JournalTypeName = jt.JournalTypeName ?? string.Empty,
             Description = jt.Description,
+            IsActive = jt.IsActive,
             SubTypes = jt.JournalSubTypes != null && jt.JournalSubTypes.Any()
                 ? jt.JournalSubTypes.Select(jst => new JournalSubTypeDto
                 {
                     JournalSubTypeId = jst.JournalSubTypeId,
                     JournalSubTypeName = jst.JournalSubTypeName ?? string.Empty,
-                    Description = jst.Description
+                    Description = jst.Description,
+                    IsActive = jst.IsActive
                 }).ToList()
                 : new List<JournalSubTypeDto>()
         }).ToList();
@@ -192,7 +194,7 @@ public class JournalLogService : IJournalLogService
         {
             JournalTypeName = request.JournalTypeName,
             Description = request.Description,
-            IsActive = true
+            IsActive = request.IsActive
         };
 
         journalType = await _journalLogRepository.CreateJournalTypeAsync(journalType);
@@ -203,6 +205,7 @@ public class JournalLogService : IJournalLogService
             JournalTypeId = journalType.JournalTypeId,
             JournalTypeName = journalType.JournalTypeName ?? string.Empty,
             Description = journalType.Description,
+            IsActive = journalType.IsActive,
             SubTypes = new List<JournalSubTypeDto>()
         };
     }
@@ -214,6 +217,7 @@ public class JournalLogService : IJournalLogService
 
         if (request.JournalTypeName != null) journalType.JournalTypeName = request.JournalTypeName;
         if (request.Description != null) journalType.Description = request.Description;
+        if (request.IsActive.HasValue) journalType.IsActive = request.IsActive.Value;
 
         journalType = await _journalLogRepository.UpdateJournalTypeAsync(journalType);
         journalType = await _journalLogRepository.GetJournalTypeByIdAsync(journalType.JournalTypeId);
@@ -223,12 +227,14 @@ public class JournalLogService : IJournalLogService
             JournalTypeId = journalType.JournalTypeId,
             JournalTypeName = journalType.JournalTypeName ?? string.Empty,
             Description = journalType.Description,
+            IsActive = journalType.IsActive,
             SubTypes = journalType.JournalSubTypes != null && journalType.JournalSubTypes.Any()
                 ? journalType.JournalSubTypes.Select(jst => new JournalSubTypeDto
                 {
                     JournalSubTypeId = jst.JournalSubTypeId,
                     JournalSubTypeName = jst.JournalSubTypeName ?? string.Empty,
-                    Description = jst.Description
+                    Description = jst.Description,
+                    IsActive = jst.IsActive
                 }).ToList()
                 : new List<JournalSubTypeDto>()
         };
@@ -246,7 +252,7 @@ public class JournalLogService : IJournalLogService
             JournalTypeId = request.JournalTypeId,
             JournalSubTypeName = request.JournalSubTypeName,
             Description = request.Description,
-            IsActive = true
+            IsActive = request.IsActive
         };
 
         journalSubType = await _journalLogRepository.CreateJournalSubTypeAsync(journalSubType);
@@ -256,7 +262,8 @@ public class JournalLogService : IJournalLogService
         {
             JournalSubTypeId = journalSubType.JournalSubTypeId,
             JournalSubTypeName = journalSubType.JournalSubTypeName ?? string.Empty,
-            Description = journalSubType.Description
+            Description = journalSubType.Description,
+            IsActive = journalSubType.IsActive
         };
     }
 
@@ -267,6 +274,7 @@ public class JournalLogService : IJournalLogService
 
         if (request.JournalSubTypeName != null) journalSubType.JournalSubTypeName = request.JournalSubTypeName;
         if (request.Description != null) journalSubType.Description = request.Description;
+        if (request.IsActive.HasValue) journalSubType.IsActive = request.IsActive.Value;
 
         journalSubType = await _journalLogRepository.UpdateJournalSubTypeAsync(journalSubType);
         journalSubType = await _journalLogRepository.GetJournalSubTypeByIdAsync(journalSubType.JournalSubTypeId);
@@ -275,7 +283,8 @@ public class JournalLogService : IJournalLogService
         {
             JournalSubTypeId = journalSubType.JournalSubTypeId,
             JournalSubTypeName = journalSubType.JournalSubTypeName ?? string.Empty,
-            Description = journalSubType.Description
+            Description = journalSubType.Description,
+            IsActive = journalSubType.IsActive
         };
     }
 

@@ -34,7 +34,8 @@ public class TagService : ITagService
         var tagType = new TagType
         {
             TagTypeName = request.TagTypeName,
-            Description = request.Description
+            Description = request.Description,
+            IsActive = request.IsActive
         };
 
         tagType = await _tagRepository.CreateTagTypeAsync(tagType);
@@ -48,6 +49,7 @@ public class TagService : ITagService
 
         if (request.TagTypeName != null) tagType.TagTypeName = request.TagTypeName;
         if (request.Description != null) tagType.Description = request.Description;
+        if (request.IsActive.HasValue) tagType.IsActive = request.IsActive.Value;
 
         tagType = await _tagRepository.UpdateTagTypeAsync(tagType);
         return MapToTagTypeResponseDto(tagType);
@@ -145,6 +147,7 @@ public class TagService : ITagService
             TagTypeName = tagType.TagTypeName ?? string.Empty,
             Color = null, // TagType doesn't have Color in database
             Description = tagType.Description,
+            IsActive = tagType.IsActive,
             CreatedDate = DateTime.UtcNow
         };
     }

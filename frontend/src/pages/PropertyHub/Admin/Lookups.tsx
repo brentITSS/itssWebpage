@@ -48,6 +48,10 @@ const Lookups: React.FC = () => {
       tagTypeName: formData.get('tagTypeName') as string,
       color: formData.get('color') as string || undefined,
       description: formData.get('description') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -66,6 +70,10 @@ const Lookups: React.FC = () => {
       tagTypeName: formData.get('tagTypeName') as string || undefined,
       color: formData.get('color') as string || undefined,
       description: formData.get('description') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -94,6 +102,10 @@ const Lookups: React.FC = () => {
     const request: CreateJournalTypeRequest = {
       journalTypeName: formData.get('journalTypeName') as string,
       description: formData.get('description') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -111,6 +123,10 @@ const Lookups: React.FC = () => {
     const request: UpdateJournalTypeRequest = {
       journalTypeName: formData.get('journalTypeName') as string || undefined,
       description: formData.get('description') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -195,6 +211,10 @@ const Lookups: React.FC = () => {
       journalTypeId: selectedJournalTypeForSubType,
       journalSubTypeName: formData.get('journalSubTypeName') as string,
       description: formData.get('description') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -213,6 +233,10 @@ const Lookups: React.FC = () => {
     const request: UpdateJournalSubTypeRequest = {
       journalSubTypeName: formData.get('journalSubTypeName') as string || undefined,
       description: formData.get('description') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -395,6 +419,14 @@ const Lookups: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea name="description" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                   </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
                   <div className="flex justify-end space-x-2">
                     <button type="button" onClick={() => setShowJournalModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Create</button>
@@ -418,6 +450,14 @@ const Lookups: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea name="description" rows={3} defaultValue={editingJournalType.description || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                   </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select name="isActive" defaultValue={editingJournalType.isActive === true ? 'true' : editingJournalType.isActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
                   <div className="flex justify-end space-x-2">
                     <button type="button" onClick={() => setEditingJournalType(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Update</button>
@@ -440,6 +480,14 @@ const Lookups: React.FC = () => {
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea name="description" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
                   </div>
                   <div className="flex justify-end space-x-2">
                     <button
@@ -472,6 +520,14 @@ const Lookups: React.FC = () => {
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea name="description" rows={3} defaultValue={editingJournalSubType.subType.description || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select name="isActive" defaultValue={editingJournalSubType.subType.isActive === true ? 'true' : editingJournalSubType.subType.isActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
                   </div>
                   <div className="flex justify-end space-x-2">
                     <button type="button" onClick={() => setEditingJournalSubType(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
@@ -629,6 +685,14 @@ const Lookups: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea name="description" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                   </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
                   <div className="flex justify-end space-x-2">
                     <button type="button" onClick={() => setShowTagModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Create</button>
@@ -655,6 +719,14 @@ const Lookups: React.FC = () => {
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea name="description" rows={3} defaultValue={editingTagType.description || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select name="isActive" defaultValue={editingTagType.isActive === true ? 'true' : editingTagType.isActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option value="">Not Set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
                   </div>
                   <div className="flex justify-end space-x-2">
                     <button type="button" onClick={() => setEditingTagType(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>

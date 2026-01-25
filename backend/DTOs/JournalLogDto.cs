@@ -48,6 +48,7 @@ public class JournalTypeDto
     public int JournalTypeId { get; set; }
     public string JournalTypeName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
     public List<JournalSubTypeDto> SubTypes { get; set; } = new();
 }
 
@@ -56,18 +57,21 @@ public class JournalSubTypeDto
     public int JournalSubTypeId { get; set; }
     public string JournalSubTypeName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class CreateJournalTypeRequest
 {
     public string JournalTypeName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class UpdateJournalTypeRequest
 {
     public string? JournalTypeName { get; set; }
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class CreateJournalSubTypeRequest
@@ -75,12 +79,14 @@ public class CreateJournalSubTypeRequest
     public int JournalTypeId { get; set; }
     public string JournalSubTypeName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class UpdateJournalSubTypeRequest
 {
     public string? JournalSubTypeName { get; set; }
     public string? Description { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class AttachmentDto

@@ -16,6 +16,7 @@ export interface JournalTypeDto {
   journalTypeId: number;
   journalTypeName: string;
   description?: string;
+  isActive?: boolean;
   subTypes: JournalSubTypeDto[];
 }
 
@@ -23,6 +24,7 @@ export interface JournalSubTypeDto {
   journalSubTypeId: number;
   journalSubTypeName: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface ContactLogTypeDto {
@@ -37,6 +39,7 @@ export interface TagTypeResponseDto {
   tagTypeName: string;
   color?: string;
   description?: string;
+  isActive?: boolean;
   createdDate: string;
 }
 
@@ -44,22 +47,26 @@ export interface CreateTagTypeRequest {
   tagTypeName: string;
   color?: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateTagTypeRequest {
   tagTypeName?: string;
   color?: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface CreateJournalTypeRequest {
   journalTypeName: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateJournalTypeRequest {
   journalTypeName?: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface CreateContactLogTypeRequest {
@@ -78,11 +85,13 @@ export interface CreateJournalSubTypeRequest {
   journalTypeId: number;
   journalSubTypeName: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateJournalSubTypeRequest {
   journalSubTypeName?: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export const propertyAdminService = {
