@@ -29,6 +29,7 @@ export interface ContactLogTypeDto {
   contactLogTypeId: number;
   contactLogTypeName: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface TagTypeResponseDto {
@@ -64,11 +65,13 @@ export interface UpdateJournalTypeRequest {
 export interface CreateContactLogTypeRequest {
   contactLogTypeName: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateContactLogTypeRequest {
   contactLogTypeName?: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface CreateJournalSubTypeRequest {

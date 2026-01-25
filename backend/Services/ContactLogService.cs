@@ -176,7 +176,8 @@ public class ContactLogService : IContactLogService
         {
             ContactLogTypeId = clt.ContactLogTypeId,
             ContactLogTypeName = clt.ContactLogTypeName ?? string.Empty,
-            Description = clt.Description
+            Description = clt.Description,
+            IsActive = clt.IsActive
         }).ToList();
     }
 
@@ -186,7 +187,7 @@ public class ContactLogService : IContactLogService
         {
             ContactLogTypeName = request.ContactLogTypeName,
             Description = request.Description,
-            IsActive = true
+            IsActive = request.IsActive
         };
 
         contactLogType = await _contactLogRepository.CreateContactLogTypeAsync(contactLogType);
@@ -196,7 +197,8 @@ public class ContactLogService : IContactLogService
         {
             ContactLogTypeId = contactLogType.ContactLogTypeId,
             ContactLogTypeName = contactLogType.ContactLogTypeName ?? string.Empty,
-            Description = contactLogType.Description
+            Description = contactLogType.Description,
+            IsActive = contactLogType.IsActive
         };
     }
 
@@ -207,6 +209,7 @@ public class ContactLogService : IContactLogService
 
         if (request.ContactLogTypeName != null) contactLogType.ContactLogTypeName = request.ContactLogTypeName;
         if (request.Description != null) contactLogType.Description = request.Description;
+        if (request.IsActive.HasValue) contactLogType.IsActive = request.IsActive.Value;
 
         contactLogType = await _contactLogRepository.UpdateContactLogTypeAsync(contactLogType);
         contactLogType = await _contactLogRepository.GetContactLogTypeByIdAsync(contactLogType.ContactLogTypeId);
@@ -215,7 +218,8 @@ public class ContactLogService : IContactLogService
         {
             ContactLogTypeId = contactLogType.ContactLogTypeId,
             ContactLogTypeName = contactLogType.ContactLogTypeName ?? string.Empty,
-            Description = contactLogType.Description
+            Description = contactLogType.Description,
+            IsActive = contactLogType.IsActive
         };
     }
 
