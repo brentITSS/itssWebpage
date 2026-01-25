@@ -3,6 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { journalService, CreateJournalLogRequest, UpdateJournalLogRequest, JournalLogResponseDto, JournalTypeDto, JournalSubTypeDto, AttachmentDto } from '../../../services/journalService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../../../services/propertyAdminService';
+import { tagService, TagDto } from '../../../services/tagService';
+import Tag from '../../../components/Tag';
+import TagAssignmentModal from '../../../components/TagAssignmentModal';
 
 const JournalLogForm: React.FC = () => {
   const navigate = useNavigate();
@@ -17,10 +20,12 @@ const JournalLogForm: React.FC = () => {
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
   const [journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
   const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
+  const [tags, setTags] = useState<TagDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
   const [currentLogId, setCurrentLogId] = useState<number | null>(journalLogId);
 
   // Form state
@@ -57,6 +62,9 @@ const JournalLogForm: React.FC = () => {
         setJournalLog(logData);
         setAttachments(logData.attachments || []);
         setCurrentLogId(journalLogId);
+        // Load tags for this journal log
+        const tagData = await tagService.getTagLogsByEntity('JournalLog', journalLogId);
+        setTags(tagData);
         setFormData({
           propertyId: logData.propertyId,
           tenancyId: logData.tenancyId || undefined,
@@ -103,10 +111,12 @@ const JournalLogForm: React.FC = () => {
         const createdLog = await journalService.createJournalLog(formData);
         savedLogId = createdLog.journalLogId;
         setCurrentLogId(savedLogId);
-        // Load the created log to get attachments
+        // Load the created log to get attachments and tags
         const logData = await journalService.getJournalLog(savedLogId);
         setJournalLog(logData);
         setAttachments(logData.attachments || []);
+        const tagData = await tagService.getTagLogsByEntity('JournalLog', savedLogId);
+        setTags(tagData);
       }
       // Don't navigate away - stay on form to allow attachment uploads
     } catch (err: any) {
@@ -142,6 +152,27 @@ const JournalLogForm: React.FC = () => {
       setAttachments(attachments.filter(a => a.attachmentId !== attachmentId));
     } catch (err: any) {
       setError(err.message || 'Failed to delete attachment');
+    }
+  };
+
+  const handleTagAdded = async () => {
+    if (!currentLogId) return;
+    try {
+      const tagData = await tagService.getTagLogsByEntity('JournalLog', currentLogId);
+      setTags(tagData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh tags');
+    }
+  };
+
+  const handleRemoveTag = async (tagLogId: number) => {
+    if (!window.confirm('Are you sure you want to remove this tag?')) return;
+
+    try {
+      await tagService.deleteTagLog(tagLogId);
+      setTags(tags.filter(t => t.tagLogId !== tagLogId));
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove tag');
     }
   };
 
@@ -352,6 +383,31 @@ const JournalLogForm: React.FC = () => {
           />
         </div>
 
+        {/* Tags Section - Only show if log exists */}
+        {currentLogId && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Tags</h3>
+              <button
+                type="button"
+                onClick={() => setShowTagModal(true)}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Add Tag
+              </button>
+            </div>
+            {tags.length === 0 ? (
+              <p className="text-sm text-gray-500">No tags assigned</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {tags.map((tag) => (
+                  <Tag key={tag.tagLogId} tag={tag} onRemove={handleRemoveTag} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Attachments Section - Only show if log exists */}
         {currentLogId && (
           <div className="mt-6 pt-6 border-t border-gray-200">
@@ -415,6 +471,18 @@ const JournalLogForm: React.FC = () => {
           </button>
         </div>
       </form>
+
+      {/* Tag Assignment Modal */}
+      {currentLogId && (
+        <TagAssignmentModal
+          isOpen={showTagModal}
+          onClose={() => setShowTagModal(false)}
+          entityType="JournalLog"
+          entityId={currentLogId}
+          existingTagTypeIds={tags.map(t => t.tagTypeId)}
+          onTagAdded={handleTagAdded}
+        />
+      )}
     </div>
   );
 };

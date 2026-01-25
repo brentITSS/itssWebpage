@@ -3,6 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { contactLogService, CreateContactLogRequest, UpdateContactLogRequest, ContactLogResponseDto, AttachmentDto } from '../../../services/contactLogService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../../../services/propertyAdminService';
+import { tagService, TagDto } from '../../../services/tagService';
+import Tag from '../../../components/Tag';
+import TagAssignmentModal from '../../../components/TagAssignmentModal';
 
 const ContactLogForm: React.FC = () => {
   const navigate = useNavigate();
@@ -17,10 +20,12 @@ const ContactLogForm: React.FC = () => {
   const [contactLogTypes, setContactLogTypes] = useState<any[]>([]);
   const [contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
   const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
+  const [tags, setTags] = useState<TagDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
   const [currentLogId, setCurrentLogId] = useState<number | null>(contactLogId);
 
   // Form state
@@ -55,6 +60,9 @@ const ContactLogForm: React.FC = () => {
         setContactLog(logData);
         setAttachments(logData.attachments || []);
         setCurrentLogId(contactLogId);
+        // Load tags for this contact log
+        const tagData = await tagService.getTagLogsByEntity('ContactLog', contactLogId);
+        setTags(tagData);
         setFormData({
           propertyId: logData.propertyId,
           tenantId: logData.tenantId || undefined,
@@ -97,10 +105,12 @@ const ContactLogForm: React.FC = () => {
         const createdLog = await contactLogService.createContactLog(formData);
         savedLogId = createdLog.contactLogId;
         setCurrentLogId(savedLogId);
-        // Load the created log to get attachments
+        // Load the created log to get attachments and tags
         const logData = await contactLogService.getContactLog(savedLogId);
         setContactLog(logData);
         setAttachments(logData.attachments || []);
+        const tagData = await tagService.getTagLogsByEntity('ContactLog', savedLogId);
+        setTags(tagData);
       }
       // Don't navigate away - stay on form to allow attachment uploads
     } catch (err: any) {
@@ -136,6 +146,27 @@ const ContactLogForm: React.FC = () => {
       setAttachments(attachments.filter(a => a.attachmentId !== attachmentId));
     } catch (err: any) {
       setError(err.message || 'Failed to delete attachment');
+    }
+  };
+
+  const handleTagAdded = async () => {
+    if (!currentLogId) return;
+    try {
+      const tagData = await tagService.getTagLogsByEntity('ContactLog', currentLogId);
+      setTags(tagData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh tags');
+    }
+  };
+
+  const handleRemoveTag = async (tagLogId: number) => {
+    if (!window.confirm('Are you sure you want to remove this tag?')) return;
+
+    try {
+      await tagService.deleteTagLog(tagLogId);
+      setTags(tags.filter(t => t.tagLogId !== tagLogId));
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove tag');
     }
   };
 
@@ -278,6 +309,31 @@ const ContactLogForm: React.FC = () => {
           />
         </div>
 
+        {/* Tags Section - Only show if log exists */}
+        {currentLogId && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Tags</h3>
+              <button
+                type="button"
+                onClick={() => setShowTagModal(true)}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Add Tag
+              </button>
+            </div>
+            {tags.length === 0 ? (
+              <p className="text-sm text-gray-500">No tags assigned</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {tags.map((tag) => (
+                  <Tag key={tag.tagLogId} tag={tag} onRemove={handleRemoveTag} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Attachments Section - Only show if log exists */}
         {currentLogId && (
           <div className="mt-6 pt-6 border-t border-gray-200">
@@ -341,6 +397,18 @@ const ContactLogForm: React.FC = () => {
           </button>
         </div>
       </form>
+
+      {/* Tag Assignment Modal */}
+      {currentLogId && (
+        <TagAssignmentModal
+          isOpen={showTagModal}
+          onClose={() => setShowTagModal(false)}
+          entityType="ContactLog"
+          entityId={currentLogId}
+          existingTagTypeIds={tags.map(t => t.tagTypeId)}
+          onTagAdded={handleTagAdded}
+        />
+      )}
     </div>
   );
 };
