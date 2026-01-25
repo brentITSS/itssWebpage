@@ -182,8 +182,18 @@ const ContactLogForm: React.FC = () => {
     : [];
 
   // Filter tenants by selected property through tenancies
+  // Get all unique tenant IDs from tenancies for the selected property
+  const tenantIdsFromTenancies = new Set<number>();
+  availableTenancies.forEach(tenancy => {
+    if (tenancy.tenants && Array.isArray(tenancy.tenants)) {
+      tenancy.tenants.forEach(tenant => {
+        tenantIdsFromTenancies.add(tenant.tenantId);
+      });
+    }
+  });
+
   const availableTenants = formData.propertyId && formData.propertyId > 0
-    ? tenants.filter(t => availableTenancies.some(ten => ten.tenants && ten.tenants.some(tenant => tenant.tenantId === t.tenantId)))
+    ? tenants.filter(t => tenantIdsFromTenancies.has(t.tenantId))
     : [];
 
   if (loading) {
