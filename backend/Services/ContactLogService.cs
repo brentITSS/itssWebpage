@@ -187,7 +187,7 @@ public class ContactLogService : IContactLogService
         {
             ContactLogTypeName = request.ContactLogTypeName,
             Description = request.Description,
-            IsActive = request.IsActive
+            IsActive = request.IsActive ?? true
         };
 
         contactLogType = await _contactLogRepository.CreateContactLogTypeAsync(contactLogType);

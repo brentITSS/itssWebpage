@@ -421,8 +421,7 @@ const Lookups: React.FC = () => {
                   </div>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
-                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                      <option value="">Not Set</option>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="true">
                       <option value="true">Active</option>
                       <option value="false">Inactive</option>
                     </select>
@@ -483,8 +482,7 @@ const Lookups: React.FC = () => {
                   </div>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
-                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                      <option value="">Not Set</option>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="true">
                       <option value="true">Active</option>
                       <option value="false">Inactive</option>
                     </select>
@@ -583,8 +581,7 @@ const Lookups: React.FC = () => {
                   </div>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
-                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                      <option value="">Not Set</option>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="true">
                       <option value="true">Active</option>
                       <option value="false">Inactive</option>
                     </select>
@@ -687,8 +684,7 @@ const Lookups: React.FC = () => {
                   </div>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
-                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                      <option value="">Not Set</option>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="true">
                       <option value="true">Active</option>
                       <option value="false">Inactive</option>
                     </select>

@@ -35,7 +35,7 @@ public class TagService : ITagService
         {
             TagTypeName = request.TagTypeName,
             Description = request.Description,
-            IsActive = request.IsActive
+            IsActive = request.IsActive ?? true
         };
 
         tagType = await _tagRepository.CreateTagTypeAsync(tagType);

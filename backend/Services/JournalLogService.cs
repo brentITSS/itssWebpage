@@ -194,7 +194,7 @@ public class JournalLogService : IJournalLogService
         {
             JournalTypeName = request.JournalTypeName,
             Description = request.Description,
-            IsActive = request.IsActive
+            IsActive = request.IsActive ?? true
         };
 
         journalType = await _journalLogRepository.CreateJournalTypeAsync(journalType);
@@ -252,7 +252,7 @@ public class JournalLogService : IJournalLogService
             JournalTypeId = request.JournalTypeId,
             JournalSubTypeName = request.JournalSubTypeName,
             Description = request.Description,
-            IsActive = request.IsActive
+            IsActive = request.IsActive ?? true
         };
 
         journalSubType = await _journalLogRepository.CreateJournalSubTypeAsync(journalSubType);
