@@ -38,6 +38,10 @@ const Properties: React.FC = () => {
       propertyName: formData.get('propertyName') as string,
       address: formData.get('address') as string || undefined,
       postCode: formData.get('postCode') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -57,6 +61,10 @@ const Properties: React.FC = () => {
       propertyName: formData.get('propertyName') as string || undefined,
       address: formData.get('address') as string || undefined,
       postCode: formData.get('postCode') as string || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
     };
 
     try {
@@ -156,6 +164,13 @@ const Properties: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Post Code</label>
                 <input type="text" name="postCode" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="true">
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
               <div className="flex justify-end space-x-2">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Create</button>
@@ -190,6 +205,14 @@ const Properties: React.FC = () => {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Post Code</label>
                 <input type="text" name="postCode" defaultValue={editingProperty.postCode || ''} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                <select name="isActive" defaultValue={editingProperty.isActive === true ? 'true' : editingProperty.isActive === false ? 'false' : ''} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">Not Set</option>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
               </div>
               <div className="flex justify-end space-x-2">
                 <button type="button" onClick={() => setEditingProperty(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>

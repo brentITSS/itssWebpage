@@ -30,6 +30,7 @@ public class CreatePropertyRequest
     public string PropertyName { get; set; } = string.Empty;
     public string? Address { get; set; }
     public string? PostCode { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class UpdatePropertyRequest
@@ -38,6 +39,7 @@ public class UpdatePropertyRequest
     public string? PropertyName { get; set; }
     public string? Address { get; set; }
     public string? PostCode { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class AssignPropertyGroupUserRequest
@@ -53,5 +55,6 @@ public class PropertyResponseDto
     public string PropertyName { get; set; } = string.Empty;
     public string? Address { get; set; }
     public string? PostCode { get; set; }
+    public bool? IsActive { get; set; }
     public DateTime CreatedDate { get; set; }
 }

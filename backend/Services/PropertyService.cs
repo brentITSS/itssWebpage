@@ -255,7 +255,7 @@ public class PropertyService : IPropertyService
             PostCode = request.PostCode,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = createdByUserId.ToString(),
-            IsActive = true
+            IsActive = request.IsActive ?? true
         };
 
         property = await _propertyRepository.CreatePropertyAsync(property);
@@ -285,6 +285,7 @@ public class PropertyService : IPropertyService
         if (request.PropertyGroupId.HasValue) property.PropertyGroupId = request.PropertyGroupId.Value;
         if (request.PropertyName != null) property.PropertyName = request.PropertyName;
         if (request.PostCode != null) property.PostCode = request.PostCode;
+        if (request.IsActive.HasValue) property.IsActive = request.IsActive.Value;
         
         // Parse address if provided
         if (request.Address != null)
@@ -404,6 +405,7 @@ public class PropertyService : IPropertyService
             PropertyName = property.PropertyName ?? string.Empty,
             Address = property.Address,
             PostCode = property.PostCode,
+            IsActive = property.IsActive,
             CreatedDate = property.CreatedDate ?? DateTime.UtcNow
         };
     }

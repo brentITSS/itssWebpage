@@ -28,6 +28,7 @@ export interface CreatePropertyRequest {
   propertyName: string;
   address?: string;
   postCode?: string;
+  isActive?: boolean;
 }
 
 export interface UpdatePropertyRequest {
@@ -35,6 +36,7 @@ export interface UpdatePropertyRequest {
   propertyName?: string;
   address?: string;
   postCode?: string;
+  isActive?: boolean;
 }
 
 export interface PropertyResponseDto {
@@ -44,6 +46,7 @@ export interface PropertyResponseDto {
   propertyName: string;
   address?: string;
   postCode?: string;
+  isActive?: boolean;
   createdDate: string;
 }
 
