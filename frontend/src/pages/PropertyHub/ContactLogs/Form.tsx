@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { contactLogService, CreateContactLogRequest, UpdateContactLogRequest, ContactLogResponseDto, AttachmentDto } from '../../../services/contactLogService';
+import { contactLogService, CreateContactLogRequest, UpdateContactLogRequest, AttachmentDto } from '../../../services/contactLogService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../../../services/propertyAdminService';
 import { tagService, TagDto } from '../../../services/tagService';
