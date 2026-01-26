@@ -88,7 +88,8 @@ const ContactLogForm: React.FC = () => {
 
     try {
       let savedLogId: number;
-      if (isEdit && contactLogId) {
+      // If we have a currentLogId (either from edit mode or after creation), update instead of create
+      if (currentLogId) {
         const updateRequest: UpdateContactLogRequest = {
           propertyId: formData.propertyId,
           tenantId: formData.tenantId,
@@ -97,8 +98,8 @@ const ContactLogForm: React.FC = () => {
           notes: formData.notes,
           contactDate: formData.contactDate,
         };
-        await contactLogService.updateContactLog(contactLogId, updateRequest);
-        savedLogId = contactLogId;
+        await contactLogService.updateContactLog(currentLogId, updateRequest);
+        savedLogId = currentLogId;
       } else {
         const createdLog = await contactLogService.createContactLog(formData);
         savedLogId = createdLog.contactLogId;
@@ -409,7 +410,7 @@ const ContactLogForm: React.FC = () => {
             disabled={saving}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+            {saving ? 'Saving...' : currentLogId ? 'Update' : 'Create'}
           </button>
         </div>
       </form>

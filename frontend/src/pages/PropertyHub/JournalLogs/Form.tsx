@@ -92,7 +92,8 @@ const JournalLogForm: React.FC = () => {
 
     try {
       let savedLogId: number;
-      if (isEdit && journalLogId) {
+      // If we have a currentLogId (either from edit mode or after creation), update instead of create
+      if (currentLogId) {
         const updateRequest: UpdateJournalLogRequest = {
           propertyId: formData.propertyId,
           tenancyId: formData.tenancyId,
@@ -103,8 +104,8 @@ const JournalLogForm: React.FC = () => {
           description: formData.description || undefined,
           transactionDate: formData.transactionDate,
         };
-        await journalService.updateJournalLog(journalLogId, updateRequest);
-        savedLogId = journalLogId;
+        await journalService.updateJournalLog(currentLogId, updateRequest);
+        savedLogId = currentLogId;
       } else {
         const createdLog = await journalService.createJournalLog(formData);
         savedLogId = createdLog.journalLogId;
@@ -464,7 +465,7 @@ const JournalLogForm: React.FC = () => {
             disabled={saving}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+            {saving ? 'Saving...' : currentLogId ? 'Update' : 'Create'}
           </button>
         </div>
       </form>
