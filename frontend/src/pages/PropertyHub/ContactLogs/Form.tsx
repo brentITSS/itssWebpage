@@ -277,7 +277,7 @@ const ContactLogForm: React.FC = () => {
             {(!formData.propertyId || formData.propertyId === 0) && (
               <p className="mt-1 text-xs text-gray-500">Please select a property first</p>
             )}
-            {formData.propertyId && formData.propertyId > 0 && availableTenants.length === 0 && (
+            {(formData.propertyId && formData.propertyId > 0 && availableTenants.length === 0) && (
               <p className="mt-1 text-xs text-amber-600">No tenants found for the selected property</p>
             )}
           </div>
