@@ -40,4 +40,5 @@ public class User
     public virtual ICollection<WorkstreamUser> WorkstreamUsers { get; set; } = new List<WorkstreamUser>();
     public virtual ICollection<PropertyGroupUser> PropertyGroupUsers { get; set; } = new List<PropertyGroupUser>();
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
+    public virtual ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();
 }

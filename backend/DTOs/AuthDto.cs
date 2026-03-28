@@ -6,6 +6,24 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
+public class ForgotPasswordRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ForgotPasswordResponse
+{
+    public string Message { get; set; } = string.Empty;
+    public string? ResetToken { get; set; }
+    public string? ResetPath { get; set; }
+}
+
+public class CompletePasswordResetRequest
+{
+    public string Token { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
 public class LoginResponse
 {
     public string Token { get; set; } = string.Empty;

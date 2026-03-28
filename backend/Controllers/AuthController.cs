@@ -57,4 +57,38 @@ public class AuthController : ControllerBase
 
         return Ok(user);
     }
+
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ForgotPasswordResponse>> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { message = "Email is required." });
+        }
+
+        var response = await _authService.RequestPasswordResetAsync(request.Email.Trim());
+        return Ok(response);
+    }
+
+    [HttpPost("complete-password-reset")]
+    public async Task<IActionResult> CompletePasswordReset([FromBody] CompletePasswordResetRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return BadRequest(new { message = "Token and new password are required." });
+        }
+
+        if (request.NewPassword.Length < 8)
+        {
+            return BadRequest(new { message = "Password must be at least 8 characters." });
+        }
+
+        var ok = await _authService.CompletePasswordResetAsync(request.Token.Trim(), request.NewPassword);
+        if (!ok)
+        {
+            return BadRequest(new { message = "This reset link is invalid or has expired. Please request a new one." });
+        }
+
+        return NoContent();
+    }
 }

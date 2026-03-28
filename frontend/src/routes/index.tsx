@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
+import ForgotPassword from '../pages/ForgotPassword';
+import ResetPassword from '../pages/ResetPassword';
 import Admin from '../pages/Admin';
 import Users from '../pages/Admin/Users';
 import Roles from '../pages/Admin/Roles';
@@ -39,6 +41,8 @@ const AppRoutes: React.FC = () => {
     <Routes>
       {/* Login Route */}
       <Route path="/Login" element={<Login />} />
+      <Route path="/ForgotPassword" element={<ForgotPassword />} />
+      <Route path="/ResetPassword" element={<ResetPassword />} />
 
       {/* Global Admin Routes */}
       <Route

@@ -35,6 +35,12 @@ export interface PropertyGroupAccessDto {
   propertyGroupName: string;
 }
 
+export interface ForgotPasswordResponse {
+  message: string;
+  resetToken?: string | null;
+  resetPath?: string | null;
+}
+
 export const authService = {
   login: async (request: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient<LoginResponse>('/auth/login', {
@@ -59,5 +65,19 @@ export const authService = {
 
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem('token');
+  },
+
+  forgotPassword: async (email: string): Promise<ForgotPasswordResponse> => {
+    return await apiClient<ForgotPasswordResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  completePasswordReset: async (token: string, newPassword: string): Promise<void> => {
+    await apiClient<void>('/auth/complete-password-reset', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
   },
 };

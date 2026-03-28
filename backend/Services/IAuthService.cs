@@ -38,4 +38,14 @@ public interface IAuthService
     /// Uses tblWorkstreamUsers + tblPermissionType to check for "Admin" permission on Property Hub workstream.
     /// </summary>
     bool HasPropertyHubAdminAccess(UserDto user);
+
+    /// <summary>
+    /// Create a time-limited password reset token for the user (if the account exists and is active).
+    /// </summary>
+    Task<ForgotPasswordResponse> RequestPasswordResetAsync(string email);
+
+    /// <summary>
+    /// Set a new password using a valid, unconsumed reset token.
+    /// </summary>
+    Task<bool> CompletePasswordResetAsync(string token, string newPassword);
 }

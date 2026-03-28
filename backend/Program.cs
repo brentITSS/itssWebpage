@@ -120,6 +120,7 @@ builder.Services.AddAuthorization();
 
 // Register repositories - Task 3, 4, 5: Global Admin, Property Hub Home & Admin
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IWorkstreamRepository, WorkstreamRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();

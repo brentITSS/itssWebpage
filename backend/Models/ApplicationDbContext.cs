@@ -11,6 +11,7 @@ public class ApplicationDbContext : DbContext
 
     // User & Roles
     public DbSet<User> Users { get; set; }
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
     // Note: Role model exists but tblRole table doesn't - using RoleType and UserRole instead
     // public DbSet<Role> Roles { get; set; }
     public DbSet<RoleType> RoleTypes { get; set; }

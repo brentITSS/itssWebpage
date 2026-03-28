@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 
 const Login: React.FC = () => {
@@ -80,7 +80,7 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="flex flex-col gap-3">
             <button
               type="submit"
               disabled={loading}
@@ -88,6 +88,11 @@ const Login: React.FC = () => {
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
+            <div className="text-center text-sm">
+              <Link to="/ForgotPassword" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Forgot password?
+              </Link>
+            </div>
           </div>
         </form>
       </div>

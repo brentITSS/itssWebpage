@@ -4,6 +4,7 @@ using backend.Repositories;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace backend.Services;
@@ -15,11 +16,16 @@ namespace backend.Services;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
     private readonly IConfiguration _configuration;
 
-    public AuthService(IUserRepository userRepository, IConfiguration configuration)
+    public AuthService(
+        IUserRepository userRepository,
+        IPasswordResetTokenRepository passwordResetTokenRepository,
+        IConfiguration configuration)
     {
         _userRepository = userRepository;
+        _passwordResetTokenRepository = passwordResetTokenRepository;
         _configuration = configuration;
     }
 
@@ -49,6 +55,71 @@ public class AuthService : IAuthService
             Token = token,
             User = userDto
         };
+    }
+
+    public async Task<ForgotPasswordResponse> RequestPasswordResetAsync(string email)
+    {
+        var genericMessage =
+            "If an account exists for that email, you can use the password reset link to set a new password.";
+
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null || !user.IsActive)
+        {
+            return new ForgotPasswordResponse { Message = genericMessage };
+        }
+
+        var plainToken = GenerateResetToken();
+        var tokenHash = HashResetToken(plainToken);
+        var ttlMinutes = _configuration.GetValue("PasswordReset:TokenExpirationMinutes", 60);
+        var now = DateTime.UtcNow;
+        await _passwordResetTokenRepository.CreateForUserAsync(
+            user.UserId,
+            tokenHash,
+            now.AddMinutes(ttlMinutes),
+            now);
+
+        var exposeToken = _configuration.GetValue("PasswordReset:ReturnResetTokenInResponse", false);
+        if (exposeToken)
+        {
+            return new ForgotPasswordResponse
+            {
+                Message =
+                    "Reset token returned only because PasswordReset:ReturnResetTokenInResponse is enabled. Turn it off in production and send the link by email instead.",
+                ResetToken = plainToken,
+                ResetPath = $"/ResetPassword?token={Uri.EscapeDataString(plainToken)}"
+            };
+        }
+
+        return new ForgotPasswordResponse { Message = genericMessage };
+    }
+
+    public async Task<bool> CompletePasswordResetAsync(string token, string newPassword)
+    {
+        var tokenHash = HashResetToken(token);
+        var utcNow = DateTime.UtcNow;
+        var userId = await _passwordResetTokenRepository.TryConsumeTokenAsync(tokenHash, utcNow);
+        if (userId == null)
+            return false;
+
+        var user = await _userRepository.GetByIdForUpdateAsync(userId.Value);
+        if (user == null || !user.IsActive)
+            return false;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        await _userRepository.UpdateAsync(user);
+        return true;
+    }
+
+    private static string GenerateResetToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    private static string HashResetToken(string plainToken)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(plainToken));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     /// <summary>
