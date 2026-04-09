@@ -14,6 +14,9 @@ const Users: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserResponseDto | null>(null);
   const [showResetPassword, setShowResetPassword] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserResponseDto | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
     loadUsers();
@@ -114,6 +117,14 @@ const Users: React.FC = () => {
 
   const activeUsers = users.filter((user) => user.isActive).length;
   const inactiveUsers = users.length - activeUsers;
+  const filteredUsers = users.filter((user) => {
+    if (statusFilter === 'active' && !user.isActive) return false;
+    if (statusFilter === 'inactive' && user.isActive) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+    return user.email.toLowerCase().includes(q) || fullName.includes(q);
+  });
 
   return (
     <div className="space-y-5">
@@ -132,7 +143,7 @@ const Users: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Total Users</p>
           <p className="mt-2 text-2xl font-semibold text-slate-900">{users.length}</p>
@@ -145,6 +156,10 @@ const Users: React.FC = () => {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">Inactive</p>
           <p className="mt-2 text-2xl font-semibold text-rose-800">{inactiveUsers}</p>
         </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Shown</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{filteredUsers.length}</p>
+        </div>
       </div>
 
       {error && (
@@ -153,9 +168,42 @@ const Users: React.FC = () => {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-md">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by email or name"
+              className="field"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'active', label: 'Active' },
+              { id: 'inactive', label: 'Inactive' },
+            ].map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setStatusFilter(filter.id as 'all' | 'active' | 'inactive')}
+                className={`rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  statusFilter === filter.id
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-slate-200">
         <div className="overflow-x-auto">
-        <table className="min-w-[1050px] w-full divide-y divide-slate-200">
+        <table className="min-w-[980px] w-full divide-y divide-slate-200">
           <thead className="bg-white">
             <tr>
               <th className="table-header-cell">
@@ -179,7 +227,7 @@ const Users: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <tr key={user.userId} className="transition hover:bg-slate-50">
                 <td className="table-body-cell whitespace-nowrap font-medium text-slate-900">
                   {user.email}
@@ -210,6 +258,13 @@ const Users: React.FC = () => {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
+                      onClick={() => setSelectedUser(user)}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-700 transition hover:border-slate-300"
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setEditingUser(user)}
                       className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-700 transition hover:border-slate-300"
                     >
@@ -234,7 +289,63 @@ const Users: React.FC = () => {
           </tbody>
         </table>
         </div>
+        </div>
       </div>
+
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/35 backdrop-blur-[1px]">
+          <div className="h-full w-full max-w-md border-l border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">User Details</p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                  {selectedUser.firstName || selectedUser.lastName
+                    ? `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim()
+                    : selectedUser.email}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedUser(null)}
+                className="rounded-md border border-slate-200 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</p>
+                <p className="mt-1 text-sm text-slate-700">{selectedUser.email}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Default Route</p>
+                <div className="mt-1 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {selectedUser.defaultLoginLandingPage || 'Not set'}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Roles</p>
+                <div className="mt-1 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {selectedUser.roles && selectedUser.roles.length > 0
+                    ? selectedUser.roles.map((role) => role.roleTypeName || role.roleName).join(', ')
+                    : 'None'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingUser(selectedUser);
+                  setSelectedUser(null);
+                }}
+                className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-black"
+              >
+                Edit User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create User Modal */}
       {showModal && (
