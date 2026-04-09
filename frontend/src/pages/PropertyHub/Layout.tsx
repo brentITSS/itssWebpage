@@ -12,40 +12,52 @@ const PropertyHubLayout: React.FC = () => {
   const isJournalLogs = pathname.startsWith('/Property Hub/Journal Logs');
   const isContactLogs = pathname.startsWith('/Property Hub/Contact Logs');
 
+  const tabClass = (active: boolean) =>
+    [
+      'inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium transition',
+      active
+        ? 'bg-indigo-100 text-indigo-700'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+    ].join(' ');
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <h1 className="text-3xl font-bold text-gray-900">Property Hub</h1>
-            <div className="flex space-x-4">
+    <div className="min-h-screen bg-slate-100">
+      <div className="border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto w-full max-w-[1400px] px-6 py-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Workspace</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Property Hub</h1>
+              <p className="text-sm text-slate-500">Operations, admin, and activity tracking</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1">
               <Link
                 to="/Property Hub/Home"
-                className={`${isHome ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
+                className={tabClass(isHome)}
               >
                 Home
               </Link>
               <Link
                 to="/Property Hub/Admin"
-                className={`${isAdminActive ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
+                className={tabClass(isAdminActive)}
               >
                 Admin
               </Link>
               <Link
                 to="/Property Hub/Journal Logs"
-                className={`${isJournalLogs ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
+                className={tabClass(isJournalLogs)}
               >
                 Journal Logs
               </Link>
               <Link
                 to="/Property Hub/Contact Logs"
-                className={`${isContactLogs ? 'text-blue-600 font-semibold' : 'text-gray-600'} hover:text-gray-900`}
+                className={tabClass(isContactLogs)}
               >
                 Contact Logs
               </Link>
               <Link
                 to="/Login"
-                className="text-gray-600 hover:text-gray-900"
+                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                 onClick={() => {
                   localStorage.removeItem('token');
                 }}
@@ -57,7 +69,7 @@ const PropertyHubLayout: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-6">
         <Outlet />
       </div>
     </div>
