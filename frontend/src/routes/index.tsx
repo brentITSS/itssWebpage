@@ -4,7 +4,7 @@ import Login from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
 import Admin from '../pages/Admin';
-import Users from '../pages/Admin/Users';
+import Users from '../pages/Admin/UsersLayoutAlt';
 import Roles from '../pages/Admin/Roles';
 import Workstreams from '../pages/Admin/Workstreams';
 import Permissions from '../pages/Admin/Permissions';
