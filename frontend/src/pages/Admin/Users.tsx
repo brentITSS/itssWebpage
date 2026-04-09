@@ -109,7 +109,7 @@ const Users: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-medium text-slate-600 shadow-sm">
+      <div className="rounded-md border-2 border-black bg-white p-8 text-center text-sm font-bold text-black shadow-[4px_4px_0_#000]">
         Loading users...
       </div>
     );
@@ -130,35 +130,35 @@ const Users: React.FC = () => {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Users</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-3xl font-black tracking-tight text-black">Users</h2>
+          <p className="mt-1 text-sm font-semibold text-black/70">
             Manage account access, default routes, and password resets.
           </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center justify-center rounded-lg bg-[#111827] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+          className="inline-flex items-center justify-center rounded-md border-2 border-black bg-[#ffd60a] px-4 py-2.5 text-sm font-black uppercase tracking-wide text-black shadow-[3px_3px_0_#000] transition hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
         >
           Create User
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Total Users</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{users.length}</p>
+        <div className="rounded-md border-2 border-black bg-white p-4 shadow-[3px_3px_0_#000]">
+          <p className="text-[11px] font-black uppercase tracking-wide text-black/70">Total Users</p>
+          <p className="mt-2 text-2xl font-black text-black">{users.length}</p>
         </div>
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Active</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-800">{activeUsers}</p>
+        <div className="rounded-md border-2 border-black bg-[#caffbf] p-4 shadow-[3px_3px_0_#000]">
+          <p className="text-[11px] font-black uppercase tracking-wide text-black/70">Active</p>
+          <p className="mt-2 text-2xl font-black text-black">{activeUsers}</p>
         </div>
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">Inactive</p>
-          <p className="mt-2 text-2xl font-semibold text-rose-800">{inactiveUsers}</p>
+        <div className="rounded-md border-2 border-black bg-[#ffadad] p-4 shadow-[3px_3px_0_#000]">
+          <p className="text-[11px] font-black uppercase tracking-wide text-black/70">Inactive</p>
+          <p className="mt-2 text-2xl font-black text-black">{inactiveUsers}</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Shown</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{filteredUsers.length}</p>
+        <div className="rounded-md border-2 border-black bg-[#9bf6ff] p-4 shadow-[3px_3px_0_#000]">
+          <p className="text-[11px] font-black uppercase tracking-wide text-black/70">Shown</p>
+          <p className="mt-2 text-2xl font-black text-black">{filteredUsers.length}</p>
         </div>
       </div>
 
@@ -168,7 +168,7 @@ const Users: React.FC = () => {
         </div>
       )}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-md border-2 border-black bg-white p-4 shadow-[4px_4px_0_#000]">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-md">
             <input
@@ -176,7 +176,7 @@ const Users: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by email or name"
-              className="field"
+              className="w-full rounded-md border-2 border-black bg-white px-3 py-2.5 text-sm font-semibold text-black placeholder:text-black/40 focus:outline-none"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -189,10 +189,10 @@ const Users: React.FC = () => {
                 key={filter.id}
                 type="button"
                 onClick={() => setStatusFilter(filter.id as 'all' | 'active' | 'inactive')}
-                className={`rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                className={`rounded-md border-2 border-black px-3 py-2 text-xs font-black uppercase tracking-wide transition ${
                   statusFilter === filter.id
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-black text-white'
+                    : 'bg-white text-black hover:bg-[#f5f5f5]'
                 }`}
               >
                 {filter.label}
@@ -201,10 +201,10 @@ const Users: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200">
+        <div className="overflow-hidden rounded-md border-2 border-black">
         <div className="overflow-x-auto">
         <table className="min-w-[980px] w-full divide-y divide-slate-200">
-          <thead className="bg-white">
+          <thead className="bg-[#ffe45e]">
             <tr>
               <th className="table-header-cell">
                 Email
@@ -228,7 +228,7 @@ const Users: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {filteredUsers.map((user) => (
-              <tr key={user.userId} className="transition hover:bg-slate-50">
+              <tr key={user.userId} className="transition hover:bg-[#f7f7f7]">
                 <td className="table-body-cell whitespace-nowrap font-medium text-slate-900">
                   {user.email}
                 </td>
