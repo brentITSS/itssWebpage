@@ -16,21 +16,21 @@ const PropertyHubLayout: React.FC = () => {
     [
       'inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium transition',
       active
-        ? 'bg-indigo-100 text-indigo-700'
+        ? 'bg-[#111827] text-white'
         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
     ].join(' ');
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto w-full max-w-[1400px] px-6 py-4">
+    <div className="min-h-screen bg-[#f8fafc]">
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto w-full max-w-[1440px] px-6 py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Workspace</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Workspace</p>
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Property Hub</h1>
               <p className="text-sm text-slate-500">Operations, admin, and activity tracking</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
               <Link
                 to="/Property Hub/Home"
                 className={tabClass(isHome)}
@@ -69,7 +69,7 @@ const PropertyHubLayout: React.FC = () => {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1400px] px-6 py-6">
+      <div className="mx-auto w-full max-w-[1440px] px-6 py-6">
         <Outlet />
       </div>
     </div>

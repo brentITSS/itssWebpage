@@ -116,33 +116,33 @@ const Users: React.FC = () => {
   const inactiveUsers = users.length - activeUsers;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">User Management</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Users</h2>
           <p className="mt-1 text-sm text-slate-500">
             Manage account access, default routes, and password resets.
           </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+          className="inline-flex items-center justify-center rounded-lg bg-[#111827] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
         >
           Create User
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Users</p>
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Total Users</p>
           <p className="mt-2 text-2xl font-semibold text-slate-900">{users.length}</p>
         </div>
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Active</p>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Active</p>
           <p className="mt-2 text-2xl font-semibold text-emerald-800">{activeUsers}</p>
         </div>
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Inactive</p>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">Inactive</p>
           <p className="mt-2 text-2xl font-semibold text-rose-800">{inactiveUsers}</p>
         </div>
       </div>
@@ -153,10 +153,10 @@ const Users: React.FC = () => {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="overflow-x-auto">
         <table className="min-w-[1050px] w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
+          <thead className="bg-white">
             <tr>
               <th className="table-header-cell">
                 Email
@@ -180,7 +180,7 @@ const Users: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {users.map((user) => (
-              <tr key={user.userId} className="transition hover:bg-slate-50/80">
+              <tr key={user.userId} className="transition hover:bg-slate-50">
                 <td className="table-body-cell whitespace-nowrap font-medium text-slate-900">
                   {user.email}
                 </td>
@@ -211,19 +211,19 @@ const Users: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditingUser(user)}
-                      className="rounded-md bg-indigo-50 px-2 py-1 text-indigo-700 transition hover:bg-indigo-100"
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-700 transition hover:border-slate-300"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => setShowResetPassword(user.userId)}
-                      className="rounded-md bg-amber-50 px-2 py-1 text-amber-700 transition hover:bg-amber-100"
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-700 transition hover:border-slate-300"
                     >
                       Reset Password
                     </button>
                     <button
                       onClick={() => handleDeleteUser(user.userId)}
-                      className="rounded-md bg-rose-50 px-2 py-1 text-rose-700 transition hover:bg-rose-100"
+                      className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700 transition hover:bg-rose-100"
                     >
                       Deactivate
                     </button>
