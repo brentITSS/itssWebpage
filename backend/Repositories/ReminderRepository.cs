@@ -17,7 +17,12 @@ public class ReminderRepository : IReminderRepository
         return await _context.Reminders
             .Include(r => r.Property)
             .Include(r => r.PropertyGroup)
-            .OrderByDescending(r => r.DueDate)
+            .Include(r => r.Tenancy)
+                .ThenInclude(t => t!.Property)
+            .Include(r => r.Tenant)
+                .ThenInclude(t => t!.Tenancy!)
+                    .ThenInclude(tn => tn.Property)
+            .OrderByDescending(r => r.CreatedDate ?? DateTime.MinValue)
             .ToListAsync();
     }
 
@@ -26,6 +31,11 @@ public class ReminderRepository : IReminderRepository
         return await _context.Reminders
             .Include(r => r.Property)
             .Include(r => r.PropertyGroup)
+            .Include(r => r.Tenancy)
+                .ThenInclude(t => t!.Property)
+            .Include(r => r.Tenant)
+                .ThenInclude(t => t!.Tenancy!)
+                    .ThenInclude(tn => tn.Property)
             .FirstOrDefaultAsync(r => r.ReminderId == reminderId);
     }
 

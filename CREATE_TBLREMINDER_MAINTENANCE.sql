@@ -3,32 +3,20 @@
 
   Run against the ITSS SQL Server database.
 
-  - tblReminder: only created if the table does not exist. If you already have tblReminder
-    with different column names, align the database or adjust backend/Models/Reminder.cs mappings.
+  - tblReminder: production table already exists. The app maps to:
+      reminderID, tenantID, tenancyID, propertyGrpID, propertyID,
+      reminder, reminderDetail, createdBy, createdDate, reminderActive, SSMA_TimeStamp.
+    This script does NOT create tblReminder.
   - tblMaintenanceType + tblMaintenance: created if missing.
 */
 
 SET NOCOUNT ON;
 
-/* ---- tblReminder ---- */
-IF OBJECT_ID(N'dbo.tblReminder', N'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.tblReminder (
-        reminderID          INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-        propertyGrpID       INT NULL,
-        propertyID           INT NULL,
-        reminderTitle        NVARCHAR(255) NOT NULL,
-        reminderNotes        NVARCHAR(MAX) NULL,
-        dueDate              DATETIME2 NOT NULL,
-        isCompleted          BIT NOT NULL CONSTRAINT DF_tblReminder_isCompleted DEFAULT (0),
-        createdDate          DATETIME2 NULL CONSTRAINT DF_tblReminder_createdDate DEFAULT (SYSUTCDATETIME()),
-        CONSTRAINT FK_tblReminder_PropertyGroup FOREIGN KEY (propertyGrpID) REFERENCES dbo.tblPropertyGroup(propertyGrpID),
-        CONSTRAINT FK_tblReminder_Property FOREIGN KEY (propertyID) REFERENCES dbo.tblProperty(propertyID)
-    );
-    PRINT 'Created dbo.tblReminder';
-END
+/* ---- tblReminder (existing — no DDL here) ---- */
+IF OBJECT_ID(N'dbo.tblReminder', N'U') IS NOT NULL
+    PRINT 'dbo.tblReminder present — ensure FKs exist for tenantID/tenancyID/propertyGrpID/propertyID as needed.';
 ELSE
-    PRINT 'Skipped dbo.tblReminder (already exists). Verify columns match backend/Models/Reminder.cs if EF fails.';
+    PRINT 'WARNING: dbo.tblReminder missing — create it to match backend/Models/Reminder.cs before using reminders API.';
 
 /* ---- tblMaintenanceType (lookup) ---- */
 IF OBJECT_ID(N'dbo.tblMaintenanceType', N'U') IS NULL

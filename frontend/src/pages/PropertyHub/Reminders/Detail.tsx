@@ -78,13 +78,19 @@ const ReminderDetail: React.FC = () => {
 
       <div className="bg-white shadow rounded-lg p-6 max-w-2xl space-y-3 text-sm">
         <p>
-          <span className="font-medium text-gray-700">Due: </span>
-          {new Date(reminder.dueDate).toLocaleString()}
-        </p>
-        <p>
           <span className="font-medium text-gray-700">Completed: </span>
           {reminder.isCompleted ? 'Yes' : 'No'}
         </p>
+        <p>
+          <span className="font-medium text-gray-700">Created: </span>
+          {reminder.createdDate ? new Date(reminder.createdDate).toLocaleString() : '—'}
+        </p>
+        {reminder.createdBy && (
+          <p>
+            <span className="font-medium text-gray-700">Created by: </span>
+            {reminder.createdBy}
+          </p>
+        )}
         <p>
           <span className="font-medium text-gray-700">Property group: </span>
           {reminder.propertyGroupName || '—'}
@@ -93,9 +99,17 @@ const ReminderDetail: React.FC = () => {
           <span className="font-medium text-gray-700">Property: </span>
           {reminder.propertyName || '—'}
         </p>
+        <p>
+          <span className="font-medium text-gray-700">Tenancy: </span>
+          {reminder.tenancySummary || '—'}
+        </p>
+        <p>
+          <span className="font-medium text-gray-700">Tenant: </span>
+          {reminder.tenantName || '—'}
+        </p>
         {reminder.notes && (
           <div>
-            <p className="font-medium text-gray-700 mb-1">Notes</p>
+            <p className="font-medium text-gray-700 mb-1">Detail</p>
             <p className="text-gray-600 whitespace-pre-wrap">{reminder.notes}</p>
           </div>
         )}

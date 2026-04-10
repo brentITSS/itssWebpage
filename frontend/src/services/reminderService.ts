@@ -2,32 +2,39 @@ import apiClient from './api';
 
 export interface ReminderResponseDto {
   reminderId: number;
+  tenantId?: number;
+  tenantName?: string;
+  tenancyId?: number;
+  tenancySummary?: string;
   propertyGroupId?: number;
   propertyGroupName?: string;
   propertyId?: number;
   propertyName?: string;
   title: string;
   notes?: string;
-  dueDate: string;
-  isCompleted: boolean;
+  createdBy?: string;
   createdDate?: string;
+  reminderActive?: boolean;
+  isCompleted: boolean;
 }
 
 export interface CreateReminderRequest {
+  tenantId?: number;
+  tenancyId?: number;
   propertyGroupId?: number;
   propertyId?: number;
   title: string;
   notes?: string;
-  dueDate: string;
   isCompleted: boolean;
 }
 
 export interface UpdateReminderRequest {
+  tenantId?: number;
+  tenancyId?: number;
   propertyGroupId?: number;
   propertyId?: number;
   title?: string;
   notes?: string;
-  dueDate?: string;
   isCompleted?: boolean;
 }
 

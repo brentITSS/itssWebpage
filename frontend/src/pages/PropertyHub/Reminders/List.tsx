@@ -13,8 +13,6 @@ const RemindersList: React.FC = () => {
 
   const [filterPropertyId, setFilterPropertyId] = useState<number | ''>('');
   const [filterCompleted, setFilterCompleted] = useState<'all' | 'open' | 'done'>('all');
-  const [filterDateFrom, setFilterDateFrom] = useState('');
-  const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
     loadData();
@@ -42,14 +40,8 @@ const RemindersList: React.FC = () => {
     }
     if (filterCompleted === 'open') list = list.filter((x) => !x.isCompleted);
     if (filterCompleted === 'done') list = list.filter((x) => x.isCompleted);
-    if (filterDateFrom) {
-      list = list.filter((x) => new Date(x.dueDate) >= new Date(filterDateFrom));
-    }
-    if (filterDateTo) {
-      list = list.filter((x) => new Date(x.dueDate) <= new Date(filterDateTo));
-    }
     setFiltered(list);
-  }, [reminders, filterPropertyId, filterCompleted, filterDateFrom, filterDateTo]);
+  }, [reminders, filterPropertyId, filterCompleted]);
 
   useEffect(() => {
     applyFilters();
@@ -88,7 +80,7 @@ const RemindersList: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <h3 className="text-sm font-medium text-gray-700 mb-4">Filters</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
             <select
@@ -116,24 +108,6 @@ const RemindersList: React.FC = () => {
               <option value="done">Completed</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Due from</label>
-            <input
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Due to</label>
-            <input
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
         </div>
       </div>
 
@@ -141,10 +115,11 @@ const RemindersList: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reminder</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenancy</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Done</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -152,7 +127,7 @@ const RemindersList: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   No reminders found
                 </td>
               </tr>
@@ -160,11 +135,12 @@ const RemindersList: React.FC = () => {
               filtered.map((r) => (
                 <tr key={r.reminderId} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(r.dueDate).toLocaleDateString()}
+                    {r.createdDate ? new Date(r.createdDate).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{r.title}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.propertyName || '—'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.propertyGroupName || '—'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.tenantName || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{r.tenancySummary || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{r.isCompleted ? 'Yes' : 'No'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button

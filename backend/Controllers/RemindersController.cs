@@ -74,8 +74,15 @@ public class RemindersController : ControllerBase
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
 
-        var created = await _reminderService.CreateReminderAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = created.ReminderId }, created);
+        try
+        {
+            var created = await _reminderService.CreateReminderAsync(request, currentUser.Email);
+            return CreatedAtAction(nameof(GetById), new { id = created.ReminderId }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:int}")]
@@ -90,9 +97,16 @@ public class RemindersController : ControllerBase
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
 
-        var updated = await _reminderService.UpdateReminderAsync(id, request);
-        if (updated == null) return NotFound();
-        return Ok(updated);
+        try
+        {
+            var updated = await _reminderService.UpdateReminderAsync(id, request);
+            if (updated == null) return NotFound();
+            return Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id:int}")]

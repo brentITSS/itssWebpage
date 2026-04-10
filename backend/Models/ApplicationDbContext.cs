@@ -121,17 +121,43 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(jst => jst.JournalTypeId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<Reminder>()
-            .HasOne(r => r.Property)
-            .WithMany(p => p.Reminders)
-            .HasForeignKey(r => r.PropertyId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // dbo.tblReminder — column names must match production (not PascalCase / legacy names).
+        modelBuilder.Entity<Reminder>(entity =>
+        {
+            entity.ToTable("tblReminder");
+            entity.HasKey(r => r.ReminderId);
+            entity.Property(r => r.ReminderId).HasColumnName("reminderID");
+            entity.Property(r => r.TenantId).HasColumnName("tenantID");
+            entity.Property(r => r.TenancyId).HasColumnName("tenancyID");
+            entity.Property(r => r.PropertyGroupId).HasColumnName("propertyGrpID");
+            entity.Property(r => r.PropertyId).HasColumnName("propertyID");
+            entity.Property(r => r.Title).HasColumnName("reminder").HasMaxLength(255);
+            entity.Property(r => r.Notes).HasColumnName("reminderDetail").HasColumnType("nvarchar(max)");
+            entity.Property(r => r.CreatedBy).HasColumnName("createdBy").HasMaxLength(255);
+            entity.Property(r => r.CreatedDate).HasColumnName("createdDate");
+            entity.Property(r => r.ReminderActive).HasColumnName("reminderActive");
+            entity.Property(r => r.RowVersion).HasColumnName("SSMA_TimeStamp").IsRowVersion();
 
-        modelBuilder.Entity<Reminder>()
-            .HasOne(r => r.PropertyGroup)
-            .WithMany(pg => pg.Reminders)
-            .HasForeignKey(r => r.PropertyGroupId)
-            .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(r => r.Property)
+                .WithMany(p => p.Reminders)
+                .HasForeignKey(r => r.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.PropertyGroup)
+                .WithMany(pg => pg.Reminders)
+                .HasForeignKey(r => r.PropertyGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.Tenancy)
+                .WithMany()
+                .HasForeignKey(r => r.TenancyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.Tenant)
+                .WithMany()
+                .HasForeignKey(r => r.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
         modelBuilder.Entity<Maintenance>()
             .HasOne(m => m.Property)
