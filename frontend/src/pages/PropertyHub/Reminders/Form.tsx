@@ -15,6 +15,7 @@ const ReminderForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isEdit = !!id || searchParams.get('edit') === 'true';
   const reminderId = id ? parseInt(id, 10) : null;
+  const contextPropertyIdParam = searchParams.get('propertyId');
 
   const [groups, setGroups] = useState<PropertyGroupResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
@@ -65,13 +66,23 @@ const ReminderForm: React.FC = () => {
           notes: r.notes || '',
           isCompleted: r.isCompleted,
         });
+      } else {
+        const ctxId = contextPropertyIdParam ? parseInt(contextPropertyIdParam, 10) : NaN;
+        const prop = Number.isFinite(ctxId) ? p.find((x) => x.propertyId === ctxId) : undefined;
+        if (prop) {
+          setFormData((prev) => ({
+            ...prev,
+            propertyGroupId: prop.propertyGroupId,
+            propertyId: prop.propertyId,
+          }));
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load');
     } finally {
       setLoading(false);
     }
-  }, [isEdit, reminderId]);
+  }, [isEdit, reminderId, contextPropertyIdParam]);
 
   useEffect(() => {
     loadData();

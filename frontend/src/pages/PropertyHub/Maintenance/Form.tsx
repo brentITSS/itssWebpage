@@ -13,6 +13,7 @@ const MaintenanceForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isEdit = !!id || searchParams.get('edit') === 'true';
   const recordId = id ? parseInt(id, 10) : null;
+  const contextPropertyIdParam = searchParams.get('propertyId');
 
   const [groups, setGroups] = useState<PropertyGroupResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
@@ -59,12 +60,22 @@ const MaintenanceForm: React.FC = () => {
           workDate: r.workDate ? new Date(r.workDate).toISOString().split('T')[0] : undefined,
         });
       } else if (g.length && p.length) {
-        const firstG = g[0].propertyGroupId;
-        const firstP = p.find((x) => x.propertyGroupId === firstG) || p[0];
+        const ctxId = contextPropertyIdParam ? parseInt(contextPropertyIdParam, 10) : NaN;
+        const match = Number.isFinite(ctxId) ? p.find((x) => x.propertyId === ctxId) : undefined;
+        let propertyGroupId: number;
+        let propertyId: number;
+        if (match) {
+          propertyGroupId = match.propertyGroupId;
+          propertyId = match.propertyId;
+        } else {
+          propertyGroupId = g[0].propertyGroupId;
+          const firstP = p.find((x) => x.propertyGroupId === propertyGroupId) || p[0];
+          propertyId = firstP.propertyId;
+        }
         setFormData((prev) => ({
           ...prev,
-          propertyGroupId: firstG,
-          propertyId: firstP.propertyId,
+          propertyGroupId,
+          propertyId,
           maintenanceTypeId: t[0]?.maintenanceTypeId ?? 0,
         }));
       }
@@ -73,7 +84,7 @@ const MaintenanceForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [isEdit, recordId]);
+  }, [isEdit, recordId, contextPropertyIdParam]);
 
   useEffect(() => {
     loadData();

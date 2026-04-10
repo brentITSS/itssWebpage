@@ -105,7 +105,9 @@ const MaintenanceList: React.FC = () => {
           actions={
             <button
               type="button"
-              onClick={() => navigate('/Property Hub/Maintenance/New')}
+              onClick={() =>
+                navigate(`/Property Hub/Maintenance/New?propertyId=${scopedProperty.propertyId}`)
+              }
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
             >
               + New record
@@ -209,7 +211,10 @@ const MaintenanceList: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900">Maintenance &amp; repairs</h2>
         <button
           type="button"
-          onClick={() => navigate('/Property Hub/Maintenance/New')}
+          onClick={() => {
+            const q = filterPropertyId ? `?propertyId=${filterPropertyId}` : '';
+            navigate(`/Property Hub/Maintenance/New${q}`);
+          }}
           className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
           New record
