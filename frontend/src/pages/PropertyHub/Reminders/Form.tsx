@@ -158,171 +158,173 @@ const ReminderForm: React.FC = () => {
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 max-w-2xl space-y-4">
-        <p className="text-sm text-gray-500">
-          You must choose at least one: property group, property, tenancy, or tenant. The API fills property and group
-          from tenancy or tenant when possible.
-        </p>
+      <form onSubmit={handleSubmit} className="rounded-lg bg-white p-6 shadow">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <p className="text-sm text-gray-500 md:col-span-2">
+            You must choose at least one: property group, property, tenancy, or tenant. The API fills property and
+            group from tenancy or tenant when possible.
+          </p>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Property group</label>
-          <select
-            value={formData.propertyGroupId ?? ''}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                propertyGroupId: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                propertyId: undefined,
-                tenancyId: undefined,
-                tenantId: undefined,
-              })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">—</option>
-            {groups.map((g) => (
-              <option key={g.propertyGroupId} value={g.propertyGroupId}>
-                {g.propertyGroupName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
-          <select
-            value={formData.propertyId ?? ''}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                propertyId: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                tenancyId: undefined,
-                tenantId: undefined,
-              })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">—</option>
-            {propertiesForGroup.map((p) => (
-              <option key={p.propertyId} value={p.propertyId}>
-                {p.propertyName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tenancy</label>
-          <select
-            value={formData.tenancyId ?? ''}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                tenancyId: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                tenantId: undefined,
-              })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            disabled={!formData.propertyId}
-          >
-            <option value="">—</option>
-            {tenanciesForProperty.map((t) => (
-              <option key={t.tenancyId} value={t.tenancyId}>
-                {t.description
-                  ? t.description.length > 60
-                    ? `${t.description.slice(0, 60)}…`
-                    : t.description
-                  : `Tenancy #${t.tenancyId}`}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tenant</label>
-          <select
-            value={formData.tenantId ?? ''}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                tenantId: e.target.value ? parseInt(e.target.value, 10) : undefined,
-              })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            disabled={!formData.propertyId}
-          >
-            <option value="">—</option>
-            {tenantsForProperty.map((t) => (
-              <option key={t.tenantId} value={t.tenantId}>
-                {t.firstName} {t.lastName} ({t.email || t.tenantId})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Reminder *</label>
-          <input
-            type="text"
-            required
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="Short summary (maps to tblReminder.reminder)"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-          <select
-            value={formData.reminderPriorityId ?? ''}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                reminderPriorityId: e.target.value ? parseInt(e.target.value, 10) : undefined,
-              })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">— None —</option>
-            {priorities.map((pr) => (
-              <option key={pr.reminderPriorityId} value={pr.reminderPriorityId}>
-                {pr.reminderPriorityName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Detail</label>
-          <textarea
-            rows={4}
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="Optional notes (tblReminder.reminderDetail)"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="done"
-            checked={formData.isCompleted}
-            onChange={(e) => setFormData({ ...formData, isCompleted: e.target.checked })}
-          />
-          <label htmlFor="done" className="text-sm text-gray-700">
-            Completed (sets reminderActive = 0 in the database)
-          </label>
-        </div>
-        <div className="flex gap-2 pt-4">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/Property Hub/Reminders')}
-            className="px-4 py-2 border border-gray-300 rounded-md"
-          >
-            Cancel
-          </button>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Property group</label>
+            <select
+              value={formData.propertyGroupId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  propertyGroupId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  propertyId: undefined,
+                  tenancyId: undefined,
+                  tenantId: undefined,
+                })
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="">—</option>
+              {groups.map((g) => (
+                <option key={g.propertyGroupId} value={g.propertyGroupId}>
+                  {g.propertyGroupName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
+            <select
+              value={formData.propertyId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  propertyId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  tenancyId: undefined,
+                  tenantId: undefined,
+                })
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="">—</option>
+              {propertiesForGroup.map((p) => (
+                <option key={p.propertyId} value={p.propertyId}>
+                  {p.propertyName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Tenancy</label>
+            <select
+              value={formData.tenancyId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  tenancyId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  tenantId: undefined,
+                })
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+              disabled={!formData.propertyId}
+            >
+              <option value="">—</option>
+              {tenanciesForProperty.map((t) => (
+                <option key={t.tenancyId} value={t.tenancyId}>
+                  {t.description
+                    ? t.description.length > 60
+                      ? `${t.description.slice(0, 60)}…`
+                      : t.description
+                    : `Tenancy #${t.tenancyId}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Tenant</label>
+            <select
+              value={formData.tenantId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  tenantId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                })
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+              disabled={!formData.propertyId}
+            >
+              <option value="">—</option>
+              {tenantsForProperty.map((t) => (
+                <option key={t.tenantId} value={t.tenantId}>
+                  {t.firstName} {t.lastName} ({t.email || t.tenantId})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Reminder *</label>
+            <input
+              type="text"
+              required
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+              placeholder="Short summary (maps to tblReminder.reminder)"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
+            <select
+              value={formData.reminderPriorityId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  reminderPriorityId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                })
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="">— None —</option>
+              {priorities.map((pr) => (
+                <option key={pr.reminderPriorityId} value={pr.reminderPriorityId}>
+                  {pr.reminderPriorityName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Detail</label>
+            <textarea
+              rows={4}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+              placeholder="Optional notes (tblReminder.reminderDetail)"
+            />
+          </div>
+          <div className="flex items-center gap-2 md:col-span-2">
+            <input
+              type="checkbox"
+              id="done"
+              checked={formData.isCompleted}
+              onChange={(e) => setFormData({ ...formData, isCompleted: e.target.checked })}
+            />
+            <label htmlFor="done" className="text-sm text-gray-700">
+              Completed (sets reminderActive = 0 in the database)
+            </label>
+          </div>
+          <div className="flex items-end gap-2 pb-1 md:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/Property Hub/Reminders')}
+              className="rounded-md border border-gray-300 px-4 py-2"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </form>
     </div>
