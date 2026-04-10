@@ -21,4 +21,6 @@ public class PropertyGroup
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
     public virtual ICollection<TagLog> TagLogs { get; set; } = new List<TagLog>();
     public virtual ICollection<PropertyGroupUser> PropertyGroupUsers { get; set; } = new List<PropertyGroupUser>();
+    public virtual ICollection<Maintenance> Maintenances { get; set; } = new List<Maintenance>();
+    public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
 }

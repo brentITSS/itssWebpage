@@ -49,6 +49,11 @@ public class ApplicationDbContext : DbContext
     // Audit
     public DbSet<AuditLog> AuditLogs { get; set; }
 
+    // Reminders & maintenance
+    public DbSet<Reminder> Reminders { get; set; }
+    public DbSet<MaintenanceType> MaintenanceTypes { get; set; }
+    public DbSet<Maintenance> Maintenances { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -114,6 +119,36 @@ public class ApplicationDbContext : DbContext
             .HasOne(jst => jst.JournalType)
             .WithMany(jt => jt.JournalSubTypes)
             .HasForeignKey(jst => jst.JournalTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Reminder>()
+            .HasOne(r => r.Property)
+            .WithMany(p => p.Reminders)
+            .HasForeignKey(r => r.PropertyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Reminder>()
+            .HasOne(r => r.PropertyGroup)
+            .WithMany(pg => pg.Reminders)
+            .HasForeignKey(r => r.PropertyGroupId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Maintenance>()
+            .HasOne(m => m.Property)
+            .WithMany(p => p.Maintenances)
+            .HasForeignKey(m => m.PropertyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Maintenance>()
+            .HasOne(m => m.PropertyGroup)
+            .WithMany(pg => pg.Maintenances)
+            .HasForeignKey(m => m.PropertyGroupId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Maintenance>()
+            .HasOne(m => m.MaintenanceType)
+            .WithMany(t => t.Maintenances)
+            .HasForeignKey(m => m.MaintenanceTypeId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -1,0 +1,180 @@
+using backend.DTOs;
+using backend.Models;
+using backend.Repositories;
+
+namespace backend.Services;
+
+public class MaintenanceService : IMaintenanceService
+{
+    private readonly IMaintenanceRepository _maintenanceRepository;
+    private readonly IPropertyRepository _propertyRepository;
+
+    public MaintenanceService(IMaintenanceRepository maintenanceRepository, IPropertyRepository propertyRepository)
+    {
+        _maintenanceRepository = maintenanceRepository;
+        _propertyRepository = propertyRepository;
+    }
+
+    private static bool CanAccessMaintenance(Maintenance m, List<int> userGroupIds, bool isGlobalAdmin, bool isPropertyHubAdmin)
+    {
+        if (isGlobalAdmin || isPropertyHubAdmin) return true;
+        if (userGroupIds.Count == 0) return true;
+        return userGroupIds.Contains(m.PropertyGroupId);
+    }
+
+    public async Task<List<MaintenanceTypeDto>> GetAllMaintenanceTypesAsync()
+    {
+        var types = await _maintenanceRepository.GetAllMaintenanceTypesAsync();
+        return types.Select(MapTypeToDto).ToList();
+    }
+
+    public async Task<MaintenanceTypeDto?> GetMaintenanceTypeByIdAsync(int id)
+    {
+        var entity = await _maintenanceRepository.GetMaintenanceTypeByIdAsync(id);
+        return entity == null ? null : MapTypeToDto(entity);
+    }
+
+    public async Task<MaintenanceTypeDto> CreateMaintenanceTypeAsync(CreateMaintenanceTypeRequest request)
+    {
+        var entity = new MaintenanceType
+        {
+            MaintenanceTypeName = request.MaintenanceTypeName,
+            Description = request.Description,
+            IsActive = request.IsActive ?? true,
+            CreatedDate = DateTime.UtcNow,
+        };
+        entity = await _maintenanceRepository.CreateMaintenanceTypeAsync(entity);
+        return MapTypeToDto(entity);
+    }
+
+    public async Task<MaintenanceTypeDto?> UpdateMaintenanceTypeAsync(int id, UpdateMaintenanceTypeRequest request)
+    {
+        var entity = await _maintenanceRepository.GetMaintenanceTypeByIdAsync(id);
+        if (entity == null) return null;
+
+        if (request.MaintenanceTypeName != null) entity.MaintenanceTypeName = request.MaintenanceTypeName;
+        if (request.Description != null) entity.Description = request.Description;
+        if (request.IsActive.HasValue) entity.IsActive = request.IsActive;
+
+        entity = await _maintenanceRepository.UpdateMaintenanceTypeAsync(entity);
+        return MapTypeToDto(entity);
+    }
+
+    public async Task<bool> IsMaintenanceTypeInUseAsync(int id)
+    {
+        return await _maintenanceRepository.CountMaintenancesByTypeAsync(id) > 0;
+    }
+
+    public async Task<bool> DeleteMaintenanceTypeAsync(int id)
+    {
+        return await _maintenanceRepository.DeleteMaintenanceTypeAsync(id);
+    }
+
+    public async Task<List<MaintenanceResponseDto>> GetAllMaintenancesForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
+    {
+        var all = await _maintenanceRepository.GetAllAsync();
+        var userGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
+
+        return all
+            .Where(m => CanAccessMaintenance(m, userGroupIds, isGlobalAdmin, isPropertyHubAdmin))
+            .Select(MapToDto)
+            .ToList();
+    }
+
+    public async Task<MaintenanceResponseDto?> GetMaintenanceByIdForUserAsync(int id, int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
+    {
+        var m = await _maintenanceRepository.GetByIdAsync(id);
+        if (m == null) return null;
+
+        var userGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
+        if (!CanAccessMaintenance(m, userGroupIds, isGlobalAdmin, isPropertyHubAdmin))
+            return null;
+
+        return MapToDto(m);
+    }
+
+    public async Task<MaintenanceResponseDto> CreateMaintenanceAsync(CreateMaintenanceRequest request)
+    {
+        await EnsurePropertyMatchesGroupAsync(request.PropertyId, request.PropertyGroupId);
+
+        var entity = new Maintenance
+        {
+            PropertyGroupId = request.PropertyGroupId,
+            PropertyId = request.PropertyId,
+            MaintenanceTypeId = request.MaintenanceTypeId,
+            Summary = request.Summary,
+            DetailNotes = request.DetailNotes,
+            WorkDate = request.WorkDate,
+            CreatedDate = DateTime.UtcNow,
+        };
+
+        entity = await _maintenanceRepository.CreateAsync(entity);
+        var loaded = await _maintenanceRepository.GetByIdAsync(entity.MaintenanceId);
+        return MapToDto(loaded!);
+    }
+
+    public async Task<MaintenanceResponseDto?> UpdateMaintenanceAsync(int id, UpdateMaintenanceRequest request)
+    {
+        var entity = await _maintenanceRepository.GetByIdAsync(id);
+        if (entity == null) return null;
+
+        var propId = request.PropertyId ?? entity.PropertyId;
+        var grpId = request.PropertyGroupId ?? entity.PropertyGroupId;
+        await EnsurePropertyMatchesGroupAsync(propId, grpId);
+
+        if (request.PropertyGroupId.HasValue) entity.PropertyGroupId = request.PropertyGroupId.Value;
+        if (request.PropertyId.HasValue) entity.PropertyId = request.PropertyId.Value;
+        if (request.MaintenanceTypeId.HasValue) entity.MaintenanceTypeId = request.MaintenanceTypeId.Value;
+        if (request.Summary != null) entity.Summary = request.Summary;
+        if (request.DetailNotes != null) entity.DetailNotes = request.DetailNotes;
+        if (request.WorkDate.HasValue) entity.WorkDate = request.WorkDate;
+
+        await _maintenanceRepository.UpdateAsync(entity);
+        var loaded = await _maintenanceRepository.GetByIdAsync(id);
+        return MapToDto(loaded!);
+    }
+
+    public async Task<bool> DeleteMaintenanceAsync(int id)
+    {
+        return await _maintenanceRepository.DeleteAsync(id);
+    }
+
+    private async Task EnsurePropertyMatchesGroupAsync(int propertyId, int propertyGroupId)
+    {
+        var prop = await _propertyRepository.GetPropertyByIdAsync(propertyId);
+        if (prop == null)
+            throw new InvalidOperationException("Property not found.");
+        if (prop.PropertyGroupId != propertyGroupId)
+            throw new InvalidOperationException("Selected property does not belong to the selected property group.");
+    }
+
+    private static MaintenanceTypeDto MapTypeToDto(MaintenanceType t)
+    {
+        return new MaintenanceTypeDto
+        {
+            MaintenanceTypeId = t.MaintenanceTypeId,
+            MaintenanceTypeName = t.MaintenanceTypeName,
+            Description = t.Description,
+            IsActive = t.IsActive,
+            CreatedDate = t.CreatedDate,
+        };
+    }
+
+    private static MaintenanceResponseDto MapToDto(Maintenance m)
+    {
+        return new MaintenanceResponseDto
+        {
+            MaintenanceId = m.MaintenanceId,
+            PropertyGroupId = m.PropertyGroupId,
+            PropertyGroupName = m.PropertyGroup?.PropertyGroupName,
+            PropertyId = m.PropertyId,
+            PropertyName = m.Property?.PropertyName,
+            MaintenanceTypeId = m.MaintenanceTypeId,
+            MaintenanceTypeName = m.MaintenanceType?.MaintenanceTypeName ?? string.Empty,
+            Summary = m.Summary,
+            DetailNotes = m.DetailNotes,
+            WorkDate = m.WorkDate,
+            CreatedDate = m.CreatedDate,
+        };
+    }
+}

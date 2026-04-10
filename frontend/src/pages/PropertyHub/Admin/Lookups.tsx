@@ -1,5 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { propertyAdminService, JournalTypeDto, ContactLogTypeDto, TagTypeResponseDto, CreateTagTypeRequest, UpdateTagTypeRequest, CreateJournalTypeRequest, UpdateJournalTypeRequest, CreateContactLogTypeRequest, UpdateContactLogTypeRequest, CreateJournalSubTypeRequest, UpdateJournalSubTypeRequest, JournalSubTypeDto } from '../../../services/propertyAdminService';
+import {
+  propertyAdminService,
+  JournalTypeDto,
+  ContactLogTypeDto,
+  TagTypeResponseDto,
+  CreateTagTypeRequest,
+  UpdateTagTypeRequest,
+  CreateJournalTypeRequest,
+  UpdateJournalTypeRequest,
+  CreateContactLogTypeRequest,
+  UpdateContactLogTypeRequest,
+  CreateJournalSubTypeRequest,
+  UpdateJournalSubTypeRequest,
+  JournalSubTypeDto,
+  MaintenanceTypeDto,
+  CreateMaintenanceTypeRequest,
+  UpdateMaintenanceTypeRequest,
+} from '../../../services/propertyAdminService';
 
 const Lookups: React.FC = () => {
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
@@ -7,7 +24,7 @@ const Lookups: React.FC = () => {
   const [tagTypes, setTagTypes] = useState<TagTypeResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'journal' | 'contact' | 'tag'>('journal');
+  const [activeTab, setActiveTab] = useState<'journal' | 'contact' | 'tag' | 'maintenance'>('journal');
   const [showJournalModal, setShowJournalModal] = useState(false);
   const [editingJournalType, setEditingJournalType] = useState<JournalTypeDto | null>(null);
   const [showJournalSubTypeModal, setShowJournalSubTypeModal] = useState(false);
@@ -17,6 +34,9 @@ const Lookups: React.FC = () => {
   const [editingContactLogType, setEditingContactLogType] = useState<ContactLogTypeDto | null>(null);
   const [showTagModal, setShowTagModal] = useState(false);
   const [editingTagType, setEditingTagType] = useState<TagTypeResponseDto | null>(null);
+  const [maintenanceTypes, setMaintenanceTypes] = useState<MaintenanceTypeDto[]>([]);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [editingMaintenanceType, setEditingMaintenanceType] = useState<MaintenanceTypeDto | null>(null);
 
   useEffect(() => {
     loadData();
@@ -26,14 +46,16 @@ const Lookups: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [journalData, contactData, tagData] = await Promise.all([
+      const [journalData, contactData, tagData, maintenanceData] = await Promise.all([
         propertyAdminService.getJournalTypes(),
         propertyAdminService.getContactLogTypes(),
         propertyAdminService.getTagTypes(),
+        propertyAdminService.getMaintenanceTypes(),
       ]);
       setJournalTypes(journalData);
       setContactLogTypes(contactData);
       setTagTypes(tagData);
+      setMaintenanceTypes(maintenanceData);
     } catch (err: any) {
       setError(err.message || 'Failed to load lookup data');
     } finally {
@@ -259,6 +281,59 @@ const Lookups: React.FC = () => {
     }
   };
 
+  const handleCreateMaintenanceType = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const request: CreateMaintenanceTypeRequest = {
+      maintenanceTypeName: formData.get('maintenanceTypeName') as string,
+      description: (formData.get('description') as string) || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+    };
+
+    try {
+      await propertyAdminService.createMaintenanceType(request);
+      setShowMaintenanceModal(false);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create maintenance type');
+    }
+  };
+
+  const handleUpdateMaintenanceType = async (id: number, e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const request: UpdateMaintenanceTypeRequest = {
+      maintenanceTypeName: (formData.get('maintenanceTypeName') as string) || undefined,
+      description: (formData.get('description') as string) || undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+    };
+
+    try {
+      await propertyAdminService.updateMaintenanceType(id, request);
+      setEditingMaintenanceType(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update maintenance type');
+    }
+  };
+
+  const handleDeleteMaintenanceType = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this maintenance type?')) return;
+
+    try {
+      await propertyAdminService.deleteMaintenanceType(id);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete maintenance type');
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -335,6 +410,28 @@ const Lookups: React.FC = () => {
                 className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
               >
                 Create Tag Type
+              </button>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('maintenance')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'maintenance'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Maintenance types
+            {activeTab === 'maintenance' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMaintenanceModal(true);
+                }}
+                className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
+              >
+                Create maintenance type
               </button>
             )}
           </button>
@@ -727,6 +824,148 @@ const Lookups: React.FC = () => {
                   <div className="flex justify-end space-x-2">
                     <button type="button" onClick={() => setEditingTagType(null)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Update</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'maintenance' && (
+        <div>
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {maintenanceTypes.map((type) => (
+                  <tr key={type.maintenanceTypeId}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {type.maintenanceTypeName}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingMaintenanceType(type)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMaintenanceType(type.maintenanceTypeId)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {showMaintenanceModal && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-bold mb-4">Create maintenance type</h3>
+                <form onSubmit={handleCreateMaintenanceType}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <input
+                      type="text"
+                      name="maintenanceTypeName"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select name="isActive" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="true">
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowMaintenanceModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                      Create
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {editingMaintenanceType && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 className="text-lg font-bold mb-4">Edit maintenance type</h3>
+                <form onSubmit={(e) => handleUpdateMaintenanceType(editingMaintenanceType.maintenanceTypeId, e)}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input
+                      type="text"
+                      name="maintenanceTypeName"
+                      defaultValue={editingMaintenanceType.maintenanceTypeName}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      defaultValue={editingMaintenanceType.description || ''}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                    <select
+                      name="isActive"
+                      defaultValue={
+                        editingMaintenanceType.isActive === true
+                          ? 'true'
+                          : editingMaintenanceType.isActive === false
+                            ? 'false'
+                            : ''
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">Not set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingMaintenanceType(null)}
+                      className="px-4 py-2 border border-gray-300 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                      Update
+                    </button>
                   </div>
                 </form>
               </div>

@@ -127,6 +127,8 @@ builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 builder.Services.AddScoped<IJournalLogRepository, JournalLogRepository>();
 builder.Services.AddScoped<IContactLogRepository, ContactLogRepository>();
+builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
+builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
@@ -139,6 +141,8 @@ builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IJournalLogService, JournalLogService>();
 builder.Services.AddScoped<IContactLogService, ContactLogService>();
+builder.Services.AddScoped<IReminderService, ReminderService>();
+builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
 builder.Services.AddScoped<ITagService, TagService>();
 
 var app = builder.Build();

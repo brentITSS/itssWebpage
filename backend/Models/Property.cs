@@ -75,5 +75,7 @@ public class Property
     public virtual ICollection<Tenancy> Tenancies { get; set; } = new List<Tenancy>();
     public virtual ICollection<JournalLog> JournalLogs { get; set; } = new List<JournalLog>();
     public virtual ICollection<ContactLog> ContactLogs { get; set; } = new List<ContactLog>();
+    public virtual ICollection<Maintenance> Maintenances { get; set; } = new List<Maintenance>();
+    public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
     // Note: TagLog references PropertyGroup, not Property directly
 }

@@ -8,7 +8,7 @@ namespace backend.Controllers;
 
 /// <summary>
 /// Controller for Lookup Tables - Task 5: Property Hub Admin
-/// Manages Journal Types, Contact Log Types, and Tag Types.
+/// Manages Journal Types, Contact Log Types, Tag Types, and Maintenance Types.
 /// Access restricted to Property Hub Admin or Global Admins.
 /// </summary>
 [ApiController]
@@ -19,17 +19,20 @@ public class LookupsController : ControllerBase
     private readonly IJournalLogService _journalLogService;
     private readonly IContactLogService _contactLogService;
     private readonly ITagService _tagService;
+    private readonly IMaintenanceService _maintenanceService;
     private readonly IAuthService _authService;
 
     public LookupsController(
         IJournalLogService journalLogService,
         IContactLogService contactLogService,
         ITagService tagService,
+        IMaintenanceService maintenanceService,
         IAuthService authService)
     {
         _journalLogService = journalLogService;
         _contactLogService = contactLogService;
         _tagService = tagService;
+        _maintenanceService = maintenanceService;
         _authService = authService;
     }
 
@@ -316,6 +319,104 @@ public class LookupsController : ControllerBase
     }
 
     // Journal Sub Types
+
+    // Maintenance Types
+
+    /// <summary>
+    /// Get all maintenance types. Accessible to Property Hub workstream users or Global Admins.
+    /// </summary>
+    [HttpGet("maintenance-types")]
+    public async Task<ActionResult<List<MaintenanceTypeDto>>> GetMaintenanceTypes()
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!HasPropertyHubAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub workstream access required");
+        }
+
+        var types = await _maintenanceService.GetAllMaintenanceTypesAsync();
+        return Ok(types);
+    }
+
+    /// <summary>
+    /// Create maintenance type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPost("maintenance-types")]
+    public async Task<ActionResult<MaintenanceTypeDto>> CreateMaintenanceType([FromBody] CreateMaintenanceTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var created = await _maintenanceService.CreateMaintenanceTypeAsync(request);
+        return Ok(created);
+    }
+
+    /// <summary>
+    /// Update maintenance type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpPut("maintenance-types/{id}")]
+    public async Task<ActionResult<MaintenanceTypeDto>> UpdateMaintenanceType(int id, [FromBody] UpdateMaintenanceTypeRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var updated = await _maintenanceService.UpdateMaintenanceTypeAsync(id, request);
+        if (updated == null) return NotFound();
+
+        return Ok(updated);
+    }
+
+    /// <summary>
+    /// Delete maintenance type. Only accessible to Property Hub Admin or Global Admins.
+    /// </summary>
+    [HttpDelete("maintenance-types/{id}")]
+    public async Task<ActionResult> DeleteMaintenanceType(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub Admin permission required");
+        }
+
+        var existing = await _maintenanceService.GetMaintenanceTypeByIdAsync(id);
+        if (existing == null) return NotFound();
+
+        if (await _maintenanceService.IsMaintenanceTypeInUseAsync(id))
+        {
+            return Conflict(new { message = "Cannot delete maintenance type while maintenance records reference it." });
+        }
+
+        var deleted = await _maintenanceService.DeleteMaintenanceTypeAsync(id);
+        if (!deleted) return NotFound();
+
+        return NoContent();
+    }
 
     /// <summary>
     /// Create journal sub type. Only accessible to Property Hub Admin or Global Admins.

@@ -1,0 +1,12 @@
+using backend.DTOs;
+
+namespace backend.Services;
+
+public interface IReminderService
+{
+    Task<List<ReminderResponseDto>> GetAllRemindersForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin);
+    Task<ReminderResponseDto?> GetReminderByIdForUserAsync(int reminderId, int userId, bool isGlobalAdmin, bool isPropertyHubAdmin);
+    Task<ReminderResponseDto> CreateReminderAsync(CreateReminderRequest request);
+    Task<ReminderResponseDto?> UpdateReminderAsync(int reminderId, UpdateReminderRequest request);
+    Task<bool> DeleteReminderAsync(int reminderId);
+}

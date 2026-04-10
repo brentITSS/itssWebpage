@@ -94,6 +94,26 @@ export interface UpdateJournalSubTypeRequest {
   isActive?: boolean;
 }
 
+export interface MaintenanceTypeDto {
+  maintenanceTypeId: number;
+  maintenanceTypeName: string;
+  description?: string;
+  isActive?: boolean;
+  createdDate?: string;
+}
+
+export interface CreateMaintenanceTypeRequest {
+  maintenanceTypeName: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateMaintenanceTypeRequest {
+  maintenanceTypeName?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
 export const propertyAdminService = {
   // Property Groups
   getPropertyGroups: async (): Promise<PropertyGroupResponseDto[]> => {
@@ -302,6 +322,30 @@ export const propertyAdminService = {
 
   deleteTagType: async (id: number): Promise<void> => {
     await apiClient<void>(`/lookups/tag-types/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getMaintenanceTypes: async (): Promise<MaintenanceTypeDto[]> => {
+    return await apiClient<MaintenanceTypeDto[]>('/lookups/maintenance-types');
+  },
+
+  createMaintenanceType: async (request: CreateMaintenanceTypeRequest): Promise<MaintenanceTypeDto> => {
+    return await apiClient<MaintenanceTypeDto>('/lookups/maintenance-types', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateMaintenanceType: async (id: number, request: UpdateMaintenanceTypeRequest): Promise<MaintenanceTypeDto> => {
+    return await apiClient<MaintenanceTypeDto>(`/lookups/maintenance-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  deleteMaintenanceType: async (id: number): Promise<void> => {
+    await apiClient<void>(`/lookups/maintenance-types/${id}`, {
       method: 'DELETE',
     });
   },

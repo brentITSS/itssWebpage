@@ -11,6 +11,8 @@ const PropertyHubLayout: React.FC = () => {
   const isAdminActive = pathname.startsWith('/Property Hub/Admin');
   const isJournalLogs = pathname.startsWith('/Property Hub/Journal Logs');
   const isContactLogs = pathname.startsWith('/Property Hub/Contact Logs');
+  const isReminders = pathname.startsWith('/Property Hub/Reminders');
+  const isMaintenance = pathname.startsWith('/Property Hub/Maintenance');
 
   const tabClass = (active: boolean) =>
     [
@@ -54,6 +56,18 @@ const PropertyHubLayout: React.FC = () => {
                 className={tabClass(isContactLogs)}
               >
                 Contact Logs
+              </Link>
+              <Link
+                to="/Property Hub/Reminders"
+                className={tabClass(isReminders)}
+              >
+                Reminders
+              </Link>
+              <Link
+                to="/Property Hub/Maintenance"
+                className={tabClass(isMaintenance)}
+              >
+                Maintenance
               </Link>
               <Link
                 to="/Login"

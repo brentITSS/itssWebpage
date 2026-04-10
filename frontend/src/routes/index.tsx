@@ -21,6 +21,12 @@ import JournalLogDetail from '../pages/PropertyHub/JournalLogs/Detail';
 import ContactLogsList from '../pages/PropertyHub/ContactLogs/List';
 import ContactLogForm from '../pages/PropertyHub/ContactLogs/Form';
 import ContactLogDetail from '../pages/PropertyHub/ContactLogs/Detail';
+import RemindersList from '../pages/PropertyHub/Reminders/List';
+import ReminderForm from '../pages/PropertyHub/Reminders/Form';
+import ReminderDetail from '../pages/PropertyHub/Reminders/Detail';
+import MaintenanceList from '../pages/PropertyHub/Maintenance/List';
+import MaintenanceForm from '../pages/PropertyHub/Maintenance/Form';
+import MaintenanceDetail from '../pages/PropertyHub/Maintenance/Detail';
 
 // Protected route wrapper - checks for Global Admin role
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -90,6 +96,14 @@ const AppRoutes: React.FC = () => {
         <Route path="Contact Logs" element={<ContactLogsList />} />
         <Route path="Contact Logs/New" element={<ContactLogForm />} />
         <Route path="Contact Logs/:id" element={<ContactLogDetail />} />
+
+        <Route path="Reminders" element={<RemindersList />} />
+        <Route path="Reminders/New" element={<ReminderForm />} />
+        <Route path="Reminders/:id" element={<ReminderDetail />} />
+
+        <Route path="Maintenance" element={<MaintenanceList />} />
+        <Route path="Maintenance/New" element={<MaintenanceForm />} />
+        <Route path="Maintenance/:id" element={<MaintenanceDetail />} />
       </Route>
 
       {/* Default redirect */}
