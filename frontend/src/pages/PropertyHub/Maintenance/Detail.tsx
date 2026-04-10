@@ -81,6 +81,12 @@ const MaintenanceDetail: React.FC = () => {
           <span className="font-medium text-gray-700">Type: </span>
           {row.maintenanceTypeName}
         </p>
+        {row.maintenanceStatusName && (
+          <p>
+            <span className="font-medium text-gray-700">Status: </span>
+            {row.maintenanceStatusName}
+          </p>
+        )}
         <p>
           <span className="font-medium text-gray-700">Property group: </span>
           {row.propertyGroupName}

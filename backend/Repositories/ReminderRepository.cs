@@ -17,6 +17,7 @@ public class ReminderRepository : IReminderRepository
         return await _context.Reminders
             .Include(r => r.Property)
             .Include(r => r.PropertyGroup)
+            .Include(r => r.ReminderPriority)
             .Include(r => r.Tenancy)
                 .ThenInclude(t => t!.Property)
             .Include(r => r.Tenant)
@@ -31,6 +32,7 @@ public class ReminderRepository : IReminderRepository
         return await _context.Reminders
             .Include(r => r.Property)
             .Include(r => r.PropertyGroup)
+            .Include(r => r.ReminderPriority)
             .Include(r => r.Tenancy)
                 .ThenInclude(t => t!.Property)
             .Include(r => r.Tenant)
@@ -62,5 +64,48 @@ public class ReminderRepository : IReminderRepository
         _context.Reminders.Remove(entity);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<List<ReminderPriority>> GetAllReminderPrioritiesAsync()
+    {
+        return await _context.ReminderPriorities
+            .OrderBy(p => p.SortOrder ?? int.MaxValue)
+            .ThenBy(p => p.ReminderPriorityName)
+            .ToListAsync();
+    }
+
+    public async Task<ReminderPriority?> GetReminderPriorityByIdAsync(int id)
+    {
+        return await _context.ReminderPriorities.FindAsync(id);
+    }
+
+    public async Task<ReminderPriority> CreateReminderPriorityAsync(ReminderPriority priority)
+    {
+        if (priority.CreatedDate == null)
+            priority.CreatedDate = DateTime.UtcNow;
+        _context.ReminderPriorities.Add(priority);
+        await _context.SaveChangesAsync();
+        return priority;
+    }
+
+    public async Task<ReminderPriority> UpdateReminderPriorityAsync(ReminderPriority priority)
+    {
+        _context.ReminderPriorities.Update(priority);
+        await _context.SaveChangesAsync();
+        return priority;
+    }
+
+    public async Task<bool> DeleteReminderPriorityAsync(int id)
+    {
+        var entity = await _context.ReminderPriorities.FindAsync(id);
+        if (entity == null) return false;
+        _context.ReminderPriorities.Remove(entity);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<int> CountRemindersByPriorityAsync(int reminderPriorityId)
+    {
+        return await _context.Reminders.CountAsync(r => r.ReminderPriorityId == reminderPriorityId);
     }
 }

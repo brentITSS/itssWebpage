@@ -1,43 +1,136 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { propertyService, PropertyGroupResponseDto, PropertyResponseDto } from '../../services/propertyService';
+import { propertyAdminService } from '../../services/propertyAdminService';
+import { reminderService } from '../../services/reminderService';
+import { maintenanceService } from '../../services/maintenanceService';
+import {
+  countActiveTenantsForProperty,
+  countMaintenanceForProperty,
+  countOpenRemindersForProperty,
+} from './propertyHubMetrics';
+
+function IconUsers({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconReminder({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconWrench({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 const PropertyHubHome: React.FC = () => {
   const navigate = useNavigate();
   const [propertyGroups, setPropertyGroups] = useState<PropertyGroupResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
+  const [tenancies, setTenancies] = useState<Awaited<ReturnType<typeof propertyAdminService.getTenancies>>>([]);
+  const [reminders, setReminders] = useState<Awaited<ReturnType<typeof reminderService.getReminders>>>([]);
+  const [maintenanceRows, setMaintenanceRows] = useState<
+    Awaited<ReturnType<typeof maintenanceService.getMaintenanceRecords>>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [groupsData, propertiesData, tenanciesData, remindersData, maintData] = await Promise.all([
+          propertyService.getPropertyGroups(),
+          propertyService.getProperties(),
+          propertyAdminService.getTenancies(),
+          reminderService.getReminders(),
+          maintenanceService.getMaintenanceRecords(),
+        ]);
+        setPropertyGroups(groupsData);
+        setProperties(propertiesData);
+        setTenancies(tenanciesData);
+        setReminders(remindersData);
+        setMaintenanceRows(maintData);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load property data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [groupsData, propertiesData] = await Promise.all([
-        propertyService.getPropertyGroups(),
-        propertyService.getProperties(),
-      ]);
-      setPropertyGroups(groupsData);
-      setProperties(propertiesData);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load property data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Group properties by property group
-  const propertiesByGroup = propertyGroups.map(group => ({
+  const propertiesByGroup = propertyGroups.map((group) => ({
     group,
-    properties: properties.filter(p => p.propertyGroupId === group.propertyGroupId),
+    properties: properties.filter((p) => p.propertyGroupId === group.propertyGroupId),
   }));
   const unassignedProperties = properties.filter(
     (p) => !propertyGroups.some((g) => g.propertyGroupId === p.propertyGroupId)
   );
+
+  const PropertyCard: React.FC<{ property: PropertyResponseDto; muted?: boolean }> = ({ property, muted }) => {
+    const tenants = countActiveTenantsForProperty(property.propertyId, tenancies);
+    const openRem = countOpenRemindersForProperty(property.propertyId, reminders);
+    const maint = countMaintenanceForProperty(property.propertyId, maintenanceRows);
+
+    return (
+      <button
+        type="button"
+        onClick={() => navigate(`/Property Hub/Property/${property.propertyId}`)}
+        className={`w-full rounded-xl border p-5 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+          muted
+            ? 'border-slate-200 bg-slate-50 hover:border-slate-300'
+            : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md'
+        }`}
+      >
+        <h3 className="text-lg font-semibold text-slate-900">{property.propertyName}</h3>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-2">
+            <IconUsers className="shrink-0 text-blue-600" />
+            <div>
+              <p className="text-lg font-semibold text-blue-900">{tenants}</p>
+              <p className="text-xs font-medium text-blue-800/80">Active tenants</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-2">
+            <IconReminder className="shrink-0 text-blue-600" />
+            <div>
+              <p className="text-lg font-semibold text-blue-900">{openRem}</p>
+              <p className="text-xs font-medium text-blue-800/80">Open reminders</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-2">
+            <IconWrench className="shrink-0 text-blue-600" />
+            <div>
+              <p className="text-lg font-semibold text-blue-900">{maint}</p>
+              <p className="text-xs font-medium text-blue-800/80">Maintenance</p>
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  };
 
   if (loading) {
     return (
@@ -47,73 +140,30 @@ const PropertyHubHome: React.FC = () => {
     );
   }
 
-  const SummaryCard: React.FC<{
-    label: string;
-    value: number;
-    accent: string;
-  }> = ({ label, value, accent }) => (
+  const SummaryCard: React.FC<{ label: string; value: number; accent: string }> = ({ label, value, accent }) => (
     <div className={`rounded-lg border p-4 ${accent}`}>
       <p className="text-[11px] font-semibold uppercase tracking-wide">{label}</p>
       <p className="mt-2 text-3xl font-semibold">{value}</p>
     </div>
   );
 
-  const PropertyCard: React.FC<{ property: PropertyResponseDto; muted?: boolean }> = ({
-    property,
-    muted,
-  }) => (
-    <div
-      className={`group rounded-lg border p-4 transition ${
-        muted
-          ? 'border-slate-200 bg-slate-50'
-          : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:shadow-md'
-      }`}
-    >
-      <h3 className="font-semibold text-slate-900">{property.propertyName}</h3>
-      {property.address && <p className="mt-2 text-sm text-slate-600">{property.address}</p>}
-      {property.postCode && <p className="text-sm text-slate-500">{property.postCode}</p>}
-      {!muted && (
-        <div className="mt-4 flex items-center gap-2 text-xs font-semibold">
-          <button
-            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-700 transition hover:border-slate-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/Property Hub/Journal Logs?propertyId=${property.propertyId}`);
-            }}
-          >
-            Journal Logs
-          </button>
-          <button
-            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-700 transition hover:border-slate-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/Property Hub/Contact Logs?propertyId=${property.propertyId}`);
-            }}
-          >
-            Contact Logs
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-slate-200 bg-white p-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Property Overview</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Property overview</h1>
         <p className="mt-1 text-sm text-slate-500">
-          View property groups and quickly access journal and contact activity.
+          Select a property to open its dashboard (maintenance, reminders, tenants, contact logs).
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <SummaryCard
-          label="Property Groups"
+          label="Property groups"
           value={propertyGroups.length}
           accent="border-slate-200 bg-white text-slate-900"
         />
         <SummaryCard
-          label="Total Properties"
+          label="Total properties"
           value={properties.length}
           accent="border-indigo-200 bg-indigo-50 text-indigo-900"
         />
@@ -146,12 +196,10 @@ const PropertyHubHome: React.FC = () => {
               <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">{group.propertyGroupName}</h2>
-                  {group.description && (
-                    <p className="mt-1 text-sm text-slate-500">{group.description}</p>
-                  )}
+                  {group.description && <p className="mt-1 text-sm text-slate-500">{group.description}</p>}
                 </div>
                 <div className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                  {groupProperties.length} {groupProperties.length === 1 ? 'Property' : 'Properties'}
+                  {groupProperties.length} {groupProperties.length === 1 ? 'property' : 'properties'}
                 </div>
               </div>
 
@@ -162,9 +210,7 @@ const PropertyHubHome: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="px-6 py-8 text-center text-sm text-slate-500">
-                  No properties in this group
-                </div>
+                <div className="px-6 py-8 text-center text-sm text-slate-500">No properties in this group</div>
               )}
             </section>
           ))}
@@ -174,10 +220,8 @@ const PropertyHubHome: React.FC = () => {
       {unassignedProperties.length > 0 && (
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Unassigned Properties</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              These properties do not belong to a property group.
-            </p>
+            <h2 className="text-lg font-semibold text-slate-900">Unassigned properties</h2>
+            <p className="mt-1 text-sm text-slate-500">These properties are not in a property group.</p>
           </div>
           <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
             {unassignedProperties.map((property) => (

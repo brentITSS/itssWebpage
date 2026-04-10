@@ -27,6 +27,8 @@ import ReminderDetail from '../pages/PropertyHub/Reminders/Detail';
 import MaintenanceList from '../pages/PropertyHub/Maintenance/List';
 import MaintenanceForm from '../pages/PropertyHub/Maintenance/Form';
 import MaintenanceDetail from '../pages/PropertyHub/Maintenance/Detail';
+import PropertyDashboard from '../pages/PropertyHub/PropertyDashboard';
+import TenantsList from '../pages/PropertyHub/Tenants/List';
 
 // Protected route wrapper - checks for Global Admin role
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -76,6 +78,7 @@ const AppRoutes: React.FC = () => {
         }
       >
         <Route path="Home" element={<PropertyHubHome />} />
+        <Route path="Property/:propertyId" element={<PropertyDashboard />} />
 
         {/* Property Hub Admin Routes */}
         <Route path="Admin" element={<PropertyHubAdmin />}>
@@ -104,6 +107,8 @@ const AppRoutes: React.FC = () => {
         <Route path="Maintenance" element={<MaintenanceList />} />
         <Route path="Maintenance/New" element={<MaintenanceForm />} />
         <Route path="Maintenance/:id" element={<MaintenanceDetail />} />
+
+        <Route path="Tenants" element={<TenantsList />} />
       </Route>
 
       {/* Default redirect */}

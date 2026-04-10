@@ -1,5 +1,34 @@
 namespace backend.DTOs;
 
+public class ReminderPriorityDto
+{
+    public int ReminderPriorityId { get; set; }
+    public string ReminderPriorityName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? DisplayColor { get; set; }
+    public int? SortOrder { get; set; }
+    public bool? IsActive { get; set; }
+    public DateTime? CreatedDate { get; set; }
+}
+
+public class CreateReminderPriorityRequest
+{
+    public string ReminderPriorityName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? DisplayColor { get; set; }
+    public int? SortOrder { get; set; }
+    public bool? IsActive { get; set; }
+}
+
+public class UpdateReminderPriorityRequest
+{
+    public string? ReminderPriorityName { get; set; }
+    public string? Description { get; set; }
+    public string? DisplayColor { get; set; }
+    public int? SortOrder { get; set; }
+    public bool? IsActive { get; set; }
+}
+
 public class ReminderResponseDto
 {
     public int ReminderId { get; set; }
@@ -12,6 +41,9 @@ public class ReminderResponseDto
     public int? PropertyId { get; set; }
     public string? PropertyName { get; set; }
     public string Title { get; set; } = string.Empty;
+    public int? ReminderPriorityId { get; set; }
+    public string? ReminderPriorityName { get; set; }
+    public string? ReminderPriorityColor { get; set; }
     public string? Notes { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedDate { get; set; }
@@ -28,6 +60,7 @@ public class CreateReminderRequest
     public int? PropertyGroupId { get; set; }
     public int? PropertyId { get; set; }
     public string Title { get; set; } = string.Empty;
+    public int? ReminderPriorityId { get; set; }
     public string? Notes { get; set; }
     /// <summary>When true, stored as reminderActive = false.</summary>
     public bool IsCompleted { get; set; }
@@ -39,6 +72,7 @@ public class UpdateReminderRequest
     public int? TenancyId { get; set; }
     public int? PropertyGroupId { get; set; }
     public int? PropertyId { get; set; }
+    public int? ReminderPriorityId { get; set; }
     public string? Title { get; set; }
     public string? Notes { get; set; }
     public bool? IsCompleted { get; set; }

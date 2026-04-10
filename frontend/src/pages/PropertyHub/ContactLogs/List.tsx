@@ -1,11 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { contactLogService, ContactLogResponseDto } from '../../../services/contactLogService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
+import HubScopedHeader from '../HubScopedHeader';
+import { countContactLogsForProperty } from '../propertyHubMetrics';
 
 const ContactLogsList: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const propertyIdFromUrl = searchParams.get('propertyId');
+  const scopedPropertyId = propertyIdFromUrl ? parseInt(propertyIdFromUrl, 10) : NaN;
+  const scoped = Number.isFinite(scopedPropertyId);
+
   const [contactLogs, setContactLogs] = useState<ContactLogResponseDto[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<ContactLogResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
@@ -13,12 +19,24 @@ const ContactLogsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters - initialize from URL query parameter if present
-  const propertyIdFromUrl = searchParams.get('propertyId');
-  const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(propertyIdFromUrl ? parseInt(propertyIdFromUrl) : '');
+  const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(
+    propertyIdFromUrl ? parseInt(propertyIdFromUrl, 10) : ''
+  );
   const [filterContactLogTypeId, setFilterContactLogTypeId] = useState<number | ''>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
+
+  useEffect(() => {
+    const pid = searchParams.get('propertyId');
+    if (pid) {
+      const n = parseInt(pid, 10);
+      if (Number.isFinite(n)) setFilterPropertyId(n);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (scoped) setFilterPropertyId(scopedPropertyId);
+  }, [scoped, scopedPropertyId]);
 
   useEffect(() => {
     loadData();
@@ -48,19 +66,19 @@ const ContactLogsList: React.FC = () => {
     let filtered = [...contactLogs];
 
     if (filterPropertyId) {
-      filtered = filtered.filter(log => log.propertyId === filterPropertyId);
+      filtered = filtered.filter((log) => log.propertyId === filterPropertyId);
     }
 
     if (filterContactLogTypeId) {
-      filtered = filtered.filter(log => log.contactLogTypeId === filterContactLogTypeId);
+      filtered = filtered.filter((log) => log.contactLogTypeId === filterContactLogTypeId);
     }
 
     if (filterDateFrom) {
-      filtered = filtered.filter(log => new Date(log.contactDate) >= new Date(filterDateFrom));
+      filtered = filtered.filter((log) => new Date(log.contactDate) >= new Date(filterDateFrom));
     }
 
     if (filterDateTo) {
-      filtered = filtered.filter(log => new Date(log.contactDate) <= new Date(filterDateTo));
+      filtered = filtered.filter((log) => new Date(log.contactDate) <= new Date(filterDateTo));
     }
 
     setFilteredLogs(filtered);
@@ -81,79 +99,211 @@ const ContactLogsList: React.FC = () => {
     }
   };
 
+  const scopedProperty = properties.find((p) => p.propertyId === scopedPropertyId);
+  const scopedTotal = useMemo(
+    () => (scoped ? countContactLogsForProperty(scopedPropertyId, contactLogs) : 0),
+    [scoped, scopedPropertyId, contactLogs]
+  );
+
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <div className="py-8 text-center">Loading...</div>;
+  }
+
+  if (scoped && !scopedProperty) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+        Unknown property.
+        <button type="button" className="ml-2 underline" onClick={() => navigate('/Property Hub/Home')}>
+          Home
+        </button>
+      </div>
+    );
+  }
+
+  if (scoped && scopedProperty) {
+    return (
+      <div>
+        <HubScopedHeader
+          propertyId={scopedProperty.propertyId}
+          propertyName={scopedProperty.propertyName}
+          title="Contact logs"
+          subtitle={`${scopedTotal} total for this property`}
+          actions={
+            <button
+              type="button"
+              onClick={() => navigate('/Property Hub/Contact Logs/New')}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              + New contact log
+            </button>
+          }
+        />
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>
+        )}
+
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase text-slate-500">Showing</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{filteredLogs.length}</p>
+          </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-3">
+          <select
+            value={filterContactLogTypeId === '' ? '' : String(filterContactLogTypeId)}
+            onChange={(e) => setFilterContactLogTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All types</option>
+            {contactLogTypes.map((t) => (
+              <option key={t.contactLogTypeId} value={t.contactLogTypeId}>
+                {t.contactLogTypeName}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="From"
+          />
+          <input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="To"
+          />
+        </div>
+
+        <div className="space-y-3">
+          {filteredLogs.length === 0 ? (
+            <p className="text-sm text-slate-500">No contact logs match your filters.</p>
+          ) : (
+            filteredLogs.map((log) => (
+              <div
+                key={log.contactLogId}
+                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-slate-900">{log.subject}</h3>
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900">
+                      {log.contactLogTypeName}
+                    </span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm text-slate-600">{log.notes || '—'}</p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {new Date(log.contactDate).toLocaleDateString()}
+                    {log.tenantName ? ` · ${log.tenantName}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(log.contactLogId)}
+                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Contact Logs</h2>
         <button
+          type="button"
           onClick={() => navigate('/Property Hub/Contact Logs/New')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
           New Contact Log
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
+        <div className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-4">Filters</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="mb-6 rounded-lg bg-white p-4 shadow">
+        <h3 className="mb-4 text-sm font-medium text-gray-700">Filters</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
             <select
               value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
-              onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value) : '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             >
               <option value="">All Properties</option>
-              {properties.map(p => (
-                <option key={p.propertyId} value={p.propertyId}>{p.propertyName}</option>
+              {properties.map((p) => (
+                <option key={p.propertyId} value={p.propertyId}>
+                  {p.propertyName}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contact Log Type</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Contact Log Type</label>
             <select
-              value={filterContactLogTypeId}
-              onChange={(e) => setFilterContactLogTypeId(e.target.value ? parseInt(e.target.value) : '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={filterContactLogTypeId === '' ? '' : String(filterContactLogTypeId)}
+              onChange={(e) => setFilterContactLogTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             >
               <option value="">All Types</option>
-              {contactLogTypes.map(t => (
-                <option key={t.contactLogTypeId} value={t.contactLogTypeId}>{t.contactLogTypeName}</option>
+              {contactLogTypes.map((t) => (
+                <option key={t.contactLogTypeId} value={t.contactLogTypeId}>
+                  {t.contactLogTypeName}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Date From</label>
             <input
               type="date"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Date To</label>
             <input
               type="date"
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             />
           </div>
         </div>
         {(filterPropertyId || filterContactLogTypeId || filterDateFrom || filterDateTo) && (
           <button
+            type="button"
             onClick={() => {
               setFilterPropertyId('');
               setFilterContactLogTypeId('');
@@ -167,21 +317,20 @@ const ContactLogsList: React.FC = () => {
         )}
       </div>
 
-      {/* Contact Logs Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="overflow-hidden rounded-lg bg-white shadow">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Property</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Tenant</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Subject</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Notes</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200 bg-white">
             {filteredLogs.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
@@ -191,30 +340,33 @@ const ContactLogsList: React.FC = () => {
             ) : (
               filteredLogs.map((log) => (
                 <tr key={log.contactLogId} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {new Date(log.contactDate).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.propertyName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.tenantName || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.contactLogTypeName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{log.subject}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{log.propertyName}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{log.tenantName || '-'}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{log.contactLogTypeName}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{log.subject}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="max-w-xs truncate">{log.notes || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                  <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
                     <button
+                      type="button"
                       onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
                       className="text-blue-600 hover:text-blue-900"
                     >
                       View
                     </button>
                     <button
+                      type="button"
                       onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
                       className="text-green-600 hover:text-green-900"
                     >
                       Edit
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDelete(log.contactLogId)}
                       className="text-red-600 hover:text-red-900"
                     >

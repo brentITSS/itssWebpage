@@ -70,6 +70,56 @@ public class MaintenanceService : IMaintenanceService
         return await _maintenanceRepository.DeleteMaintenanceTypeAsync(id);
     }
 
+    public async Task<List<MaintenanceStatusDto>> GetAllMaintenanceStatusesAsync()
+    {
+        var list = await _maintenanceRepository.GetAllMaintenanceStatusesAsync();
+        return list.Select(MapStatusToDto).ToList();
+    }
+
+    public async Task<MaintenanceStatusDto?> GetMaintenanceStatusByIdAsync(int id)
+    {
+        var e = await _maintenanceRepository.GetMaintenanceStatusByIdAsync(id);
+        return e == null ? null : MapStatusToDto(e);
+    }
+
+    public async Task<MaintenanceStatusDto> CreateMaintenanceStatusAsync(CreateMaintenanceStatusRequest request)
+    {
+        var entity = new MaintenanceStatus
+        {
+            MaintenanceStatusName = request.MaintenanceStatusName,
+            Description = request.Description,
+            SortOrder = request.SortOrder ?? 0,
+            IsActive = request.IsActive ?? true,
+            CreatedDate = DateTime.UtcNow,
+        };
+        entity = await _maintenanceRepository.CreateMaintenanceStatusAsync(entity);
+        return MapStatusToDto(entity);
+    }
+
+    public async Task<MaintenanceStatusDto?> UpdateMaintenanceStatusAsync(int id, UpdateMaintenanceStatusRequest request)
+    {
+        var entity = await _maintenanceRepository.GetMaintenanceStatusByIdAsync(id);
+        if (entity == null) return null;
+
+        if (request.MaintenanceStatusName != null) entity.MaintenanceStatusName = request.MaintenanceStatusName;
+        if (request.Description != null) entity.Description = request.Description;
+        if (request.SortOrder.HasValue) entity.SortOrder = request.SortOrder;
+        if (request.IsActive.HasValue) entity.IsActive = request.IsActive;
+
+        entity = await _maintenanceRepository.UpdateMaintenanceStatusAsync(entity);
+        return MapStatusToDto(entity);
+    }
+
+    public async Task<bool> IsMaintenanceStatusInUseAsync(int id)
+    {
+        return await _maintenanceRepository.CountMaintenancesByStatusAsync(id) > 0;
+    }
+
+    public async Task<bool> DeleteMaintenanceStatusAsync(int id)
+    {
+        return await _maintenanceRepository.DeleteMaintenanceStatusAsync(id);
+    }
+
     public async Task<List<MaintenanceResponseDto>> GetAllMaintenancesForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
     {
         var all = await _maintenanceRepository.GetAllAsync();
@@ -102,6 +152,7 @@ public class MaintenanceService : IMaintenanceService
             PropertyGroupId = request.PropertyGroupId,
             PropertyId = request.PropertyId,
             MaintenanceTypeId = request.MaintenanceTypeId,
+            MaintenanceStatusId = request.MaintenanceStatusId,
             Summary = request.Summary,
             DetailNotes = request.DetailNotes,
             WorkDate = request.WorkDate,
@@ -125,6 +176,7 @@ public class MaintenanceService : IMaintenanceService
         if (request.PropertyGroupId.HasValue) entity.PropertyGroupId = request.PropertyGroupId.Value;
         if (request.PropertyId.HasValue) entity.PropertyId = request.PropertyId.Value;
         if (request.MaintenanceTypeId.HasValue) entity.MaintenanceTypeId = request.MaintenanceTypeId.Value;
+        entity.MaintenanceStatusId = request.MaintenanceStatusId;
         if (request.Summary != null) entity.Summary = request.Summary;
         if (request.DetailNotes != null) entity.DetailNotes = request.DetailNotes;
         if (request.WorkDate.HasValue) entity.WorkDate = request.WorkDate;
@@ -160,6 +212,19 @@ public class MaintenanceService : IMaintenanceService
         };
     }
 
+    private static MaintenanceStatusDto MapStatusToDto(MaintenanceStatus s)
+    {
+        return new MaintenanceStatusDto
+        {
+            MaintenanceStatusId = s.MaintenanceStatusId,
+            MaintenanceStatusName = s.MaintenanceStatusName,
+            Description = s.Description,
+            SortOrder = s.SortOrder,
+            IsActive = s.IsActive,
+            CreatedDate = s.CreatedDate,
+        };
+    }
+
     private static MaintenanceResponseDto MapToDto(Maintenance m)
     {
         return new MaintenanceResponseDto
@@ -171,6 +236,8 @@ public class MaintenanceService : IMaintenanceService
             PropertyName = m.Property?.PropertyName,
             MaintenanceTypeId = m.MaintenanceTypeId,
             MaintenanceTypeName = m.MaintenanceType?.MaintenanceTypeName ?? string.Empty,
+            MaintenanceStatusId = m.MaintenanceStatusId,
+            MaintenanceStatusName = m.MaintenanceStatus?.MaintenanceStatusName,
             Summary = m.Summary,
             DetailNotes = m.DetailNotes,
             WorkDate = m.WorkDate,

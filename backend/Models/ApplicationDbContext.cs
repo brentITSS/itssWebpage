@@ -51,7 +51,9 @@ public class ApplicationDbContext : DbContext
 
     // Reminders & maintenance
     public DbSet<Reminder> Reminders { get; set; }
+    public DbSet<ReminderPriority> ReminderPriorities { get; set; }
     public DbSet<MaintenanceType> MaintenanceTypes { get; set; }
+    public DbSet<MaintenanceStatus> MaintenanceStatuses { get; set; }
     public DbSet<Maintenance> Maintenances { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -136,6 +138,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(r => r.CreatedBy).HasColumnName("createdBy").HasMaxLength(255);
             entity.Property(r => r.CreatedDate).HasColumnName("createdDate");
             entity.Property(r => r.ReminderActive).HasColumnName("reminderActive");
+            entity.Property(r => r.ReminderPriorityId).HasColumnName("reminderPriorityID");
             entity.Property(r => r.RowVersion).HasColumnName("SSMA_TimeStamp").IsRowVersion();
 
             entity.HasOne(r => r.Property)
@@ -157,6 +160,11 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(r => r.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.ReminderPriority)
+                .WithMany(p => p.Reminders)
+                .HasForeignKey(r => r.ReminderPriorityId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Maintenance>()
@@ -175,6 +183,12 @@ public class ApplicationDbContext : DbContext
             .HasOne(m => m.MaintenanceType)
             .WithMany(t => t.Maintenances)
             .HasForeignKey(m => m.MaintenanceTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Maintenance>()
+            .HasOne(m => m.MaintenanceStatus)
+            .WithMany(s => s.Maintenances)
+            .HasForeignKey(m => m.MaintenanceStatusId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

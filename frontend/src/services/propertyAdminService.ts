@@ -114,6 +114,55 @@ export interface UpdateMaintenanceTypeRequest {
   isActive?: boolean;
 }
 
+export interface MaintenanceStatusDto {
+  maintenanceStatusId: number;
+  maintenanceStatusName: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  createdDate?: string;
+}
+
+export interface CreateMaintenanceStatusRequest {
+  maintenanceStatusName: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateMaintenanceStatusRequest {
+  maintenanceStatusName?: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface ReminderPriorityDto {
+  reminderPriorityId: number;
+  reminderPriorityName: string;
+  description?: string;
+  displayColor?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  createdDate?: string;
+}
+
+export interface CreateReminderPriorityRequest {
+  reminderPriorityName: string;
+  description?: string;
+  displayColor?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateReminderPriorityRequest {
+  reminderPriorityName?: string;
+  description?: string;
+  displayColor?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
 export const propertyAdminService = {
   // Property Groups
   getPropertyGroups: async (): Promise<PropertyGroupResponseDto[]> => {
@@ -346,6 +395,54 @@ export const propertyAdminService = {
 
   deleteMaintenanceType: async (id: number): Promise<void> => {
     await apiClient<void>(`/lookups/maintenance-types/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getMaintenanceStatuses: async (): Promise<MaintenanceStatusDto[]> => {
+    return await apiClient<MaintenanceStatusDto[]>('/lookups/maintenance-statuses');
+  },
+
+  createMaintenanceStatus: async (request: CreateMaintenanceStatusRequest): Promise<MaintenanceStatusDto> => {
+    return await apiClient<MaintenanceStatusDto>('/lookups/maintenance-statuses', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateMaintenanceStatus: async (id: number, request: UpdateMaintenanceStatusRequest): Promise<MaintenanceStatusDto> => {
+    return await apiClient<MaintenanceStatusDto>(`/lookups/maintenance-statuses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  deleteMaintenanceStatus: async (id: number): Promise<void> => {
+    await apiClient<void>(`/lookups/maintenance-statuses/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getReminderPriorities: async (): Promise<ReminderPriorityDto[]> => {
+    return await apiClient<ReminderPriorityDto[]>('/lookups/reminder-priorities');
+  },
+
+  createReminderPriority: async (request: CreateReminderPriorityRequest): Promise<ReminderPriorityDto> => {
+    return await apiClient<ReminderPriorityDto>('/lookups/reminder-priorities', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateReminderPriority: async (id: number, request: UpdateReminderPriorityRequest): Promise<ReminderPriorityDto> => {
+    return await apiClient<ReminderPriorityDto>(`/lookups/reminder-priorities/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  deleteReminderPriority: async (id: number): Promise<void> => {
+    await apiClient<void>(`/lookups/reminder-priorities/${id}`, {
       method: 'DELETE',
     });
   },

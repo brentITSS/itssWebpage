@@ -85,6 +85,7 @@ public class ReminderService : IReminderService
             PropertyGroupId = request.PropertyGroupId,
             PropertyId = request.PropertyId,
             Title = request.Title,
+            ReminderPriorityId = request.ReminderPriorityId,
             Notes = request.Notes,
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,
@@ -107,6 +108,7 @@ public class ReminderService : IReminderService
         reminder.TenancyId = request.TenancyId;
         reminder.PropertyGroupId = request.PropertyGroupId;
         reminder.PropertyId = request.PropertyId;
+        reminder.ReminderPriorityId = request.ReminderPriorityId;
         if (request.Title != null) reminder.Title = request.Title;
         if (request.Notes != null) reminder.Notes = request.Notes;
         if (request.IsCompleted.HasValue)
@@ -122,6 +124,58 @@ public class ReminderService : IReminderService
     public async Task<bool> DeleteReminderAsync(int reminderId)
     {
         return await _reminderRepository.DeleteAsync(reminderId);
+    }
+
+    public async Task<List<ReminderPriorityDto>> GetAllReminderPrioritiesAsync()
+    {
+        var list = await _reminderRepository.GetAllReminderPrioritiesAsync();
+        return list.Select(MapPriorityToDto).ToList();
+    }
+
+    public async Task<ReminderPriorityDto?> GetReminderPriorityByIdAsync(int id)
+    {
+        var e = await _reminderRepository.GetReminderPriorityByIdAsync(id);
+        return e == null ? null : MapPriorityToDto(e);
+    }
+
+    public async Task<ReminderPriorityDto> CreateReminderPriorityAsync(CreateReminderPriorityRequest request)
+    {
+        var entity = new ReminderPriority
+        {
+            ReminderPriorityName = request.ReminderPriorityName,
+            Description = request.Description,
+            DisplayColor = request.DisplayColor,
+            SortOrder = request.SortOrder ?? 0,
+            IsActive = request.IsActive ?? true,
+            CreatedDate = DateTime.UtcNow,
+        };
+        entity = await _reminderRepository.CreateReminderPriorityAsync(entity);
+        return MapPriorityToDto(entity);
+    }
+
+    public async Task<ReminderPriorityDto?> UpdateReminderPriorityAsync(int id, UpdateReminderPriorityRequest request)
+    {
+        var entity = await _reminderRepository.GetReminderPriorityByIdAsync(id);
+        if (entity == null) return null;
+
+        if (request.ReminderPriorityName != null) entity.ReminderPriorityName = request.ReminderPriorityName;
+        if (request.Description != null) entity.Description = request.Description;
+        if (request.DisplayColor != null) entity.DisplayColor = request.DisplayColor;
+        if (request.SortOrder.HasValue) entity.SortOrder = request.SortOrder;
+        if (request.IsActive.HasValue) entity.IsActive = request.IsActive;
+
+        entity = await _reminderRepository.UpdateReminderPriorityAsync(entity);
+        return MapPriorityToDto(entity);
+    }
+
+    public async Task<bool> IsReminderPriorityInUseAsync(int id)
+    {
+        return await _reminderRepository.CountRemindersByPriorityAsync(id) > 0;
+    }
+
+    public async Task<bool> DeleteReminderPriorityAsync(int id)
+    {
+        return await _reminderRepository.DeleteReminderPriorityAsync(id);
     }
 
     private async Task NormalizeLinksAsync(Reminder reminder)
@@ -170,7 +224,6 @@ public class ReminderService : IReminderService
                     : r.Tenancy.Description)
             : null;
 
-        var active = r.ReminderActive ?? true;
         return new ReminderResponseDto
         {
             ReminderId = r.ReminderId,
@@ -183,11 +236,28 @@ public class ReminderService : IReminderService
             PropertyId = r.PropertyId,
             PropertyName = r.Property?.PropertyName,
             Title = r.Title,
+            ReminderPriorityId = r.ReminderPriorityId,
+            ReminderPriorityName = r.ReminderPriority?.ReminderPriorityName,
+            ReminderPriorityColor = r.ReminderPriority?.DisplayColor,
             Notes = r.Notes,
             CreatedBy = r.CreatedBy,
             CreatedDate = r.CreatedDate,
             ReminderActive = r.ReminderActive,
             IsCompleted = r.ReminderActive == false,
+        };
+    }
+
+    private static ReminderPriorityDto MapPriorityToDto(ReminderPriority p)
+    {
+        return new ReminderPriorityDto
+        {
+            ReminderPriorityId = p.ReminderPriorityId,
+            ReminderPriorityName = p.ReminderPriorityName,
+            Description = p.Description,
+            DisplayColor = p.DisplayColor,
+            SortOrder = p.SortOrder,
+            IsActive = p.IsActive,
+            CreatedDate = p.CreatedDate,
         };
     }
 }

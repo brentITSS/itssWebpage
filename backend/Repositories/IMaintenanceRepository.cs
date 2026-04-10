@@ -16,4 +16,11 @@ public interface IMaintenanceRepository
     Task<MaintenanceType> UpdateMaintenanceTypeAsync(MaintenanceType type);
     Task<bool> DeleteMaintenanceTypeAsync(int id);
     Task<int> CountMaintenancesByTypeAsync(int maintenanceTypeId);
+
+    Task<List<MaintenanceStatus>> GetAllMaintenanceStatusesAsync();
+    Task<MaintenanceStatus?> GetMaintenanceStatusByIdAsync(int id);
+    Task<MaintenanceStatus> CreateMaintenanceStatusAsync(MaintenanceStatus status);
+    Task<MaintenanceStatus> UpdateMaintenanceStatusAsync(MaintenanceStatus status);
+    Task<bool> DeleteMaintenanceStatusAsync(int id);
+    Task<int> CountMaintenancesByStatusAsync(int maintenanceStatusId);
 }

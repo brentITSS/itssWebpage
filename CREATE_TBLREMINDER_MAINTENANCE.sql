@@ -8,6 +8,8 @@
       reminder, reminderDetail, createdBy, createdDate, reminderActive, SSMA_TimeStamp.
     This script does NOT create tblReminder.
   - tblMaintenanceType + tblMaintenance: created if missing.
+  - For maintenance status + reminder priority lookups and FK columns, run
+    ADD_MAINTENANCE_STATUS_REMINDER_PRIORITY.sql (separate script).
 */
 
 SET NOCOUNT ON;

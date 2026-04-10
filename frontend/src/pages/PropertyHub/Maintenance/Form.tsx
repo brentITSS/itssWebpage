@@ -17,6 +17,7 @@ const MaintenanceForm: React.FC = () => {
   const [groups, setGroups] = useState<PropertyGroupResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [types, setTypes] = useState<{ maintenanceTypeId: number; maintenanceTypeName: string }[]>([]);
+  const [statuses, setStatuses] = useState<{ maintenanceStatusId: number; maintenanceStatusName: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -25,6 +26,7 @@ const MaintenanceForm: React.FC = () => {
     propertyGroupId: 0,
     propertyId: 0,
     maintenanceTypeId: 0,
+    maintenanceStatusId: undefined,
     summary: '',
     detailNotes: '',
     workDate: undefined,
@@ -34,14 +36,16 @@ const MaintenanceForm: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [g, p, t] = await Promise.all([
+      const [g, p, t, s] = await Promise.all([
         propertyService.getPropertyGroups(),
         propertyService.getProperties(),
         maintenanceService.getMaintenanceTypes(),
+        maintenanceService.getMaintenanceStatuses(),
       ]);
       setGroups(g);
       setProperties(p);
       setTypes(t);
+      setStatuses(s.filter((x) => x.isActive !== false));
 
       if (isEdit && recordId) {
         const r = await maintenanceService.getMaintenanceRecord(recordId);
@@ -49,6 +53,7 @@ const MaintenanceForm: React.FC = () => {
           propertyGroupId: r.propertyGroupId,
           propertyId: r.propertyId,
           maintenanceTypeId: r.maintenanceTypeId,
+          maintenanceStatusId: r.maintenanceStatusId,
           summary: r.summary || '',
           detailNotes: r.detailNotes || '',
           workDate: r.workDate ? new Date(r.workDate).toISOString().split('T')[0] : undefined,
@@ -90,6 +95,7 @@ const MaintenanceForm: React.FC = () => {
           propertyGroupId: formData.propertyGroupId,
           propertyId: formData.propertyId,
           maintenanceTypeId: formData.maintenanceTypeId,
+          maintenanceStatusId: formData.maintenanceStatusId,
           summary: formData.summary,
           detailNotes: formData.detailNotes,
           workDate: formData.workDate || undefined,
@@ -186,6 +192,26 @@ const MaintenanceForm: React.FC = () => {
             {types.map((t) => (
               <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
                 {t.maintenanceTypeName}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select
+            value={formData.maintenanceStatusId ?? ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                maintenanceStatusId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+              })
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">— None —</option>
+            {statuses.map((s) => (
+              <option key={s.maintenanceStatusId} value={s.maintenanceStatusId}>
+                {s.maintenanceStatusName}
               </option>
             ))}
           </select>

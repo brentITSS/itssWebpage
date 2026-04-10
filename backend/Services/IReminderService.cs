@@ -9,4 +9,11 @@ public interface IReminderService
     Task<ReminderResponseDto> CreateReminderAsync(CreateReminderRequest request, string? createdBy);
     Task<ReminderResponseDto?> UpdateReminderAsync(int reminderId, UpdateReminderRequest request);
     Task<bool> DeleteReminderAsync(int reminderId);
+
+    Task<List<ReminderPriorityDto>> GetAllReminderPrioritiesAsync();
+    Task<ReminderPriorityDto?> GetReminderPriorityByIdAsync(int id);
+    Task<ReminderPriorityDto> CreateReminderPriorityAsync(CreateReminderPriorityRequest request);
+    Task<ReminderPriorityDto?> UpdateReminderPriorityAsync(int id, UpdateReminderPriorityRequest request);
+    Task<bool> IsReminderPriorityInUseAsync(int id);
+    Task<bool> DeleteReminderPriorityAsync(int id);
 }

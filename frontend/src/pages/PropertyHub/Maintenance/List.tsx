@@ -1,19 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { maintenanceService, MaintenanceResponseDto } from '../../../services/maintenanceService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
+import HubScopedHeader from '../HubScopedHeader';
+import { countMaintenanceForProperty } from '../propertyHubMetrics';
 
 const MaintenanceList: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const propertyIdParam = searchParams.get('propertyId');
+  const scopedPropertyId = propertyIdParam ? parseInt(propertyIdParam, 10) : NaN;
+  const scoped = Number.isFinite(scopedPropertyId);
+
   const [rows, setRows] = useState<MaintenanceResponseDto[]>([]);
   const [filtered, setFiltered] = useState<MaintenanceResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [filterPropertyId, setFilterPropertyId] = useState<number | ''>('');
+  const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(
+    scoped ? scopedPropertyId : ''
+  );
   const [filterTypeId, setFilterTypeId] = useState<number | ''>('');
   const [types, setTypes] = useState<{ maintenanceTypeId: number; maintenanceTypeName: string }[]>([]);
+
+  useEffect(() => {
+    if (scoped) setFilterPropertyId(scopedPropertyId);
+  }, [scoped, scopedPropertyId]);
 
   useEffect(() => {
     loadData();
@@ -60,35 +73,161 @@ const MaintenanceList: React.FC = () => {
     }
   };
 
+  const scopedProperty = properties.find((p) => p.propertyId === scopedPropertyId);
+  const scopedTotal = useMemo(
+    () => (scoped ? countMaintenanceForProperty(scopedPropertyId, rows) : 0),
+    [scoped, scopedPropertyId, rows]
+  );
+
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <div className="py-8 text-center">Loading...</div>;
+  }
+
+  if (scoped && !scopedProperty) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+        Unknown property.
+        <button type="button" className="ml-2 underline" onClick={() => navigate('/Property Hub/Home')}>
+          Home
+        </button>
+      </div>
+    );
+  }
+
+  if (scoped && scopedProperty) {
+    return (
+      <div>
+        <HubScopedHeader
+          propertyId={scopedProperty.propertyId}
+          propertyName={scopedProperty.propertyName}
+          title="Maintenance"
+          subtitle={`${scopedTotal} total ${scopedTotal === 1 ? 'record' : 'records'} for this property`}
+          actions={
+            <button
+              type="button"
+              onClick={() => navigate('/Property Hub/Maintenance/New')}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              + New record
+            </button>
+          }
+        />
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>
+        )}
+
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase text-slate-500">Total</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{filtered.length}</p>
+          </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-3">
+          <select
+            value={filterTypeId === '' ? '' : String(filterTypeId)}
+            onChange={(e) => setFilterTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All types</option>
+            {types.map((t) => (
+              <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
+                {t.maintenanceTypeName}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-3">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-slate-500">No maintenance records.</p>
+          ) : (
+            filtered.map((r) => (
+              <div
+                key={r.maintenanceId}
+                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-slate-900">{r.summary || 'Maintenance'}</h3>
+                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-800">
+                      {r.maintenanceTypeName}
+                    </span>
+                    {r.maintenanceStatusName && (
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-800">
+                        {r.maintenanceStatusName}
+                      </span>
+                    )}
+                  </div>
+                  {r.detailNotes && (
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-600">{r.detailNotes}</p>
+                  )}
+                  <p className="mt-2 text-xs text-slate-500">
+                    {scopedProperty.address || scopedProperty.propertyName}
+                    {r.workDate
+                      ? ` · Work date ${new Date(r.workDate).toLocaleDateString()}`
+                      : r.createdDate
+                        ? ` · Logged ${new Date(r.createdDate).toLocaleDateString()}`
+                        : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}?edit=true`)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(r.maintenanceId)}
+                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Maintenance &amp; repairs</h2>
         <button
           type="button"
           onClick={() => navigate('/Property Hub/Maintenance/New')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
           New record
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>
+        <div className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mb-6 rounded-lg bg-white p-4 shadow">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
             <select
               value={filterPropertyId === '' ? '' : String(filterPropertyId)}
               onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             >
               <option value="">All</option>
               {properties.map((p) => (
@@ -99,11 +238,11 @@ const MaintenanceList: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
             <select
               value={filterTypeId === '' ? '' : String(filterTypeId)}
               onChange={(e) => setFilterTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             >
               <option value="">All</option>
               {types.map((t) => (
@@ -116,38 +255,40 @@ const MaintenanceList: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="overflow-hidden rounded-lg bg-white shadow">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Work date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Work date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Property</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Group</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Summary</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200 bg-white">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   No maintenance records
                 </td>
               </tr>
             ) : (
               filtered.map((r) => (
                 <tr key={r.maintenanceId} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {r.workDate ? new Date(r.workDate).toLocaleDateString() : '—'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.maintenanceTypeName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{r.propertyName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.propertyGroupName}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.maintenanceTypeName}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.maintenanceStatusName || '—'}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{r.propertyName}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.propertyGroupName}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="max-w-xs truncate">{r.summary || '—'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                  <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
                     <button
                       type="button"
                       onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}

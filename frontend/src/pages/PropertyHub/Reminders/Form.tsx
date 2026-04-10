@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { reminderService, CreateReminderRequest, UpdateReminderRequest } from '../../../services/reminderService';
+import {
+  reminderService,
+  CreateReminderRequest,
+  UpdateReminderRequest,
+  ReminderPriorityDto,
+} from '../../../services/reminderService';
 import { propertyService, PropertyResponseDto, PropertyGroupResponseDto } from '../../../services/propertyService';
 import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../../../services/propertyAdminService';
 
@@ -15,6 +20,7 @@ const ReminderForm: React.FC = () => {
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
+  const [priorities, setPriorities] = useState<ReminderPriorityDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -25,6 +31,7 @@ const ReminderForm: React.FC = () => {
     propertyGroupId: undefined,
     propertyId: undefined,
     title: '',
+    reminderPriorityId: undefined,
     notes: '',
     isCompleted: false,
   });
@@ -33,16 +40,18 @@ const ReminderForm: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [g, p, tnt, tnc] = await Promise.all([
+      const [g, p, tnt, tnc, pri] = await Promise.all([
         propertyService.getPropertyGroups(),
         propertyService.getProperties(),
         propertyAdminService.getTenants(),
         propertyAdminService.getTenancies(),
+        reminderService.getReminderPriorities(),
       ]);
       setGroups(g);
       setProperties(p);
       setTenants(tnt);
       setTenancies(tnc);
+      setPriorities(pri.filter((x) => x.isActive !== false));
 
       if (isEdit && reminderId) {
         const r = await reminderService.getReminder(reminderId);
@@ -52,6 +61,7 @@ const ReminderForm: React.FC = () => {
           propertyGroupId: r.propertyGroupId,
           propertyId: r.propertyId,
           title: r.title,
+          reminderPriorityId: r.reminderPriorityId,
           notes: r.notes || '',
           isCompleted: r.isCompleted,
         });
@@ -109,6 +119,7 @@ const ReminderForm: React.FC = () => {
           tenancyId: formData.tenancyId,
           propertyGroupId: formData.propertyGroupId,
           propertyId: formData.propertyId,
+          reminderPriorityId: formData.reminderPriorityId ?? null,
           title: formData.title,
           notes: formData.notes,
           isCompleted: formData.isCompleted,
@@ -255,6 +266,26 @@ const ReminderForm: React.FC = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
             placeholder="Short summary (maps to tblReminder.reminder)"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <select
+            value={formData.reminderPriorityId ?? ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                reminderPriorityId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+              })
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">— None —</option>
+            {priorities.map((pr) => (
+              <option key={pr.reminderPriorityId} value={pr.reminderPriorityId}>
+                {pr.reminderPriorityName}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Detail</label>

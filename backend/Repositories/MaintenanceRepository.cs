@@ -18,6 +18,7 @@ public class MaintenanceRepository : IMaintenanceRepository
             .Include(m => m.Property)
             .Include(m => m.PropertyGroup)
             .Include(m => m.MaintenanceType)
+            .Include(m => m.MaintenanceStatus)
             .OrderByDescending(m => m.WorkDate ?? m.CreatedDate)
             .ToListAsync();
     }
@@ -28,6 +29,7 @@ public class MaintenanceRepository : IMaintenanceRepository
             .Include(m => m.Property)
             .Include(m => m.PropertyGroup)
             .Include(m => m.MaintenanceType)
+            .Include(m => m.MaintenanceStatus)
             .FirstOrDefaultAsync(m => m.MaintenanceId == maintenanceId);
     }
 
@@ -96,5 +98,48 @@ public class MaintenanceRepository : IMaintenanceRepository
     public async Task<int> CountMaintenancesByTypeAsync(int maintenanceTypeId)
     {
         return await _context.Maintenances.CountAsync(m => m.MaintenanceTypeId == maintenanceTypeId);
+    }
+
+    public async Task<List<MaintenanceStatus>> GetAllMaintenanceStatusesAsync()
+    {
+        return await _context.MaintenanceStatuses
+            .OrderBy(s => s.SortOrder ?? int.MaxValue)
+            .ThenBy(s => s.MaintenanceStatusName)
+            .ToListAsync();
+    }
+
+    public async Task<MaintenanceStatus?> GetMaintenanceStatusByIdAsync(int id)
+    {
+        return await _context.MaintenanceStatuses.FindAsync(id);
+    }
+
+    public async Task<MaintenanceStatus> CreateMaintenanceStatusAsync(MaintenanceStatus status)
+    {
+        if (status.CreatedDate == null)
+            status.CreatedDate = DateTime.UtcNow;
+        _context.MaintenanceStatuses.Add(status);
+        await _context.SaveChangesAsync();
+        return status;
+    }
+
+    public async Task<MaintenanceStatus> UpdateMaintenanceStatusAsync(MaintenanceStatus status)
+    {
+        _context.MaintenanceStatuses.Update(status);
+        await _context.SaveChangesAsync();
+        return status;
+    }
+
+    public async Task<bool> DeleteMaintenanceStatusAsync(int id)
+    {
+        var entity = await _context.MaintenanceStatuses.FindAsync(id);
+        if (entity == null) return false;
+        _context.MaintenanceStatuses.Remove(entity);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<int> CountMaintenancesByStatusAsync(int maintenanceStatusId)
+    {
+        return await _context.Maintenances.CountAsync(m => m.MaintenanceStatusId == maintenanceStatusId);
     }
 }

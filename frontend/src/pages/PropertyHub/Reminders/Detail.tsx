@@ -77,6 +77,19 @@ const ReminderDetail: React.FC = () => {
       </div>
 
       <div className="bg-white shadow rounded-lg p-6 max-w-2xl space-y-3 text-sm">
+        {reminder.reminderPriorityName && (
+          <p className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-gray-700">Priority: </span>
+            <span
+              className="rounded-full px-2 py-0.5 text-xs font-medium text-white"
+              style={{
+                backgroundColor: reminder.reminderPriorityColor || '#64748b',
+              }}
+            >
+              {reminder.reminderPriorityName}
+            </span>
+          </p>
+        )}
         <p>
           <span className="font-medium text-gray-700">Completed: </span>
           {reminder.isCompleted ? 'Yes' : 'No'}

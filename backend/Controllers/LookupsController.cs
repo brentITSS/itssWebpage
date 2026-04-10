@@ -8,7 +8,7 @@ namespace backend.Controllers;
 
 /// <summary>
 /// Controller for Lookup Tables - Task 5: Property Hub Admin
-/// Manages Journal Types, Contact Log Types, Tag Types, and Maintenance Types.
+/// Manages Journal Types, Contact Log Types, Tag Types, Maintenance Types, Maintenance Statuses, and Reminder Priorities.
 /// Access restricted to Property Hub Admin or Global Admins.
 /// </summary>
 [ApiController]
@@ -20,6 +20,7 @@ public class LookupsController : ControllerBase
     private readonly IContactLogService _contactLogService;
     private readonly ITagService _tagService;
     private readonly IMaintenanceService _maintenanceService;
+    private readonly IReminderService _reminderService;
     private readonly IAuthService _authService;
 
     public LookupsController(
@@ -27,12 +28,14 @@ public class LookupsController : ControllerBase
         IContactLogService contactLogService,
         ITagService tagService,
         IMaintenanceService maintenanceService,
+        IReminderService reminderService,
         IAuthService authService)
     {
         _journalLogService = journalLogService;
         _contactLogService = contactLogService;
         _tagService = tagService;
         _maintenanceService = maintenanceService;
+        _reminderService = reminderService;
         _authService = authService;
     }
 
@@ -414,6 +417,152 @@ public class LookupsController : ControllerBase
 
         var deleted = await _maintenanceService.DeleteMaintenanceTypeAsync(id);
         if (!deleted) return NotFound();
+
+        return NoContent();
+    }
+
+    // Maintenance statuses
+
+    [HttpGet("maintenance-statuses")]
+    public async Task<ActionResult<List<MaintenanceStatusDto>>> GetMaintenanceStatuses()
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!HasPropertyHubAccess(currentUser))
+            return Forbid("Access denied: Property Hub workstream access required");
+
+        return Ok(await _maintenanceService.GetAllMaintenanceStatusesAsync());
+    }
+
+    [HttpPost("maintenance-statuses")]
+    public async Task<ActionResult<MaintenanceStatusDto>> CreateMaintenanceStatus([FromBody] CreateMaintenanceStatusRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+            return Forbid("Access denied: Property Hub Admin permission required");
+
+        var created = await _maintenanceService.CreateMaintenanceStatusAsync(request);
+        return Ok(created);
+    }
+
+    [HttpPut("maintenance-statuses/{id:int}")]
+    public async Task<ActionResult<MaintenanceStatusDto>> UpdateMaintenanceStatus(int id, [FromBody] UpdateMaintenanceStatusRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+            return Forbid("Access denied: Property Hub Admin permission required");
+
+        var updated = await _maintenanceService.UpdateMaintenanceStatusAsync(id, request);
+        if (updated == null) return NotFound();
+
+        return Ok(updated);
+    }
+
+    [HttpDelete("maintenance-statuses/{id:int}")]
+    public async Task<ActionResult> DeleteMaintenanceStatus(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+            return Forbid("Access denied: Property Hub Admin permission required");
+
+        if (await _maintenanceService.GetMaintenanceStatusByIdAsync(id) == null) return NotFound();
+
+        if (await _maintenanceService.IsMaintenanceStatusInUseAsync(id))
+            return Conflict(new { message = "Cannot delete status while maintenance records reference it." });
+
+        if (!await _maintenanceService.DeleteMaintenanceStatusAsync(id)) return NotFound();
+
+        return NoContent();
+    }
+
+    // Reminder priorities
+
+    [HttpGet("reminder-priorities")]
+    public async Task<ActionResult<List<ReminderPriorityDto>>> GetReminderPriorities()
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!HasPropertyHubAccess(currentUser))
+            return Forbid("Access denied: Property Hub workstream access required");
+
+        return Ok(await _reminderService.GetAllReminderPrioritiesAsync());
+    }
+
+    [HttpPost("reminder-priorities")]
+    public async Task<ActionResult<ReminderPriorityDto>> CreateReminderPriority([FromBody] CreateReminderPriorityRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+            return Forbid("Access denied: Property Hub Admin permission required");
+
+        var created = await _reminderService.CreateReminderPriorityAsync(request);
+        return Ok(created);
+    }
+
+    [HttpPut("reminder-priorities/{id:int}")]
+    public async Task<ActionResult<ReminderPriorityDto>> UpdateReminderPriority(int id, [FromBody] UpdateReminderPriorityRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+            return Forbid("Access denied: Property Hub Admin permission required");
+
+        var updated = await _reminderService.UpdateReminderPriorityAsync(id, request);
+        if (updated == null) return NotFound();
+
+        return Ok(updated);
+    }
+
+    [HttpDelete("reminder-priorities/{id:int}")]
+    public async Task<ActionResult> DeleteReminderPriority(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!_authService.HasPropertyHubAdminAccess(currentUser))
+            return Forbid("Access denied: Property Hub Admin permission required");
+
+        if (await _reminderService.GetReminderPriorityByIdAsync(id) == null) return NotFound();
+
+        if (await _reminderService.IsReminderPriorityInUseAsync(id))
+            return Conflict(new { message = "Cannot delete priority while reminders reference it." });
+
+        if (!await _reminderService.DeleteReminderPriorityAsync(id)) return NotFound();
 
         return NoContent();
     }

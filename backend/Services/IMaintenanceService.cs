@@ -11,6 +11,13 @@ public interface IMaintenanceService
     Task<bool> IsMaintenanceTypeInUseAsync(int id);
     Task<bool> DeleteMaintenanceTypeAsync(int id);
 
+    Task<List<MaintenanceStatusDto>> GetAllMaintenanceStatusesAsync();
+    Task<MaintenanceStatusDto?> GetMaintenanceStatusByIdAsync(int id);
+    Task<MaintenanceStatusDto> CreateMaintenanceStatusAsync(CreateMaintenanceStatusRequest request);
+    Task<MaintenanceStatusDto?> UpdateMaintenanceStatusAsync(int id, UpdateMaintenanceStatusRequest request);
+    Task<bool> IsMaintenanceStatusInUseAsync(int id);
+    Task<bool> DeleteMaintenanceStatusAsync(int id);
+
     Task<List<MaintenanceResponseDto>> GetAllMaintenancesForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin);
     Task<MaintenanceResponseDto?> GetMaintenanceByIdForUserAsync(int id, int userId, bool isGlobalAdmin, bool isPropertyHubAdmin);
     Task<MaintenanceResponseDto> CreateMaintenanceAsync(CreateMaintenanceRequest request);

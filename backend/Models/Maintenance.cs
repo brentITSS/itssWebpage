@@ -19,6 +19,9 @@ public class Maintenance
     [Column("maintenanceTypeID")]
     public int MaintenanceTypeId { get; set; }
 
+    [Column("maintenanceStatusID")]
+    public int? MaintenanceStatusId { get; set; }
+
     [MaxLength(500)]
     [Column("summary")]
     public string? Summary { get; set; }
@@ -40,4 +43,7 @@ public class Maintenance
 
     [ForeignKey("MaintenanceTypeId")]
     public virtual MaintenanceType MaintenanceType { get; set; } = null!;
+
+    [ForeignKey("MaintenanceStatusId")]
+    public virtual MaintenanceStatus? MaintenanceStatus { get; set; }
 }

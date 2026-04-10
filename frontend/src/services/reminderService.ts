@@ -1,4 +1,7 @@
 import apiClient from './api';
+import type { ReminderPriorityDto } from './propertyAdminService';
+
+export type { ReminderPriorityDto };
 
 export interface ReminderResponseDto {
   reminderId: number;
@@ -11,6 +14,9 @@ export interface ReminderResponseDto {
   propertyId?: number;
   propertyName?: string;
   title: string;
+  reminderPriorityId?: number;
+  reminderPriorityName?: string;
+  reminderPriorityColor?: string;
   notes?: string;
   createdBy?: string;
   createdDate?: string;
@@ -24,17 +30,20 @@ export interface CreateReminderRequest {
   propertyGroupId?: number;
   propertyId?: number;
   title: string;
+  reminderPriorityId?: number;
   notes?: string;
   isCompleted: boolean;
 }
 
 export interface UpdateReminderRequest {
-  tenantId?: number;
-  tenancyId?: number;
-  propertyGroupId?: number;
-  propertyId?: number;
+  /** Use null to clear a link (required for full replacement on the API). */
+  tenantId?: number | null;
+  tenancyId?: number | null;
+  propertyGroupId?: number | null;
+  propertyId?: number | null;
+  reminderPriorityId?: number | null;
   title?: string;
-  notes?: string;
+  notes?: string | null;
   isCompleted?: boolean;
 }
 
@@ -63,5 +72,9 @@ export const reminderService = {
 
   deleteReminder: async (id: number): Promise<void> => {
     await apiClient<void>(`/reminders/${id}`, { method: 'DELETE' });
+  },
+
+  getReminderPriorities: async (): Promise<ReminderPriorityDto[]> => {
+    return await apiClient<ReminderPriorityDto[]>('/lookups/reminder-priorities');
   },
 };

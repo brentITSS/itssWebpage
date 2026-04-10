@@ -44,6 +44,9 @@ public class Reminder
     [Column("reminderActive")]
     public bool? ReminderActive { get; set; }
 
+    [Column("reminderPriorityID")]
+    public int? ReminderPriorityId { get; set; }
+
     [Timestamp]
     [Column("SSMA_TimeStamp")]
     public byte[]? RowVersion { get; set; }
@@ -59,4 +62,7 @@ public class Reminder
 
     [ForeignKey("PropertyId")]
     public virtual Property? Property { get; set; }
+
+    [ForeignKey("ReminderPriorityId")]
+    public virtual ReminderPriority? ReminderPriority { get; set; }
 }

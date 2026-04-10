@@ -1,7 +1,7 @@
 import apiClient from './api';
-import type { MaintenanceTypeDto } from './propertyAdminService';
+import type { MaintenanceTypeDto, MaintenanceStatusDto } from './propertyAdminService';
 
-export type { MaintenanceTypeDto };
+export type { MaintenanceTypeDto, MaintenanceStatusDto };
 
 export interface MaintenanceResponseDto {
   maintenanceId: number;
@@ -11,6 +11,8 @@ export interface MaintenanceResponseDto {
   propertyName?: string;
   maintenanceTypeId: number;
   maintenanceTypeName: string;
+  maintenanceStatusId?: number;
+  maintenanceStatusName?: string;
   summary?: string;
   detailNotes?: string;
   workDate?: string;
@@ -21,6 +23,7 @@ export interface CreateMaintenanceRequest {
   propertyGroupId: number;
   propertyId: number;
   maintenanceTypeId: number;
+  maintenanceStatusId?: number;
   summary?: string;
   detailNotes?: string;
   workDate?: string;
@@ -30,6 +33,7 @@ export interface UpdateMaintenanceRequest {
   propertyGroupId?: number;
   propertyId?: number;
   maintenanceTypeId?: number;
+  maintenanceStatusId?: number;
   summary?: string;
   detailNotes?: string;
   workDate?: string;
@@ -64,5 +68,9 @@ export const maintenanceService = {
 
   getMaintenanceTypes: async (): Promise<MaintenanceTypeDto[]> => {
     return await apiClient<MaintenanceTypeDto[]>('/lookups/maintenance-types');
+  },
+
+  getMaintenanceStatuses: async (): Promise<MaintenanceStatusDto[]> => {
+    return await apiClient<MaintenanceStatusDto[]>('/lookups/maintenance-statuses');
   },
 };

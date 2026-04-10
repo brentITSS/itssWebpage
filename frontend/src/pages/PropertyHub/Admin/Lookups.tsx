@@ -16,6 +16,12 @@ import {
   MaintenanceTypeDto,
   CreateMaintenanceTypeRequest,
   UpdateMaintenanceTypeRequest,
+  MaintenanceStatusDto,
+  CreateMaintenanceStatusRequest,
+  UpdateMaintenanceStatusRequest,
+  ReminderPriorityDto,
+  CreateReminderPriorityRequest,
+  UpdateReminderPriorityRequest,
 } from '../../../services/propertyAdminService';
 
 const Lookups: React.FC = () => {
@@ -24,7 +30,9 @@ const Lookups: React.FC = () => {
   const [tagTypes, setTagTypes] = useState<TagTypeResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'journal' | 'contact' | 'tag' | 'maintenance'>('journal');
+  const [activeTab, setActiveTab] = useState<
+    'journal' | 'contact' | 'tag' | 'maintenance' | 'maint_status' | 'reminder_priority'
+  >('journal');
   const [showJournalModal, setShowJournalModal] = useState(false);
   const [editingJournalType, setEditingJournalType] = useState<JournalTypeDto | null>(null);
   const [showJournalSubTypeModal, setShowJournalSubTypeModal] = useState(false);
@@ -37,6 +45,12 @@ const Lookups: React.FC = () => {
   const [maintenanceTypes, setMaintenanceTypes] = useState<MaintenanceTypeDto[]>([]);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [editingMaintenanceType, setEditingMaintenanceType] = useState<MaintenanceTypeDto | null>(null);
+  const [maintenanceStatuses, setMaintenanceStatuses] = useState<MaintenanceStatusDto[]>([]);
+  const [showMaintStatusModal, setShowMaintStatusModal] = useState(false);
+  const [editingMaintStatus, setEditingMaintStatus] = useState<MaintenanceStatusDto | null>(null);
+  const [reminderPriorities, setReminderPriorities] = useState<ReminderPriorityDto[]>([]);
+  const [showRemPriModal, setShowRemPriModal] = useState(false);
+  const [editingRemPri, setEditingRemPri] = useState<ReminderPriorityDto | null>(null);
 
   useEffect(() => {
     loadData();
@@ -46,16 +60,20 @@ const Lookups: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [journalData, contactData, tagData, maintenanceData] = await Promise.all([
+      const [journalData, contactData, tagData, maintenanceData, statusData, priData] = await Promise.all([
         propertyAdminService.getJournalTypes(),
         propertyAdminService.getContactLogTypes(),
         propertyAdminService.getTagTypes(),
         propertyAdminService.getMaintenanceTypes(),
+        propertyAdminService.getMaintenanceStatuses(),
+        propertyAdminService.getReminderPriorities(),
       ]);
       setJournalTypes(journalData);
       setContactLogTypes(contactData);
       setTagTypes(tagData);
       setMaintenanceTypes(maintenanceData);
+      setMaintenanceStatuses(statusData);
+      setReminderPriorities(priData);
     } catch (err: any) {
       setError(err.message || 'Failed to load lookup data');
     } finally {
@@ -334,6 +352,116 @@ const Lookups: React.FC = () => {
     }
   };
 
+  const handleCreateMaintenanceStatus = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const sortRaw = formData.get('sortOrder') as string;
+    const request: CreateMaintenanceStatusRequest = {
+      maintenanceStatusName: formData.get('maintenanceStatusName') as string,
+      description: (formData.get('description') as string) || undefined,
+      sortOrder: sortRaw ? parseInt(sortRaw, 10) : undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+    };
+    try {
+      await propertyAdminService.createMaintenanceStatus(request);
+      setShowMaintStatusModal(false);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create maintenance status');
+    }
+  };
+
+  const handleUpdateMaintenanceStatus = async (id: number, e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const sortRaw = formData.get('sortOrder') as string;
+    const request: UpdateMaintenanceStatusRequest = {
+      maintenanceStatusName: (formData.get('maintenanceStatusName') as string) || undefined,
+      description: (formData.get('description') as string) || undefined,
+      sortOrder: sortRaw === '' ? undefined : parseInt(sortRaw, 10),
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+    };
+    try {
+      await propertyAdminService.updateMaintenanceStatus(id, request);
+      setEditingMaintStatus(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update maintenance status');
+    }
+  };
+
+  const handleDeleteMaintenanceStatus = async (id: number) => {
+    if (!window.confirm('Delete this maintenance status?')) return;
+    try {
+      await propertyAdminService.deleteMaintenanceStatus(id);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete maintenance status');
+    }
+  };
+
+  const handleCreateReminderPriority = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const sortRaw = formData.get('sortOrder') as string;
+    const request: CreateReminderPriorityRequest = {
+      reminderPriorityName: formData.get('reminderPriorityName') as string,
+      description: (formData.get('description') as string) || undefined,
+      displayColor: (formData.get('displayColor') as string) || undefined,
+      sortOrder: sortRaw ? parseInt(sortRaw, 10) : undefined,
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+    };
+    try {
+      await propertyAdminService.createReminderPriority(request);
+      setShowRemPriModal(false);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create reminder priority');
+    }
+  };
+
+  const handleUpdateReminderPriority = async (id: number, e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const sortRaw = formData.get('sortOrder') as string;
+    const request: UpdateReminderPriorityRequest = {
+      reminderPriorityName: (formData.get('reminderPriorityName') as string) || undefined,
+      description: (formData.get('description') as string) || undefined,
+      displayColor: (formData.get('displayColor') as string) || undefined,
+      sortOrder: sortRaw === '' ? undefined : parseInt(sortRaw, 10),
+      isActive: (() => {
+        const value = formData.get('isActive') as string;
+        return value === '' ? undefined : value === 'true';
+      })(),
+    };
+    try {
+      await propertyAdminService.updateReminderPriority(id, request);
+      setEditingRemPri(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update reminder priority');
+    }
+  };
+
+  const handleDeleteReminderPriority = async (id: number) => {
+    if (!window.confirm('Delete this reminder priority?')) return;
+    try {
+      await propertyAdminService.deleteReminderPriority(id);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete reminder priority');
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -432,6 +560,52 @@ const Lookups: React.FC = () => {
                 className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
               >
                 Create maintenance type
+              </button>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('maint_status')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'maint_status'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Maintenance status
+            {activeTab === 'maint_status' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMaintStatusModal(true);
+                }}
+                className="ml-4 rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+              >
+                Create status
+              </button>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('reminder_priority')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'reminder_priority'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Reminder priority
+            {activeTab === 'reminder_priority' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRemPriModal(true);
+                }}
+                className="ml-4 rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+              >
+                Create priority
               </button>
             )}
           </button>
@@ -964,6 +1138,346 @@ const Lookups: React.FC = () => {
                       Cancel
                     </button>
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                      Update
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'maint_status' && (
+        <div>
+          <div className="overflow-hidden rounded-lg bg-white shadow">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Sort</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {maintenanceStatuses.map((s) => (
+                  <tr key={s.maintenanceStatusId}>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                      {s.maintenanceStatusName}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{s.sortOrder ?? '—'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{s.description || '—'}</td>
+                    <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setEditingMaintStatus(s)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMaintenanceStatus(s.maintenanceStatusId)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {showMaintStatusModal && (
+            <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">
+              <div className="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg">
+                <h3 className="mb-4 text-lg font-bold">Create maintenance status</h3>
+                <form onSubmit={handleCreateMaintenanceStatus}>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Name *</label>
+                    <input
+                      type="text"
+                      name="maintenanceStatusName"
+                      required
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Sort order</label>
+                    <input type="number" name="sortOrder" className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                    <textarea name="description" rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Active</label>
+                    <select name="isActive" className="w-full rounded-md border border-gray-300 px-3 py-2" defaultValue="true">
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowMaintStatusModal(false)}
+                      className="rounded-md border border-gray-300 px-4 py-2"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+                      Create
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {editingMaintStatus && (
+            <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">
+              <div className="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg">
+                <h3 className="mb-4 text-lg font-bold">Edit maintenance status</h3>
+                <form onSubmit={(e) => handleUpdateMaintenanceStatus(editingMaintStatus.maintenanceStatusId, e)}>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      name="maintenanceStatusName"
+                      defaultValue={editingMaintStatus.maintenanceStatusName}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Sort order</label>
+                    <input
+                      type="number"
+                      name="sortOrder"
+                      defaultValue={editingMaintStatus.sortOrder ?? ''}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      defaultValue={editingMaintStatus.description || ''}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Active</label>
+                    <select
+                      name="isActive"
+                      defaultValue={
+                        editingMaintStatus.isActive === true
+                          ? 'true'
+                          : editingMaintStatus.isActive === false
+                            ? 'false'
+                            : ''
+                      }
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    >
+                      <option value="">Not set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingMaintStatus(null)}
+                      className="rounded-md border border-gray-300 px-4 py-2"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+                      Update
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'reminder_priority' && (
+        <div>
+          <div className="overflow-hidden rounded-lg bg-white shadow">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Color</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Sort</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {reminderPriorities.map((p) => (
+                  <tr key={p.reminderPriorityId}>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                      {p.reminderPriorityName}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      {p.displayColor ? (
+                        <span
+                          className="rounded px-2 py-1 text-xs text-white"
+                          style={{ backgroundColor: p.displayColor }}
+                        >
+                          {p.displayColor}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{p.sortOrder ?? '—'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{p.description || '—'}</td>
+                    <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setEditingRemPri(p)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReminderPriority(p.reminderPriorityId)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {showRemPriModal && (
+            <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">
+              <div className="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg">
+                <h3 className="mb-4 text-lg font-bold">Create reminder priority</h3>
+                <form onSubmit={handleCreateReminderPriority}>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Name *</label>
+                    <input
+                      type="text"
+                      name="reminderPriorityName"
+                      required
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Display color</label>
+                    <input type="color" name="displayColor" className="h-10 w-full rounded-md border border-gray-300" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Sort order</label>
+                    <input type="number" name="sortOrder" className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                    <textarea name="description" rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Active</label>
+                    <select name="isActive" className="w-full rounded-md border border-gray-300 px-3 py-2" defaultValue="true">
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowRemPriModal(false)}
+                      className="rounded-md border border-gray-300 px-4 py-2"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+                      Create
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {editingRemPri && (
+            <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">
+              <div className="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg">
+                <h3 className="mb-4 text-lg font-bold">Edit reminder priority</h3>
+                <form onSubmit={(e) => handleUpdateReminderPriority(editingRemPri.reminderPriorityId, e)}>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      name="reminderPriorityName"
+                      defaultValue={editingRemPri.reminderPriorityName}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Display color</label>
+                    <input
+                      type="color"
+                      name="displayColor"
+                      defaultValue={editingRemPri.displayColor || '#64748b'}
+                      className="h-10 w-full rounded-md border border-gray-300"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Sort order</label>
+                    <input
+                      type="number"
+                      name="sortOrder"
+                      defaultValue={editingRemPri.sortOrder ?? ''}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      defaultValue={editingRemPri.description || ''}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Active</label>
+                    <select
+                      name="isActive"
+                      defaultValue={
+                        editingRemPri.isActive === true
+                          ? 'true'
+                          : editingRemPri.isActive === false
+                            ? 'false'
+                            : ''
+                      }
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    >
+                      <option value="">Not set</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingRemPri(null)}
+                      className="rounded-md border border-gray-300 px-4 py-2"
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
                       Update
                     </button>
                   </div>
