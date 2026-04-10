@@ -137,127 +137,129 @@ const MaintenanceForm: React.FC = () => {
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 max-w-2xl space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Property group *</label>
-          <select
-            required
-            value={formData.propertyGroupId || ''}
-            onChange={(e) => {
-              const gid = parseInt(e.target.value, 10);
-              const firstP = properties.find((p) => p.propertyGroupId === gid);
-              setFormData({
-                ...formData,
-                propertyGroupId: gid,
-                propertyId: firstP?.propertyId ?? 0,
-              });
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Select…</option>
-            {groups.map((g) => (
-              <option key={g.propertyGroupId} value={g.propertyGroupId}>
-                {g.propertyGroupName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
-          <select
-            required
-            value={formData.propertyId || ''}
-            onChange={(e) => setFormData({ ...formData, propertyId: parseInt(e.target.value, 10) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Select…</option>
-            {propertiesForGroup.map((p) => (
-              <option key={p.propertyId} value={p.propertyId}>
-                {p.propertyName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance type *</label>
-          <select
-            required
-            value={formData.maintenanceTypeId || ''}
-            onChange={(e) =>
-              setFormData({ ...formData, maintenanceTypeId: parseInt(e.target.value, 10) })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Select…</option>
-            {types.map((t) => (
-              <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
-                {t.maintenanceTypeName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select
-            value={formData.maintenanceStatusId ?? ''}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                maintenanceStatusId: e.target.value ? parseInt(e.target.value, 10) : undefined,
-              })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">— None —</option>
-            {statuses.map((s) => (
-              <option key={s.maintenanceStatusId} value={s.maintenanceStatusId}>
-                {s.maintenanceStatusName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
-          <input
-            type="text"
-            value={formData.summary}
-            onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Details</label>
-          <textarea
-            rows={5}
-            value={formData.detailNotes}
-            onChange={(e) => setFormData({ ...formData, detailNotes: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Work date</label>
-          <input
-            type="date"
-            value={formData.workDate || ''}
-            onChange={(e) => setFormData({ ...formData, workDate: e.target.value || undefined })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        <div className="flex gap-2 pt-4">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/Property Hub/Maintenance')}
-            className="px-4 py-2 border border-gray-300 rounded-md"
-          >
-            Cancel
-          </button>
+      <form onSubmit={handleSubmit} className="rounded-lg bg-white p-6 shadow">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Property group *</label>
+            <select
+              required
+              value={formData.propertyGroupId || ''}
+              onChange={(e) => {
+                const gid = parseInt(e.target.value, 10);
+                const firstP = properties.find((p) => p.propertyGroupId === gid);
+                setFormData({
+                  ...formData,
+                  propertyGroupId: gid,
+                  propertyId: firstP?.propertyId ?? 0,
+                });
+              }}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="">Select…</option>
+              {groups.map((g) => (
+                <option key={g.propertyGroupId} value={g.propertyGroupId}>
+                  {g.propertyGroupName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Property *</label>
+            <select
+              required
+              value={formData.propertyId || ''}
+              onChange={(e) => setFormData({ ...formData, propertyId: parseInt(e.target.value, 10) })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="">Select…</option>
+              {propertiesForGroup.map((p) => (
+                <option key={p.propertyId} value={p.propertyId}>
+                  {p.propertyName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Maintenance type *</label>
+            <select
+              required
+              value={formData.maintenanceTypeId || ''}
+              onChange={(e) =>
+                setFormData({ ...formData, maintenanceTypeId: parseInt(e.target.value, 10) })
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="">Select…</option>
+              {types.map((t) => (
+                <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
+                  {t.maintenanceTypeName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+            <select
+              value={formData.maintenanceStatusId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  maintenanceStatusId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                })
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="">— None —</option>
+              {statuses.map((s) => (
+                <option key={s.maintenanceStatusId} value={s.maintenanceStatusId}>
+                  {s.maintenanceStatusName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Summary</label>
+            <input
+              type="text"
+              value={formData.summary}
+              onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Details</label>
+            <textarea
+              rows={5}
+              value={formData.detailNotes}
+              onChange={(e) => setFormData({ ...formData, detailNotes: e.target.value })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Work date</label>
+            <input
+              type="date"
+              value={formData.workDate || ''}
+              onChange={(e) => setFormData({ ...formData, workDate: e.target.value || undefined })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
+          </div>
+          <div className="flex items-end gap-2 pb-1 md:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/Property Hub/Maintenance')}
+              className="rounded-md border border-gray-300 px-4 py-2"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </form>
     </div>

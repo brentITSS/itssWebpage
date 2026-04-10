@@ -178,7 +178,13 @@ const PropertyDashboard: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{property.propertyName}</h1>
+        <Link
+          to="/Property Hub/Home"
+          className="text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          ← Property overview
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{property.propertyName}</h1>
         <p className="mt-1 text-sm text-slate-500">
           {property.address}
           {property.postCode ? ` · ${property.postCode}` : ''}
