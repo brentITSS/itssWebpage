@@ -42,9 +42,16 @@ public class AuthService : IAuthService
         if (user == null || !user.IsActive)
             return null;
 
-        // Verify password using BCrypt (secure password hashing)
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        // Verify password safely; handle legacy bcrypt prefixes from older systems.
+        if (!TryVerifyPassword(request.Password, user.PasswordHash, out var shouldRehash))
             return null;
+
+        if (shouldRehash)
+        {
+            // Upgrade legacy hash format after successful login.
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            await _userRepository.UpdateAsync(user);
+        }
 
         // Generate JWT token
         var token = GenerateJwtToken(user);
@@ -55,6 +62,54 @@ public class AuthService : IAuthService
             Token = token,
             User = userDto
         };
+    }
+
+    private static bool TryVerifyPassword(string plainPassword, string storedHash, out bool shouldRehash)
+    {
+        shouldRehash = false;
+
+        if (string.IsNullOrWhiteSpace(storedHash))
+            return false;
+
+        var hash = storedHash.Trim();
+
+        try
+        {
+            if (BCrypt.Net.BCrypt.Verify(plainPassword, hash))
+                return true;
+        }
+        catch
+        {
+            // Try normalized legacy prefixes below.
+        }
+
+        var normalizedHash = NormalizeLegacyBcryptPrefix(hash);
+        if (normalizedHash == hash)
+            return false;
+
+        try
+        {
+            if (!BCrypt.Net.BCrypt.Verify(plainPassword, normalizedHash))
+                return false;
+
+            shouldRehash = true;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string NormalizeLegacyBcryptPrefix(string hash)
+    {
+        if (hash.StartsWith("$2y$"))
+            return "$2a$" + hash[4..];
+
+        if (hash.StartsWith("$2x$"))
+            return "$2a$" + hash[4..];
+
+        return hash;
     }
 
     public async Task<ForgotPasswordResponse> RequestPasswordResetAsync(string email)

@@ -102,8 +102,9 @@ const Tenants: React.FC = () => {
       )}
 
       {/* Tenants Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="mb-6 rounded-lg bg-white shadow">
+        <div className="overflow-x-auto">
+          <table className="min-w-[780px] w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -127,7 +128,8 @@ const Tenants: React.FC = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       {/* Create Tenant Modal */}

@@ -234,12 +234,12 @@ const ContactLogsList: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Contact Logs</h2>
         <button
           type="button"
           onClick={() => navigate('/Property Hub/Contact Logs/New')}
-          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 sm:w-auto"
         >
           New Contact Log
         </button>
@@ -317,8 +317,9 @@ const ContactLogsList: React.FC = () => {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="rounded-lg bg-white shadow">
+        <div className="overflow-x-auto">
+          <table className="min-w-[980px] w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
@@ -377,7 +378,8 @@ const ContactLogsList: React.FC = () => {
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -94,11 +94,11 @@ const JournalLogsList: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Journal Logs</h2>
         <button
           onClick={() => navigate('/Property Hub/Journal Logs/New')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 sm:w-auto"
         >
           New Journal Log
         </button>
@@ -175,8 +175,9 @@ const JournalLogsList: React.FC = () => {
       </div>
 
       {/* Journal Logs Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="rounded-lg bg-white shadow">
+        <div className="overflow-x-auto">
+          <table className="min-w-[1040px] w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -237,7 +238,8 @@ const JournalLogsList: React.FC = () => {
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

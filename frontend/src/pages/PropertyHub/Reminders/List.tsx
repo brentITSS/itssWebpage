@@ -290,8 +290,9 @@ const RemindersList: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="rounded-lg bg-white shadow">
+        <div className="overflow-x-auto">
+          <table className="min-w-[1160px] w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Created</th>
@@ -361,7 +362,8 @@ const RemindersList: React.FC = () => {
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );
