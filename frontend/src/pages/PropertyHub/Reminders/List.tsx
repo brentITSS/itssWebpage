@@ -4,6 +4,8 @@ import { reminderService, ReminderResponseDto } from '../../../services/reminder
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import HubScopedHeader from '../HubScopedHeader';
 import { countOpenRemindersForProperty } from '../propertyHubMetrics';
+import { formatDateUk } from '../../../dateFormat';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const RemindersList: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +23,7 @@ const RemindersList: React.FC = () => {
 
   const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(scoped ? scopedPropertyId : '');
   const [filterCompleted, setFilterCompleted] = useState<'all' | 'open' | 'done'>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (scoped) setFilterPropertyId(scopedPropertyId);
@@ -157,31 +160,15 @@ const RemindersList: React.FC = () => {
           </p>
         )}
         <p className="mt-2 text-xs text-slate-500">
-          {r.createdDate ? `Created ${new Date(r.createdDate).toLocaleDateString()}` : ''}
+          {r.createdDate ? `Created ${formatDateUk(r.createdDate)}` : ''}
           {r.tenantName ? ` · ${r.tenantName}` : ''}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
-            className="text-sm font-medium text-blue-600 hover:text-blue-800"
-          >
-            View
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}?edit=true`)}
-            className="text-sm font-medium text-green-600 hover:text-green-800"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDelete(r.reminderId)}
-            className="text-sm font-medium text-red-600 hover:text-red-800"
-          >
-            Delete
-          </button>
+        <div className="mt-3">
+          <EntityActionButtons
+            onView={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
+            onEdit={() => navigate(`/Property Hub/Reminders/${r.reminderId}?edit=true`)}
+            onDelete={() => handleDelete(r.reminderId)}
+          />
         </div>
       </div>
     </div>
@@ -258,36 +245,48 @@ const RemindersList: React.FC = () => {
       )}
 
       <div className="mb-6 rounded-lg bg-white p-4 shadow">
-        <h3 className="mb-4 text-sm font-medium text-gray-700">Filters</h3>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
-            <select
-              value={filterPropertyId === '' ? '' : String(filterPropertyId)}
-              onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="">All</option>
-              {properties.map((p) => (
-                <option key={p.propertyId} value={p.propertyId}>
-                  {p.propertyName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-            <select
-              value={filterCompleted}
-              onChange={(e) => setFilterCompleted(e.target.value as 'all' | 'open' | 'done')}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="all">All</option>
-              <option value="open">Open</option>
-              <option value="done">Completed</option>
-            </select>
-          </div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">Filters</h3>
+          <button
+            type="button"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            aria-expanded={showFilters}
+          >
+            {showFilters ? 'Hide filters' : 'Show filters'}
+          </button>
         </div>
+        {showFilters && (
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
+              <select
+                value={filterPropertyId === '' ? '' : String(filterPropertyId)}
+                onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              >
+                <option value="">All</option>
+                {properties.map((p) => (
+                  <option key={p.propertyId} value={p.propertyId}>
+                    {p.propertyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={filterCompleted}
+                onChange={(e) => setFilterCompleted(e.target.value as 'all' | 'open' | 'done')}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              >
+                <option value="all">All</option>
+                <option value="open">Open</option>
+                <option value="done">Completed</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg bg-white shadow">
@@ -316,7 +315,7 @@ const RemindersList: React.FC = () => {
               filtered.map((r) => (
                 <tr key={r.reminderId} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {r.createdDate ? new Date(r.createdDate).toLocaleDateString() : '—'}
+                    {r.createdDate ? formatDateUk(r.createdDate) : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{r.title}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
@@ -335,28 +334,13 @@ const RemindersList: React.FC = () => {
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.tenantName || '—'}</td>
                   <td className="max-w-xs truncate px-6 py-4 text-sm text-gray-500">{r.tenancySummary || '—'}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm">{r.isCompleted ? 'Yes' : 'No'}</td>
-                  <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}?edit=true`)}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(r.reminderId)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                    <EntityActionButtons
+                      compact
+                      onView={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
+                      onEdit={() => navigate(`/Property Hub/Reminders/${r.reminderId}?edit=true`)}
+                      onDelete={() => handleDelete(r.reminderId)}
+                    />
                   </td>
                 </tr>
               ))

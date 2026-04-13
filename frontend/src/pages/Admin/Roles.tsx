@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { adminService, RoleResponseDto, CreateRoleRequest, UpdateRoleRequest, RoleTypeDto } from '../../services/adminService';
+import { formatDateUk } from '../../dateFormat';
 
 const Roles: React.FC = () => {
   const [roles, setRoles] = useState<RoleResponseDto[]>([]);
@@ -189,7 +190,7 @@ const Roles: React.FC = () => {
                   </div>
                   <div className="mt-3 text-sm text-slate-600">
                     <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Created</span>
-                    {new Date(role.createdDate).toLocaleDateString()}
+                    {formatDateUk(role.createdDate)}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button

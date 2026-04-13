@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { propertyAdminService, TenancyResponseDto, CreateTenancyRequest, UpdateTenancyRequest, PropertyResponseDto, TenantResponseDto, CreateTenantRequest, UpdateTenantRequest } from '../../../services/propertyAdminService';
+import { formatDateUk } from '../../../dateFormat';
 
 const Tenancies: React.FC = () => {
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
@@ -248,8 +249,8 @@ const Tenancies: React.FC = () => {
                       </button>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(tenancy.startDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenancy.endDate ? new Date(tenancy.endDate).toLocaleDateString() : '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDateUk(tenancy.startDate)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenancy.endDate ? formatDateUk(tenancy.endDate) : '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R{tenancy.monthlyRent?.toFixed(2) || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button onClick={() => setEditingTenancy(tenancy)} className="text-blue-600 hover:text-blue-900">Edit</button>

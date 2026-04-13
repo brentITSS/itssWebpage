@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalService, JournalLogResponseDto } from '../../../services/journalService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
+import { formatDateUk } from '../../../dateFormat';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const JournalLogsList: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ const JournalLogsList: React.FC = () => {
   const [filterJournalTypeId, setFilterJournalTypeId] = useState<number | ''>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -110,67 +113,81 @@ const JournalLogsList: React.FC = () => {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-4">Filters</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
-            <select
-              value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
-              onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value) : '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="">All Properties</option>
-              {properties.map(p => (
-                <option key={p.propertyId} value={p.propertyId}>{p.propertyName}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Journal Type</label>
-            <select
-              value={filterJournalTypeId}
-              onChange={(e) => setFilterJournalTypeId(e.target.value ? parseInt(e.target.value) : '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="">All Types</option>
-              {journalTypes.map(t => (
-                <option key={t.journalTypeId} value={t.journalTypeId}>{t.journalTypeName}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-        </div>
-        {(filterPropertyId || filterJournalTypeId || filterDateFrom || filterDateTo) && (
+      <div className="mb-6 rounded-lg bg-white p-4 shadow">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">Filters</h3>
           <button
-            onClick={() => {
-              setFilterPropertyId('');
-              setFilterJournalTypeId('');
-              setFilterDateFrom('');
-              setFilterDateTo('');
-            }}
-            className="mt-4 text-sm text-blue-600 hover:text-blue-800"
+            type="button"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            aria-expanded={showFilters}
           >
-            Clear Filters
+            {showFilters ? 'Hide filters' : 'Show filters'}
           </button>
+        </div>
+        {showFilters && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
+                <select
+                  value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
+                  onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value) : '')}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">All Properties</option>
+                  {properties.map(p => (
+                    <option key={p.propertyId} value={p.propertyId}>{p.propertyName}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Journal Type</label>
+                <select
+                  value={filterJournalTypeId}
+                  onChange={(e) => setFilterJournalTypeId(e.target.value ? parseInt(e.target.value) : '')}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">All Types</option>
+                  {journalTypes.map(t => (
+                    <option key={t.journalTypeId} value={t.journalTypeId}>{t.journalTypeName}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Date From</label>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Date To</label>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+            {(filterPropertyId || filterJournalTypeId || filterDateFrom || filterDateTo) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterPropertyId('');
+                  setFilterJournalTypeId('');
+                  setFilterDateFrom('');
+                  setFilterDateTo('');
+                }}
+                className="mt-4 text-sm text-blue-600 hover:text-blue-800"
+              >
+                Clear Filters
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -200,7 +217,7 @@ const JournalLogsList: React.FC = () => {
               filteredLogs.map((log) => (
                 <tr key={log.journalLogId} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(log.transactionDate).toLocaleDateString()}
+                    {formatDateUk(log.transactionDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.propertyName}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.tenantName || '-'}</td>
@@ -214,25 +231,13 @@ const JournalLogsList: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="max-w-xs truncate">{log.description || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}`)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}?edit=true`)}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(log.journalLogId)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <EntityActionButtons
+                      compact
+                      onView={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}`)}
+                      onEdit={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}?edit=true`)}
+                      onDelete={() => handleDelete(log.journalLogId)}
+                    />
                   </td>
                 </tr>
               ))

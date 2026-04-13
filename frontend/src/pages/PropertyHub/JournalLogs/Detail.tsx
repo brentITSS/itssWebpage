@@ -5,6 +5,7 @@ import { tagService, TagDto } from '../../../services/tagService';
 import Tag from '../../../components/Tag';
 import TagAssignmentModal from '../../../components/TagAssignmentModal';
 import JournalLogForm from './Form';
+import { formatDateTimeUk, formatDateUk } from '../../../dateFormat';
 
 const JournalLogDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -180,7 +181,7 @@ const JournalLogDetail: React.FC = () => {
             <div>
               <dt className="text-sm font-medium text-gray-500">Transaction Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(journalLog.transactionDate).toLocaleDateString()}
+                {formatDateUk(journalLog.transactionDate)}
               </dd>
             </div>
             <div>
@@ -217,7 +218,7 @@ const JournalLogDetail: React.FC = () => {
             <div>
               <dt className="text-sm font-medium text-gray-500">Created Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(journalLog.createdDate).toLocaleString()}
+                {formatDateTimeUk(journalLog.createdDate)}
               </dd>
             </div>
           </dl>
@@ -276,7 +277,7 @@ const JournalLogDetail: React.FC = () => {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{attachment.fileName}</p>
                     <p className="text-xs text-gray-500">
-                      {formatFileSize(attachment.fileSize)} • {new Date(attachment.createdDate).toLocaleDateString()}
+                      {formatFileSize(attachment.fileSize)} • {formatDateUk(attachment.createdDate)}
                     </p>
                   </div>
                   <div className="flex space-x-2">

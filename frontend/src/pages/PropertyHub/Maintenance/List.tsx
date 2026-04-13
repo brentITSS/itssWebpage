@@ -4,6 +4,8 @@ import { maintenanceService, MaintenanceResponseDto } from '../../../services/ma
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import HubScopedHeader from '../HubScopedHeader';
 import { countMaintenanceForProperty } from '../propertyHubMetrics';
+import { formatDateUk } from '../../../dateFormat';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const MaintenanceList: React.FC = () => {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ const MaintenanceList: React.FC = () => {
   );
   const [filterTypeId, setFilterTypeId] = useState<number | ''>('');
   const [types, setTypes] = useState<{ maintenanceTypeId: number; maintenanceTypeName: string }[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (scoped) setFilterPropertyId(scopedPropertyId);
@@ -126,19 +129,34 @@ const MaintenanceList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-3">
-          <select
-            value={filterTypeId === '' ? '' : String(filterTypeId)}
-            onChange={(e) => setFilterTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">All types</option>
-            {types.map((t) => (
-              <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
-                {t.maintenanceTypeName}
-              </option>
-            ))}
-          </select>
+        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-700">Filters</h3>
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="text-sm font-medium text-blue-600 hover:text-blue-800"
+              aria-expanded={showFilters}
+            >
+              {showFilters ? 'Hide filters' : 'Show filters'}
+            </button>
+          </div>
+          {showFilters && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              <select
+                value={filterTypeId === '' ? '' : String(filterTypeId)}
+                onChange={(e) => setFilterTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">All types</option>
+                {types.map((t) => (
+                  <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
+                    {t.maintenanceTypeName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -168,34 +186,18 @@ const MaintenanceList: React.FC = () => {
                   <p className="mt-2 text-xs text-slate-500">
                     {scopedProperty.address || scopedProperty.propertyName}
                     {r.workDate
-                      ? ` · Work date ${new Date(r.workDate).toLocaleDateString()}`
+                      ? ` · Work date ${formatDateUk(r.workDate)}`
                       : r.createdDate
-                        ? ` · Logged ${new Date(r.createdDate).toLocaleDateString()}`
+                        ? ` · Logged ${formatDateUk(r.createdDate)}`
                         : ''}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}?edit=true`)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(r.maintenanceId)}
-                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
+                <div className="flex shrink-0">
+                  <EntityActionButtons
+                    onView={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
+                    onEdit={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}?edit=true`)}
+                    onDelete={() => handleDelete(r.maintenanceId)}
+                  />
                 </div>
               </div>
             ))
@@ -226,38 +228,51 @@ const MaintenanceList: React.FC = () => {
       )}
 
       <div className="mb-6 rounded-lg bg-white p-4 shadow">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
-            <select
-              value={filterPropertyId === '' ? '' : String(filterPropertyId)}
-              onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="">All</option>
-              {properties.map((p) => (
-                <option key={p.propertyId} value={p.propertyId}>
-                  {p.propertyName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
-            <select
-              value={filterTypeId === '' ? '' : String(filterTypeId)}
-              onChange={(e) => setFilterTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="">All</option>
-              {types.map((t) => (
-                <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
-                  {t.maintenanceTypeName}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">Filters</h3>
+          <button
+            type="button"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            aria-expanded={showFilters}
+          >
+            {showFilters ? 'Hide filters' : 'Show filters'}
+          </button>
         </div>
+        {showFilters && (
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
+              <select
+                value={filterPropertyId === '' ? '' : String(filterPropertyId)}
+                onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              >
+                <option value="">All</option>
+                {properties.map((p) => (
+                  <option key={p.propertyId} value={p.propertyId}>
+                    {p.propertyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
+              <select
+                value={filterTypeId === '' ? '' : String(filterTypeId)}
+                onChange={(e) => setFilterTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              >
+                <option value="">All</option>
+                {types.map((t) => (
+                  <option key={t.maintenanceTypeId} value={t.maintenanceTypeId}>
+                    {t.maintenanceTypeName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg bg-white shadow">
@@ -285,7 +300,7 @@ const MaintenanceList: React.FC = () => {
               filtered.map((r) => (
                 <tr key={r.maintenanceId} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {r.workDate ? new Date(r.workDate).toLocaleDateString() : '—'}
+                    {r.workDate ? formatDateUk(r.workDate) : '—'}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.maintenanceTypeName}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.maintenanceStatusName || '—'}</td>
@@ -294,28 +309,13 @@ const MaintenanceList: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="max-w-xs truncate">{r.summary || '—'}</div>
                   </td>
-                  <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}?edit=true`)}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(r.maintenanceId)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                    <EntityActionButtons
+                      compact
+                      onView={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
+                      onEdit={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}?edit=true`)}
+                      onDelete={() => handleDelete(r.maintenanceId)}
+                    />
                   </td>
                 </tr>
               ))

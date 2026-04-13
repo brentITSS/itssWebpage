@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { adminService, WorkstreamResponseDto, CreateWorkstreamRequest, UpdateWorkstreamRequest } from '../../services/adminService';
+import { formatDateUk } from '../../dateFormat';
 
 const Workstreams: React.FC = () => {
   const [workstreams, setWorkstreams] = useState<WorkstreamResponseDto[]>([]);
@@ -193,7 +194,7 @@ const Workstreams: React.FC = () => {
                   </div>
                   <div className="mt-3 text-sm text-slate-600">
                     <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Created</span>
-                    {new Date(workstream.createdDate).toLocaleDateString()}
+                    {formatDateUk(workstream.createdDate)}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button

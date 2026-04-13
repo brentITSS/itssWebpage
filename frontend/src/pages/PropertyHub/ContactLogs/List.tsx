@@ -4,6 +4,8 @@ import { contactLogService, ContactLogResponseDto } from '../../../services/cont
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import HubScopedHeader from '../HubScopedHeader';
 import { countContactLogsForProperty } from '../propertyHubMetrics';
+import { formatDateUk } from '../../../dateFormat';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const ContactLogsList: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ const ContactLogsList: React.FC = () => {
   const [filterContactLogTypeId, setFilterContactLogTypeId] = useState<number | ''>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     const pid = searchParams.get('propertyId');
@@ -150,33 +153,48 @@ const ContactLogsList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-3">
-          <select
-            value={filterContactLogTypeId === '' ? '' : String(filterContactLogTypeId)}
-            onChange={(e) => setFilterContactLogTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">All types</option>
-            {contactLogTypes.map((t) => (
-              <option key={t.contactLogTypeId} value={t.contactLogTypeId}>
-                {t.contactLogTypeName}
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={filterDateFrom}
-            onChange={(e) => setFilterDateFrom(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            placeholder="From"
-          />
-          <input
-            type="date"
-            value={filterDateTo}
-            onChange={(e) => setFilterDateTo(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            placeholder="To"
-          />
+        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-700">Filters</h3>
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="text-sm font-medium text-blue-600 hover:text-blue-800"
+              aria-expanded={showFilters}
+            >
+              {showFilters ? 'Hide filters' : 'Show filters'}
+            </button>
+          </div>
+          {showFilters && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              <select
+                value={filterContactLogTypeId === '' ? '' : String(filterContactLogTypeId)}
+                onChange={(e) => setFilterContactLogTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">All types</option>
+                {contactLogTypes.map((t) => (
+                  <option key={t.contactLogTypeId} value={t.contactLogTypeId}>
+                    {t.contactLogTypeName}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                placeholder="From"
+              />
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                placeholder="To"
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -197,32 +215,16 @@ const ContactLogsList: React.FC = () => {
                   </div>
                   <p className="mt-1 line-clamp-2 text-sm text-slate-600">{log.notes || '—'}</p>
                   <p className="mt-2 text-xs text-slate-500">
-                    {new Date(log.contactDate).toLocaleDateString()}
+                    {formatDateUk(log.contactDate)}
                     {log.tenantName ? ` · ${log.tenantName}` : ''}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(log.contactLogId)}
-                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
+                <div className="flex shrink-0">
+                  <EntityActionButtons
+                    onView={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
+                    onEdit={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
+                    onDelete={() => handleDelete(log.contactLogId)}
+                  />
                 </div>
               </div>
             ))
@@ -250,70 +252,84 @@ const ContactLogsList: React.FC = () => {
       )}
 
       <div className="mb-6 rounded-lg bg-white p-4 shadow">
-        <h3 className="mb-4 text-sm font-medium text-gray-700">Filters</h3>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
-            <select
-              value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
-              onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="">All Properties</option>
-              {properties.map((p) => (
-                <option key={p.propertyId} value={p.propertyId}>
-                  {p.propertyName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Contact Log Type</label>
-            <select
-              value={filterContactLogTypeId === '' ? '' : String(filterContactLogTypeId)}
-              onChange={(e) => setFilterContactLogTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="">All Types</option>
-              {contactLogTypes.map((t) => (
-                <option key={t.contactLogTypeId} value={t.contactLogTypeId}>
-                  {t.contactLogTypeName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Date From</label>
-            <input
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Date To</label>
-            <input
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-          </div>
-        </div>
-        {(filterPropertyId || filterContactLogTypeId || filterDateFrom || filterDateTo) && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">Filters</h3>
           <button
             type="button"
-            onClick={() => {
-              setFilterPropertyId('');
-              setFilterContactLogTypeId('');
-              setFilterDateFrom('');
-              setFilterDateTo('');
-            }}
-            className="mt-4 text-sm text-blue-600 hover:text-blue-800"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            aria-expanded={showFilters}
           >
-            Clear Filters
+            {showFilters ? 'Hide filters' : 'Show filters'}
           </button>
+        </div>
+        {showFilters && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
+                <select
+                  value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
+                  onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">All Properties</option>
+                  {properties.map((p) => (
+                    <option key={p.propertyId} value={p.propertyId}>
+                      {p.propertyName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Contact Log Type</label>
+                <select
+                  value={filterContactLogTypeId === '' ? '' : String(filterContactLogTypeId)}
+                  onChange={(e) => setFilterContactLogTypeId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">All Types</option>
+                  {contactLogTypes.map((t) => (
+                    <option key={t.contactLogTypeId} value={t.contactLogTypeId}>
+                      {t.contactLogTypeName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Date From</label>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Date To</label>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+            {(filterPropertyId || filterContactLogTypeId || filterDateFrom || filterDateTo) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterPropertyId('');
+                  setFilterContactLogTypeId('');
+                  setFilterDateFrom('');
+                  setFilterDateTo('');
+                }}
+                className="mt-4 text-sm text-blue-600 hover:text-blue-800"
+              >
+                Clear Filters
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -342,7 +358,7 @@ const ContactLogsList: React.FC = () => {
               filteredLogs.map((log) => (
                 <tr key={log.contactLogId} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {new Date(log.contactDate).toLocaleDateString()}
+                    {formatDateUk(log.contactDate)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{log.propertyName}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{log.tenantName || '-'}</td>
@@ -351,28 +367,13 @@ const ContactLogsList: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="max-w-xs truncate">{log.notes || '-'}</div>
                   </td>
-                  <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(log.contactLogId)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                    <EntityActionButtons
+                      compact
+                      onView={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
+                      onEdit={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
+                      onDelete={() => handleDelete(log.contactLogId)}
+                    />
                   </td>
                 </tr>
               ))

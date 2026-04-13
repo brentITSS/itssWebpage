@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { reminderService, ReminderResponseDto } from '../../../services/reminderService';
 import ReminderForm from './Form';
+import { formatDateTimeUk } from '../../../dateFormat';
 
 const ReminderDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ const ReminderDetail: React.FC = () => {
         </p>
         <p>
           <span className="font-medium text-gray-700">Created: </span>
-          {reminder.createdDate ? new Date(reminder.createdDate).toLocaleString() : '—'}
+          {formatDateTimeUk(reminder.createdDate)}
         </p>
         {reminder.createdBy && (
           <p>

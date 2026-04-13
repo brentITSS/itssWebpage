@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { maintenanceService, MaintenanceResponseDto } from '../../../services/maintenanceService';
 import MaintenanceForm from './Form';
+import { formatDateUk } from '../../../dateFormat';
 
 const MaintenanceDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -97,7 +98,7 @@ const MaintenanceDetail: React.FC = () => {
         </p>
         <p>
           <span className="font-medium text-gray-700">Work date: </span>
-          {row.workDate ? new Date(row.workDate).toLocaleDateString() : '—'}
+          {row.workDate ? formatDateUk(row.workDate) : '—'}
         </p>
         {row.detailNotes && (
           <div>

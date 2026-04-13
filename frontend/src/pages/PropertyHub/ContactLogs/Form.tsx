@@ -6,6 +6,7 @@ import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../
 import { tagService, TagDto } from '../../../services/tagService';
 import Tag from '../../../components/Tag';
 import TagAssignmentModal from '../../../components/TagAssignmentModal';
+import { formatDateUk } from '../../../dateFormat';
 
 const ContactLogForm: React.FC = () => {
   const navigate = useNavigate();
@@ -381,7 +382,7 @@ const ContactLogForm: React.FC = () => {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{attachment.fileName}</p>
                       <p className="text-xs text-gray-500">
-                        {formatFileSize(attachment.fileSize)} • {new Date(attachment.createdDate).toLocaleDateString()}
+                        {formatFileSize(attachment.fileSize)} • {formatDateUk(attachment.createdDate)}
                       </p>
                     </div>
                     <button

@@ -13,6 +13,7 @@ import {
   countOpenRemindersForProperty,
   filterTenanciesForProperty,
 } from './propertyHubMetrics';
+import { formatDateUk } from '../../dateFormat';
 
 const PropertyDashboard: React.FC = () => {
   const { propertyId: idParam } = useParams<{ propertyId: string }>();
@@ -222,9 +223,9 @@ const PropertyDashboard: React.FC = () => {
                   </div>
                   <p className="text-xs text-slate-500">
                     {m.workDate
-                      ? `Work date ${new Date(m.workDate).toLocaleDateString()}`
+                      ? `Work date ${formatDateUk(m.workDate)}`
                       : m.createdDate
-                        ? `Logged ${new Date(m.createdDate).toLocaleDateString()}`
+                        ? `Logged ${formatDateUk(m.createdDate)}`
                         : ''}
                   </p>
                 </li>
@@ -254,7 +255,7 @@ const PropertyDashboard: React.FC = () => {
                   )}
                   {r.notes && <p className="text-xs text-slate-600 line-clamp-2">{r.notes}</p>}
                   <p className="text-xs text-slate-500">
-                    {r.createdDate ? `Created ${new Date(r.createdDate).toLocaleDateString()}` : ''}
+                    {r.createdDate ? `Created ${formatDateUk(r.createdDate)}` : ''}
                   </p>
                 </li>
               ))}
@@ -296,7 +297,7 @@ const PropertyDashboard: React.FC = () => {
                 >
                   <span className="font-medium text-slate-900">{log.subject}</span>
                   <p className="text-xs text-slate-500">
-                    {log.contactLogTypeName} · {new Date(log.contactDate).toLocaleDateString()}
+                    {log.contactLogTypeName} · {formatDateUk(log.contactDate)}
                     {log.tenantName ? ` · ${log.tenantName}` : ''}
                   </p>
                 </li>
