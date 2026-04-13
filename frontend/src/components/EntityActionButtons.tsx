@@ -1,7 +1,7 @@
 import React from 'react';
 
 type EntityActionButtonsProps = {
-  onView: () => void;
+  onView?: () => void;
   onEdit: () => void;
   onDelete: () => void;
   compact?: boolean;
@@ -22,25 +22,31 @@ const EntityActionButtons: React.FC<EntityActionButtonsProps> = ({
   compact = false,
 }) => {
   const cls = compact ? compactButtonClass : regularButtonClass;
+  const withStop = (handler: () => void) => (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    handler();
+  };
 
   return (
     <div className="flex items-center gap-1.5">
-      <button
-        type="button"
-        onClick={onView}
-        aria-label="View"
-        title="View"
-        className={`${cls} border-sky-200 text-sky-700 hover:bg-sky-50 focus:ring-sky-400`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
-          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
-          <circle cx="12" cy="12" r="2.8" />
-        </svg>
-      </button>
+      {onView && (
+        <button
+          type="button"
+          onClick={withStop(onView)}
+          aria-label="View"
+          title="View"
+          className={`${cls} border-sky-200 text-sky-700 hover:bg-sky-50 focus:ring-sky-400`}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
+            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+            <circle cx="12" cy="12" r="2.8" />
+          </svg>
+        </button>
+      )}
 
       <button
         type="button"
-        onClick={onEdit}
+        onClick={withStop(onEdit)}
         aria-label="Edit"
         title="Edit"
         className={`${cls} border-emerald-200 text-emerald-700 hover:bg-emerald-50 focus:ring-emerald-400`}
@@ -53,7 +59,7 @@ const EntityActionButtons: React.FC<EntityActionButtonsProps> = ({
 
       <button
         type="button"
-        onClick={onDelete}
+        onClick={withStop(onDelete)}
         aria-label="Delete"
         title="Delete"
         className={`${cls} border-rose-200 text-rose-700 hover:bg-rose-50 focus:ring-rose-400`}

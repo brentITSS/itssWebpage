@@ -215,7 +215,11 @@ const JournalLogsList: React.FC = () => {
               </tr>
             ) : (
               filteredLogs.map((log) => (
-                <tr key={log.journalLogId} className="hover:bg-gray-50">
+                <tr
+                  key={log.journalLogId}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDateUk(log.transactionDate)}
                   </td>

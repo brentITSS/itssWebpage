@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { propertyAdminService, PropertyResponseDto, CreatePropertyRequest, UpdatePropertyRequest, PropertyGroupResponseDto } from '../../../services/propertyAdminService';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const Properties: React.FC = () => {
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
@@ -128,9 +129,12 @@ const Properties: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{property.propertyGroupName}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{property.address || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{property.postCode || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button onClick={() => setEditingProperty(property)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                  <button onClick={() => handleDelete(property.propertyId)} className="text-red-600 hover:text-red-900">Delete</button>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <EntityActionButtons
+                    compact
+                    onEdit={() => setEditingProperty(property)}
+                    onDelete={() => handleDelete(property.propertyId)}
+                  />
                 </td>
               </tr>
             ))}

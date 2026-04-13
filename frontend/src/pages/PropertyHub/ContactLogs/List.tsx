@@ -204,7 +204,8 @@ const ContactLogsList: React.FC = () => {
             filteredLogs.map((log) => (
               <div
                 key={log.contactLogId}
-                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex cursor-pointer flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -356,7 +357,11 @@ const ContactLogsList: React.FC = () => {
               </tr>
             ) : (
               filteredLogs.map((log) => (
-                <tr key={log.contactLogId} className="hover:bg-gray-50">
+                <tr
+                  key={log.contactLogId}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
+                >
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {formatDateUk(log.contactDate)}
                   </td>

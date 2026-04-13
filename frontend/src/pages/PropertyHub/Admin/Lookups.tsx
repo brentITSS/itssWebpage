@@ -23,6 +23,7 @@ import {
   CreateReminderPriorityRequest,
   UpdateReminderPriorityRequest,
 } from '../../../services/propertyAdminService';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const Lookups: React.FC = () => {
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
@@ -637,19 +638,12 @@ const Lookups: React.FC = () => {
                           type.subTypes.map((st) => (
                             <div key={st.journalSubTypeId} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
                               <span>{st.journalSubTypeName}</span>
-                              <div className="space-x-2">
-                                <button
-                                  onClick={() => setEditingJournalSubType({ subType: st, journalTypeId: type.journalTypeId })}
-                                  className="text-blue-600 hover:text-blue-900 text-xs"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteJournalSubType(st.journalSubTypeId)}
-                                  className="text-red-600 hover:text-red-900 text-xs"
-                                >
-                                  Delete
-                                </button>
+                              <div>
+                                <EntityActionButtons
+                                  compact
+                                  onEdit={() => setEditingJournalSubType({ subType: st, journalTypeId: type.journalTypeId })}
+                                  onDelete={() => handleDeleteJournalSubType(st.journalSubTypeId)}
+                                />
                               </div>
                             </div>
                           ))
@@ -667,9 +661,12 @@ const Lookups: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button onClick={() => setEditingJournalType(type)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                      <button onClick={() => handleDeleteJournalType(type.journalTypeId)} className="text-red-600 hover:text-red-900">Delete</button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <EntityActionButtons
+                        compact
+                        onEdit={() => setEditingJournalType(type)}
+                        onDelete={() => handleDeleteJournalType(type.journalTypeId)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -829,9 +826,12 @@ const Lookups: React.FC = () => {
                   <tr key={type.contactLogTypeId}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{type.contactLogTypeName}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button onClick={() => setEditingContactLogType(type)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                      <button onClick={() => handleDeleteContactLogType(type.contactLogTypeId)} className="text-red-600 hover:text-red-900">Delete</button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <EntityActionButtons
+                        compact
+                        onEdit={() => setEditingContactLogType(type)}
+                        onDelete={() => handleDeleteContactLogType(type.contactLogTypeId)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -930,9 +930,12 @@ const Lookups: React.FC = () => {
                       {!type.color && <span className="text-gray-400">-</span>}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button onClick={() => setEditingTagType(type)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                      <button onClick={() => handleDeleteTagType(type.tagTypeId)} className="text-red-600 hover:text-red-900">Delete</button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <EntityActionButtons
+                        compact
+                        onEdit={() => setEditingTagType(type)}
+                        onDelete={() => handleDeleteTagType(type.tagTypeId)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1031,21 +1034,12 @@ const Lookups: React.FC = () => {
                       {type.maintenanceTypeName}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{type.description || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditingMaintenanceType(type)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMaintenanceType(type.maintenanceTypeId)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <EntityActionButtons
+                        compact
+                        onEdit={() => setEditingMaintenanceType(type)}
+                        onDelete={() => handleDeleteMaintenanceType(type.maintenanceTypeId)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1177,21 +1171,12 @@ const Lookups: React.FC = () => {
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{s.sortOrder ?? '—'}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{s.description || '—'}</td>
-                    <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
-                      <button
-                        type="button"
-                        onClick={() => setEditingMaintStatus(s)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMaintenanceStatus(s.maintenanceStatusId)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                      <EntityActionButtons
+                        compact
+                        onEdit={() => setEditingMaintStatus(s)}
+                        onDelete={() => handleDeleteMaintenanceStatus(s.maintenanceStatusId)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1349,21 +1334,12 @@ const Lookups: React.FC = () => {
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{p.sortOrder ?? '—'}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{p.description || '—'}</td>
-                    <td className="space-x-2 whitespace-nowrap px-6 py-4 text-sm font-medium">
-                      <button
-                        type="button"
-                        onClick={() => setEditingRemPri(p)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteReminderPriority(p.reminderPriorityId)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                      <EntityActionButtons
+                        compact
+                        onEdit={() => setEditingRemPri(p)}
+                        onDelete={() => handleDeleteReminderPriority(p.reminderPriorityId)}
+                      />
                     </td>
                   </tr>
                 ))}

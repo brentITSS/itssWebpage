@@ -120,7 +120,10 @@ const RemindersList: React.FC = () => {
     r,
     showCheckbox = false,
   }) => (
-    <div className="flex gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div
+      className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
+    >
       {showCheckbox && (
         <div className="pt-0.5">
           <input
@@ -128,6 +131,7 @@ const RemindersList: React.FC = () => {
             checked={r.isCompleted}
             disabled={togglingId === r.reminderId}
             onChange={() => toggleComplete(r)}
+            onClick={(e) => e.stopPropagation()}
             className="h-4 w-4 rounded border-slate-300"
             aria-label={r.isCompleted ? 'Mark open' : 'Mark completed'}
           />
@@ -313,7 +317,11 @@ const RemindersList: React.FC = () => {
               </tr>
             ) : (
               filtered.map((r) => (
-                <tr key={r.reminderId} className="hover:bg-gray-50">
+                <tr
+                  key={r.reminderId}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
+                >
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {r.createdDate ? formatDateUk(r.createdDate) : '—'}
                   </td>

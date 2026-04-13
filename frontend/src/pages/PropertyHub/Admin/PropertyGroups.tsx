@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { propertyAdminService, PropertyGroupResponseDto, CreatePropertyGroupRequest, UpdatePropertyGroupRequest } from '../../../services/propertyAdminService';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const PropertyGroups: React.FC = () => {
   const [propertyGroups, setPropertyGroups] = useState<PropertyGroupResponseDto[]>([]);
@@ -119,13 +120,12 @@ const PropertyGroups: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">{group.description || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{group.propertyCount}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button onClick={() => setEditingGroup(group)} className="text-blue-600 hover:text-blue-900">
-                    Edit
-                  </button>
-                  <button onClick={() => handleDelete(group.propertyGroupId)} className="text-red-600 hover:text-red-900">
-                    Delete
-                  </button>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <EntityActionButtons
+                    compact
+                    onEdit={() => setEditingGroup(group)}
+                    onDelete={() => handleDelete(group.propertyGroupId)}
+                  />
                 </td>
               </tr>
             ))}

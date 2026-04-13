@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { propertyAdminService, TenantResponseDto, CreateTenantRequest, UpdateTenantRequest } from '../../../services/propertyAdminService';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const Tenants: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
@@ -121,9 +122,12 @@ const Tenants: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.phone || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button onClick={() => setEditingTenant(tenant)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                  <button onClick={() => handleDeleteTenant(tenant.tenantId)} className="text-red-600 hover:text-red-900">Delete</button>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <EntityActionButtons
+                    compact
+                    onEdit={() => setEditingTenant(tenant)}
+                    onDelete={() => handleDeleteTenant(tenant.tenantId)}
+                  />
                 </td>
               </tr>
             ))}

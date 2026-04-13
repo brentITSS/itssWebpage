@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { propertyAdminService, TenancyResponseDto, CreateTenancyRequest, UpdateTenancyRequest, PropertyResponseDto, TenantResponseDto, CreateTenantRequest, UpdateTenantRequest } from '../../../services/propertyAdminService';
 import { formatDateUk } from '../../../dateFormat';
+import EntityActionButtons from '../../../components/EntityActionButtons';
 
 const Tenancies: React.FC = () => {
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
@@ -219,19 +220,12 @@ const Tenancies: React.FC = () => {
                         tenancy.tenants.map((tenant) => (
                           <div key={tenant.tenantId} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
                             <span>{tenant.firstName} {tenant.lastName}</span>
-                            <div className="space-x-2">
-                              <button
-                                onClick={() => setEditingTenant({ tenant, tenancyId: tenancy.tenancyId })}
-                                className="text-blue-600 hover:text-blue-900 text-xs"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTenant(tenant.tenantId)}
-                                className="text-red-600 hover:text-red-900 text-xs"
-                              >
-                                Delete
-                              </button>
+                            <div>
+                              <EntityActionButtons
+                                compact
+                                onEdit={() => setEditingTenant({ tenant, tenancyId: tenancy.tenancyId })}
+                                onDelete={() => handleDeleteTenant(tenant.tenantId)}
+                              />
                             </div>
                           </div>
                         ))
@@ -252,9 +246,12 @@ const Tenancies: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDateUk(tenancy.startDate)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenancy.endDate ? formatDateUk(tenancy.endDate) : '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R{tenancy.monthlyRent?.toFixed(2) || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button onClick={() => setEditingTenancy(tenancy)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                    <button onClick={() => handleDelete(tenancy.tenancyId)} className="text-red-600 hover:text-red-900">Delete</button>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <EntityActionButtons
+                      compact
+                      onEdit={() => setEditingTenancy(tenancy)}
+                      onDelete={() => handleDelete(tenancy.tenancyId)}
+                    />
                   </td>
                 </tr>
               ))
