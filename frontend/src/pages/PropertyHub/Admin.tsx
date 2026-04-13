@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { authService } from '../../services/authService';
 
 const PropertyHubAdmin: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [canAccessUserManagement, setCanAccessUserManagement] = useState<boolean | null>(null);
+  const [accessToast, setAccessToast] = useState<string | null>(null);
   const iconClass = 'h-5 w-5 flex-shrink-0';
 
   const GroupsIcon = () => (
@@ -44,6 +47,41 @@ const PropertyHubAdmin: React.FC = () => {
     </svg>
   );
 
+  const LockIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 flex-shrink-0">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUser = async () => {
+      try {
+        const user = await authService.getCurrentUser();
+        if (active) {
+          setCanAccessUserManagement(Boolean(user.isGlobalAdmin));
+        }
+      } catch {
+        if (active) {
+          setCanAccessUserManagement(false);
+        }
+      }
+    };
+
+    loadUser();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!accessToast) return;
+    const timer = window.setTimeout(() => setAccessToast(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [accessToast]);
+
   const navItemClass = ({ isActive }: { isActive: boolean }) =>
     [
       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
@@ -53,6 +91,12 @@ const PropertyHubAdmin: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {accessToast && (
+        <div className="fixed right-4 top-4 z-50 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 shadow-lg">
+          {accessToast}
+        </div>
+      )}
+
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -120,10 +164,35 @@ const PropertyHubAdmin: React.FC = () => {
               <LookupsIcon />
               {!collapsed && <span>Lookups</span>}
             </NavLink>
-            <NavLink to="/Admin/Users" className={navItemClass} title="User Management">
-              <UsersIcon />
-              {!collapsed && <span>User Management</span>}
-            </NavLink>
+            {canAccessUserManagement ? (
+              <NavLink to="/Admin/Users" className={navItemClass} title="User Management">
+                <UsersIcon />
+                {!collapsed && <span>User Management</span>}
+              </NavLink>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  setAccessToast('User Management is locked. You need Global Admin access to open it.')
+                }
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition ${
+                  collapsed ? 'justify-center' : ''
+                } hover:bg-slate-100`}
+                title="User Management (locked)"
+                aria-label="User Management is locked"
+              >
+                <UsersIcon />
+                {!collapsed && (
+                  <>
+                    <span>User Management</span>
+                    <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <LockIcon />
+                      Locked
+                    </span>
+                  </>
+                )}
+              </button>
+            )}
           </nav>
 
           {!collapsed && (
