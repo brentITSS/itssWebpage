@@ -1,6 +1,7 @@
 using backend.DTOs;
 using backend.Models;
 using backend.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -17,15 +18,21 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
+    private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IConfiguration _configuration;
 
     public AuthService(
         IUserRepository userRepository,
         IPasswordResetTokenRepository passwordResetTokenRepository,
+        IAuditLogRepository auditLogRepository,
+        IHttpContextAccessor httpContextAccessor,
         IConfiguration configuration)
     {
         _userRepository = userRepository;
         _passwordResetTokenRepository = passwordResetTokenRepository;
+        _auditLogRepository = auditLogRepository;
+        _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
     }
 
@@ -56,12 +63,35 @@ public class AuthService : IAuthService
         // Generate JWT token
         var token = GenerateJwtToken(user);
         var userDto = MapToUserDto(user);
+        await TryAuditSuccessfulLoginAsync(user);
 
         return new LoginResponse
         {
             Token = token,
             User = userDto
         };
+    }
+
+    private async Task TryAuditSuccessfulLoginAsync(User user)
+    {
+        try
+        {
+            var ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+            await _auditLogRepository.CreateAsync(new AuditLog
+            {
+                UserId = user.UserId,
+                Action = "Login",
+                EntityType = "Auth",
+                EntityId = user.UserId,
+                NewValues = $"Successful login for {user.Email}",
+                CreatedDate = DateTime.UtcNow,
+                IpAddress = ipAddress
+            });
+        }
+        catch
+        {
+            // Do not block login if audit logging fails.
+        }
     }
 
     private static bool TryVerifyPassword(string plainPassword, string storedHash, out bool shouldRehash)
