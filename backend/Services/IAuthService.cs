@@ -48,4 +48,9 @@ public interface IAuthService
     /// Set a new password using a valid, unconsumed reset token.
     /// </summary>
     Task<bool> CompletePasswordResetAsync(string token, string newPassword);
+
+    /// <summary>
+    /// Change password for authenticated user and clear password-change requirement flag.
+    /// </summary>
+    Task<bool> ChangePasswordAsync(int userId, string newPassword);
 }

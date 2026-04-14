@@ -1,8 +1,9 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
+import ChangePassword from '../pages/ChangePassword';
 import Admin from '../pages/Admin';
 import Users from '../pages/Admin/UsersLayoutAlt';
 import Roles from '../pages/Admin/Roles';
@@ -34,9 +35,15 @@ import TenantsList from '../pages/PropertyHub/Tenants/List';
 // Protected route wrapper - checks for Global Admin role
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const token = localStorage.getItem('token');
+  const mustChangePassword = localStorage.getItem('mustChangePassword') === 'true';
+  const location = useLocation();
   
   if (!token) {
     return <Navigate to="/Login" replace />;
+  }
+
+  if (mustChangePassword && location.pathname !== '/ChangePassword') {
+    return <Navigate to="/ChangePassword" replace />;
   }
 
   // TODO: Add additional check for Global Admin role from token/JWT
@@ -52,6 +59,14 @@ const AppRoutes: React.FC = () => {
       <Route path="/Login" element={<Login />} />
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/ResetPassword" element={<ResetPassword />} />
+      <Route
+        path="/ChangePassword"
+        element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Global Admin Routes */}
       <Route

@@ -21,6 +21,7 @@ export interface UserDto {
   workstreamAccess: WorkstreamAccessDto[];
   propertyGroupAccess: PropertyGroupAccessDto[];
   isGlobalAdmin: boolean;
+  mustChangePassword: boolean;
 }
 
 export interface WorkstreamAccessDto {
@@ -41,6 +42,10 @@ export interface ForgotPasswordResponse {
   resetPath?: string | null;
 }
 
+export interface ChangePasswordRequest {
+  newPassword: string;
+}
+
 export const authService = {
   login: async (request: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient<LoginResponse>('/auth/login', {
@@ -50,6 +55,7 @@ export const authService = {
     
     // Store token
     localStorage.setItem('token', response.token);
+    localStorage.setItem('mustChangePassword', response.user.mustChangePassword ? 'true' : 'false');
     
     return response;
   },
@@ -60,6 +66,7 @@ export const authService = {
 
   logout: (): void => {
     localStorage.removeItem('token');
+    localStorage.removeItem('mustChangePassword');
     window.location.href = '/Login';
   },
 
@@ -79,5 +86,13 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify({ token, newPassword }),
     });
+  },
+
+  changePassword: async (request: ChangePasswordRequest): Promise<void> => {
+    await apiClient<void>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+    localStorage.setItem('mustChangePassword', 'false');
   },
 };

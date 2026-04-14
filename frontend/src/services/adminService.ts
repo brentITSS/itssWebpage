@@ -7,6 +7,7 @@ export interface UserResponseDto {
   firstName?: string;
   lastName?: string;
   isActive: boolean;
+  mustChangePassword?: boolean;
   defaultLoginLandingPage?: string;
   createdDate: string;
   roles: RoleDto[];
@@ -31,7 +32,14 @@ export interface UpdateUserRequest {
 }
 
 export interface ResetPasswordRequest {
-  newPassword: string;
+  newPassword?: string;
+  generateTemporaryPassword?: boolean;
+  requirePasswordChange?: boolean;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+  temporaryPassword?: string;
 }
 
 // Role DTOs
@@ -224,8 +232,8 @@ export const adminService = {
     });
   },
 
-  resetPassword: async (id: number, request: ResetPasswordRequest): Promise<void> => {
-    await apiClient<void>(`/users/${id}/reset-password`, {
+  resetPassword: async (id: number, request: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
+    return await apiClient<ResetPasswordResponse>(`/users/${id}/reset-password`, {
       method: 'POST',
       body: JSON.stringify(request),
     });

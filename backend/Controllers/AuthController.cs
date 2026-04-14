@@ -111,4 +111,33 @@ public class AuthController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return BadRequest(new { message = "New password is required." });
+        }
+
+        if (request.NewPassword.Length < 8)
+        {
+            return BadRequest(new { message = "Password must be at least 8 characters." });
+        }
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var ok = await _authService.ChangePasswordAsync(userId, request.NewPassword);
+        if (!ok)
+        {
+            return NotFound(new { message = "User account not found." });
+        }
+
+        return NoContent();
+    }
 }

@@ -119,15 +119,15 @@ public class UsersController : ControllerBase
 
     [HttpPost("{id}/reset-password")]
     [Authorize(Roles = "Global Admin")]
-    public async Task<ActionResult> ResetPassword(int id, [FromBody] ResetPasswordRequest request)
+    public async Task<ActionResult<ResetPasswordResponse>> ResetPassword(int id, [FromBody] ResetPasswordRequest request)
     {
         var currentUserId = GetCurrentUserId();
         if (currentUserId == null) return Unauthorized();
 
         var result = await _userService.ResetPasswordAsync(id, request, currentUserId.Value);
-        if (!result) return NotFound();
+        if (result == null) return NotFound();
 
-        return NoContent();
+        return Ok(result);
     }
 
     private int? GetCurrentUserId()

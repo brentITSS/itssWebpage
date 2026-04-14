@@ -35,6 +35,9 @@ public class User
     [Column("defaultLoginLandingPage")]
     public string? DefaultLoginLandingPage { get; set; }
 
+    [Column("mustChangePassword")]
+    public bool MustChangePassword { get; set; } = false;
+
     // Navigation properties
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public virtual ICollection<WorkstreamUser> WorkstreamUsers { get; set; } = new List<WorkstreamUser>();

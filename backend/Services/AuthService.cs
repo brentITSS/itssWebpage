@@ -163,6 +163,8 @@ public class AuthService : IAuthService
             now.AddMinutes(ttlMinutes),
             now);
 
+        var resetPath = $"/ResetPassword?token={Uri.EscapeDataString(plainToken)}";
+
         var exposeToken = _configuration.GetValue("PasswordReset:ReturnResetTokenInResponse", false);
         if (exposeToken)
         {
@@ -171,7 +173,7 @@ public class AuthService : IAuthService
                 Message =
                     "Reset token returned only because PasswordReset:ReturnResetTokenInResponse is enabled. Turn it off in production and send the link by email instead.",
                 ResetToken = plainToken,
-                ResetPath = $"/ResetPassword?token={Uri.EscapeDataString(plainToken)}"
+                ResetPath = resetPath
             };
         }
 
@@ -191,6 +193,19 @@ public class AuthService : IAuthService
             return false;
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.MustChangePassword = false;
+        await _userRepository.UpdateAsync(user);
+        return true;
+    }
+
+    public async Task<bool> ChangePasswordAsync(int userId, string newPassword)
+    {
+        var user = await _userRepository.GetByIdForUpdateAsync(userId);
+        if (user == null || !user.IsActive)
+            return false;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.MustChangePassword = false;
         await _userRepository.UpdateAsync(user);
         return true;
     }
@@ -396,7 +411,8 @@ public class AuthService : IAuthService
             Roles = roles,
             WorkstreamAccess = workstreamAccess,
             PropertyGroupAccess = propertyGroupAccess,
-            IsGlobalAdmin = isGlobalAdmin
+            IsGlobalAdmin = isGlobalAdmin,
+            MustChangePassword = user.MustChangePassword
         };
     }
 }

@@ -21,7 +21,15 @@ public class UpdateUserRequest
 
 public class ResetPasswordRequest
 {
-    public string NewPassword { get; set; } = string.Empty;
+    public string? NewPassword { get; set; }
+    public bool GenerateTemporaryPassword { get; set; } = true;
+    public bool RequirePasswordChange { get; set; } = true;
+}
+
+public class ResetPasswordResponse
+{
+    public string Message { get; set; } = string.Empty;
+    public string? TemporaryPassword { get; set; }
 }
 
 public class UserResponseDto
@@ -33,6 +41,7 @@ public class UserResponseDto
     public bool IsActive { get; set; }
     public string? DefaultLoginLandingPage { get; set; }
     public DateTime CreatedDate { get; set; }
+    public bool MustChangePassword { get; set; }
     public List<RoleDto> Roles { get; set; } = new();
     public List<WorkstreamAccessDto> WorkstreamAccess { get; set; } = new();
 }

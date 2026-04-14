@@ -14,6 +14,7 @@ const UsersLayoutAlt: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserResponseDto | null>(null);
   const [showResetPassword, setShowResetPassword] = useState<number | null>(null);
+  const [generatedTempPassword, setGeneratedTempPassword] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -91,17 +92,16 @@ const UsersLayoutAlt: React.FC = () => {
     }
   };
 
-  const handleResetPassword = async (id: number, e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+  const handleResetPassword = async (id: number) => {
     const request: ResetPasswordRequest = {
-      newPassword: formData.get('newPassword') as string,
+      generateTemporaryPassword: true,
+      requirePasswordChange: true,
     };
 
     try {
-      await adminService.resetPassword(id, request);
-      setShowResetPassword(null);
-      alert('Password reset successfully');
+      const response = await adminService.resetPassword(id, request);
+      setGeneratedTempPassword(response.temporaryPassword || null);
+      loadUsers();
     } catch (err: any) {
       setError(err.message || 'Failed to reset password');
     }
@@ -265,7 +265,10 @@ const UsersLayoutAlt: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowResetPassword(user.userId)}
+                        onClick={() => {
+                          setShowResetPassword(user.userId);
+                          setGeneratedTempPassword(null);
+                        }}
                         className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
                       >
                         Reset Password
@@ -393,21 +396,40 @@ const UsersLayoutAlt: React.FC = () => {
       {showResetPassword && (
         <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-slate-900/45 backdrop-blur-sm">
           <div className="relative top-16 mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-semibold text-slate-900">Reset Password</h3>
-            <form onSubmit={(e) => handleResetPassword(showResetPassword, e)}>
-              <div className="mb-4">
-                <label className="mb-1 block text-sm font-medium text-slate-700">New Password *</label>
-                <input type="password" name="newPassword" required className="field" />
+            <h3 className="mb-2 text-lg font-semibold text-slate-900">Generate Temporary Password</h3>
+            <p className="mb-4 text-sm text-slate-600">
+              This creates a one-time temporary password and forces the user to set a new password on next login.
+            </p>
+            {generatedTempPassword && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Temporary password</p>
+                <p className="mt-1 break-all font-mono text-sm font-semibold text-amber-900">
+                  {generatedTempPassword}
+                </p>
+                <p className="mt-2 text-xs text-amber-800">
+                  Copy and share this securely. It is only shown once.
+                </p>
               </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowResetPassword(null)} className="btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Reset
-                </button>
-              </div>
-            </form>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetPassword(null);
+                  setGeneratedTempPassword(null);
+                }}
+                className="btn-secondary"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResetPassword(showResetPassword)}
+                className="btn-primary"
+              >
+                Generate temp password
+              </button>
+            </div>
           </div>
         </div>
       )}

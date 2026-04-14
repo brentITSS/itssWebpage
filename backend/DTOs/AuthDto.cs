@@ -24,6 +24,11 @@ public class CompletePasswordResetRequest
     public string NewPassword { get; set; } = string.Empty;
 }
 
+public class ChangePasswordRequest
+{
+    public string NewPassword { get; set; } = string.Empty;
+}
+
 public class LoginResponse
 {
     public string Token { get; set; } = string.Empty;
@@ -42,6 +47,7 @@ public class UserDto
     public List<WorkstreamAccessDto> WorkstreamAccess { get; set; } = new();
     public List<PropertyGroupAccessDto> PropertyGroupAccess { get; set; } = new();
     public bool IsGlobalAdmin { get; set; }
+    public bool MustChangePassword { get; set; }
 }
 
 public class WorkstreamAccessDto

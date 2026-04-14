@@ -9,5 +9,5 @@ public interface IUserService
     Task<UserResponseDto> CreateUserAsync(CreateUserRequest request, int createdByUserId);
     Task<UserResponseDto?> UpdateUserAsync(int userId, UpdateUserRequest request, int modifiedByUserId);
     Task<bool> DeleteUserAsync(int userId, int deletedByUserId);
-    Task<bool> ResetPasswordAsync(int userId, ResetPasswordRequest request, int modifiedByUserId);
+    Task<ResetPasswordResponse?> ResetPasswordAsync(int userId, ResetPasswordRequest request, int modifiedByUserId);
 }

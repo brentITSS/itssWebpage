@@ -18,8 +18,10 @@ const Login: React.FC = () => {
       const response = await authService.login({ email, password });
       if (response && response.token) {
         // Token is already stored by authService.login
-        // Redirect to user's default landing page, or fallback to /Admin
-        const landingPage = response.user.defaultLoginLandingPage || '/Admin';
+        // If this is a temporary password flow, force user into password change.
+        const landingPage = response.user.mustChangePassword
+          ? '/ChangePassword'
+          : response.user.defaultLoginLandingPage || '/Admin';
         navigate(landingPage);
       } else {
         setError('Invalid email or password');
