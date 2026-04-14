@@ -14,7 +14,7 @@ public class Maintenance
     public int PropertyGroupId { get; set; }
 
     [Column("propertyID")]
-    public int PropertyId { get; set; }
+    public int? PropertyId { get; set; }
 
     [Column("maintenanceTypeID")]
     public int MaintenanceTypeId { get; set; }
@@ -39,7 +39,7 @@ public class Maintenance
     public virtual PropertyGroup PropertyGroup { get; set; } = null!;
 
     [ForeignKey("PropertyId")]
-    public virtual Property Property { get; set; } = null!;
+    public virtual Property? Property { get; set; }
 
     [ForeignKey("MaintenanceTypeId")]
     public virtual MaintenanceType MaintenanceType { get; set; } = null!;

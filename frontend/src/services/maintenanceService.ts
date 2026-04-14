@@ -7,7 +7,7 @@ export interface MaintenanceResponseDto {
   maintenanceId: number;
   propertyGroupId: number;
   propertyGroupName?: string;
-  propertyId: number;
+  propertyId?: number;
   propertyName?: string;
   maintenanceTypeId: number;
   maintenanceTypeName: string;
@@ -21,7 +21,7 @@ export interface MaintenanceResponseDto {
 
 export interface CreateMaintenanceRequest {
   propertyGroupId: number;
-  propertyId: number;
+  propertyId?: number;
   maintenanceTypeId: number;
   maintenanceStatusId?: number;
   summary?: string;

@@ -94,7 +94,7 @@ const MaintenanceDetail: React.FC = () => {
         </p>
         <p>
           <span className="font-medium text-gray-700">Property: </span>
-          {row.propertyName}
+          {row.propertyName || 'Group-wide'}
         </p>
         <p>
           <span className="font-medium text-gray-700">Work date: </span>

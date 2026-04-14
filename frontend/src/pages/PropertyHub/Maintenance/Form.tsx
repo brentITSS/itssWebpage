@@ -25,7 +25,7 @@ const MaintenanceForm: React.FC = () => {
 
   const [formData, setFormData] = useState<CreateMaintenanceRequest>({
     propertyGroupId: 0,
-    propertyId: 0,
+    propertyId: undefined,
     maintenanceTypeId: 0,
     maintenanceStatusId: undefined,
     summary: '',
@@ -59,25 +59,16 @@ const MaintenanceForm: React.FC = () => {
           detailNotes: r.detailNotes || '',
           workDate: r.workDate ? new Date(r.workDate).toISOString().split('T')[0] : undefined,
         });
-      } else if (g.length && p.length) {
+      } else {
         const ctxId = contextPropertyIdParam ? parseInt(contextPropertyIdParam, 10) : NaN;
         const match = Number.isFinite(ctxId) ? p.find((x) => x.propertyId === ctxId) : undefined;
-        let propertyGroupId: number;
-        let propertyId: number;
         if (match) {
-          propertyGroupId = match.propertyGroupId;
-          propertyId = match.propertyId;
-        } else {
-          propertyGroupId = g[0].propertyGroupId;
-          const firstP = p.find((x) => x.propertyGroupId === propertyGroupId) || p[0];
-          propertyId = firstP.propertyId;
+          setFormData((prev) => ({
+            ...prev,
+            propertyGroupId: match.propertyGroupId,
+            propertyId: match.propertyId,
+          }));
         }
-        setFormData((prev) => ({
-          ...prev,
-          propertyGroupId,
-          propertyId,
-          maintenanceTypeId: t[0]?.maintenanceTypeId ?? 0,
-        }));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load');
@@ -90,12 +81,14 @@ const MaintenanceForm: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const propertiesForGroup = properties.filter((p) => p.propertyGroupId === formData.propertyGroupId);
+  const propertiesForGroup = formData.propertyGroupId
+    ? properties.filter((p) => p.propertyGroupId === formData.propertyGroupId)
+    : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.propertyGroupId || !formData.propertyId || !formData.maintenanceTypeId) {
-      setError('Property group, property, and maintenance type are required.');
+    if (!formData.propertyGroupId || !formData.maintenanceTypeId) {
+      setError('Property group and maintenance type are required.');
       return;
     }
     setSaving(true);
@@ -104,7 +97,8 @@ const MaintenanceForm: React.FC = () => {
       if (recordId) {
         const upd: UpdateMaintenanceRequest = {
           propertyGroupId: formData.propertyGroupId,
-          propertyId: formData.propertyId,
+          // Send 0 to explicitly clear property on edit (group-level maintenance).
+          propertyId: formData.propertyId ?? 0,
           maintenanceTypeId: formData.maintenanceTypeId,
           maintenanceStatusId: formData.maintenanceStatusId,
           summary: formData.summary,
@@ -157,11 +151,10 @@ const MaintenanceForm: React.FC = () => {
               value={formData.propertyGroupId || ''}
               onChange={(e) => {
                 const gid = parseInt(e.target.value, 10);
-                const firstP = properties.find((p) => p.propertyGroupId === gid);
                 setFormData({
                   ...formData,
                   propertyGroupId: gid,
-                  propertyId: firstP?.propertyId ?? 0,
+                  propertyId: undefined,
                 });
               }}
               className="w-full rounded-md border border-gray-300 px-3 py-2"
@@ -175,14 +168,18 @@ const MaintenanceForm: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Property *</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
             <select
-              required
-              value={formData.propertyId || ''}
-              onChange={(e) => setFormData({ ...formData, propertyId: parseInt(e.target.value, 10) })}
+              value={formData.propertyId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  propertyId: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                })
+              }
               className="w-full rounded-md border border-gray-300 px-3 py-2"
             >
-              <option value="">Select…</option>
+              <option value="">Group-level (no specific property)</option>
               {propertiesForGroup.map((p) => (
                 <option key={p.propertyId} value={p.propertyId}>
                   {p.propertyName}

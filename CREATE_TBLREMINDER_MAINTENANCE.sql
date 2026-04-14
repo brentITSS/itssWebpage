@@ -41,7 +41,7 @@ BEGIN
     CREATE TABLE dbo.tblMaintenance (
         maintenanceID        INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         propertyGrpID        INT NOT NULL,
-        propertyID           INT NOT NULL,
+        propertyID           INT NULL,
         maintenanceTypeID    INT NOT NULL,
         summary              NVARCHAR(500) NULL,
         detailNotes          NVARCHAR(MAX) NULL,

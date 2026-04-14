@@ -54,7 +54,7 @@ public class MaintenanceResponseDto
     public int MaintenanceId { get; set; }
     public int PropertyGroupId { get; set; }
     public string? PropertyGroupName { get; set; }
-    public int PropertyId { get; set; }
+    public int? PropertyId { get; set; }
     public string? PropertyName { get; set; }
     public int MaintenanceTypeId { get; set; }
     public string MaintenanceTypeName { get; set; } = string.Empty;
@@ -69,7 +69,7 @@ public class MaintenanceResponseDto
 public class CreateMaintenanceRequest
 {
     public int PropertyGroupId { get; set; }
-    public int PropertyId { get; set; }
+    public int? PropertyId { get; set; }
     public int MaintenanceTypeId { get; set; }
     public int? MaintenanceStatusId { get; set; }
     public string? Summary { get; set; }

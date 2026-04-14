@@ -309,7 +309,9 @@ const MaintenanceList: React.FC = () => {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.maintenanceTypeName}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.maintenanceStatusName || '—'}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{r.propertyName}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    {r.propertyName || 'Group-wide'}
+                  </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.propertyGroupName}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="max-w-xs truncate">{r.summary || '—'}</div>

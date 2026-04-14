@@ -145,12 +145,13 @@ public class MaintenanceService : IMaintenanceService
 
     public async Task<MaintenanceResponseDto> CreateMaintenanceAsync(CreateMaintenanceRequest request)
     {
-        await EnsurePropertyMatchesGroupAsync(request.PropertyId, request.PropertyGroupId);
+        var propertyId = NormalizeOptionalPropertyId(request.PropertyId);
+        await EnsurePropertyScopeIsValidAsync(propertyId, request.PropertyGroupId);
 
         var entity = new Maintenance
         {
             PropertyGroupId = request.PropertyGroupId,
-            PropertyId = request.PropertyId,
+            PropertyId = propertyId,
             MaintenanceTypeId = request.MaintenanceTypeId,
             MaintenanceStatusId = request.MaintenanceStatusId,
             Summary = request.Summary,
@@ -169,12 +170,14 @@ public class MaintenanceService : IMaintenanceService
         var entity = await _maintenanceRepository.GetByIdAsync(id);
         if (entity == null) return null;
 
-        var propId = request.PropertyId ?? entity.PropertyId;
+        var propId = request.PropertyId.HasValue
+            ? NormalizeOptionalPropertyId(request.PropertyId)
+            : entity.PropertyId;
         var grpId = request.PropertyGroupId ?? entity.PropertyGroupId;
-        await EnsurePropertyMatchesGroupAsync(propId, grpId);
+        await EnsurePropertyScopeIsValidAsync(propId, grpId);
 
         if (request.PropertyGroupId.HasValue) entity.PropertyGroupId = request.PropertyGroupId.Value;
-        if (request.PropertyId.HasValue) entity.PropertyId = request.PropertyId.Value;
+        if (request.PropertyId.HasValue) entity.PropertyId = NormalizeOptionalPropertyId(request.PropertyId);
         if (request.MaintenanceTypeId.HasValue) entity.MaintenanceTypeId = request.MaintenanceTypeId.Value;
         entity.MaintenanceStatusId = request.MaintenanceStatusId;
         if (request.Summary != null) entity.Summary = request.Summary;
@@ -191,13 +194,27 @@ public class MaintenanceService : IMaintenanceService
         return await _maintenanceRepository.DeleteAsync(id);
     }
 
-    private async Task EnsurePropertyMatchesGroupAsync(int propertyId, int propertyGroupId)
+    private async Task EnsurePropertyScopeIsValidAsync(int? propertyId, int propertyGroupId)
     {
-        var prop = await _propertyRepository.GetPropertyByIdAsync(propertyId);
+        var group = await _propertyRepository.GetPropertyGroupByIdAsync(propertyGroupId);
+        if (group == null)
+            throw new InvalidOperationException("Property group not found.");
+
+        if (!propertyId.HasValue)
+            return;
+
+        var prop = await _propertyRepository.GetPropertyByIdAsync(propertyId.Value);
         if (prop == null)
             throw new InvalidOperationException("Property not found.");
         if (prop.PropertyGroupId != propertyGroupId)
             throw new InvalidOperationException("Selected property does not belong to the selected property group.");
+    }
+
+    private static int? NormalizeOptionalPropertyId(int? propertyId)
+    {
+        if (!propertyId.HasValue || propertyId.Value <= 0)
+            return null;
+        return propertyId.Value;
     }
 
     private static MaintenanceTypeDto MapTypeToDto(MaintenanceType t)
