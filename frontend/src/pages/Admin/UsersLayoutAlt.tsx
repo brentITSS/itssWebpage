@@ -367,6 +367,15 @@ const UsersLayoutAlt: React.FC = () => {
                 </select>
               </div>
               <div className="mb-4">
+                <label className="mb-1 block text-sm font-medium text-slate-700">Must Change Password</label>
+                <div className="field flex items-center bg-slate-100 text-slate-700">
+                  {editingUser.mustChangePassword ? 'Yes' : 'No'}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  This flag is set automatically when a temporary password is generated.
+                </p>
+              </div>
+              <div className="mb-4">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Default Landing Page</label>
                 <input
                   type="text"
