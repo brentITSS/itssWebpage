@@ -125,6 +125,24 @@ public class WorkstreamService : IWorkstreamService
         await _workstreamRepository.AddWorkstreamUserAsync(workstreamUser);
     }
 
+    public async Task UpdateUserPermissionInWorkstreamAsync(int workstreamId, int userId, UpdateWorkstreamUserPermissionRequest request)
+    {
+        var workstream = await _workstreamRepository.GetByIdAsync(workstreamId);
+        if (workstream == null)
+            throw new InvalidOperationException("Workstream not found");
+
+        var permissionType = await _workstreamRepository.GetPermissionTypeByIdAsync(request.PermissionTypeId);
+        if (permissionType == null)
+            throw new InvalidOperationException("PermissionType not found");
+
+        var workstreamUser = await _workstreamRepository.GetWorkstreamUserAsync(workstreamId, userId);
+        if (workstreamUser == null)
+            throw new InvalidOperationException("User is not assigned to this workstream");
+
+        workstreamUser.PermissionTypeId = request.PermissionTypeId;
+        await _workstreamRepository.UpdateWorkstreamUserAsync(workstreamUser);
+    }
+
     public async Task RemoveUserFromWorkstreamAsync(int workstreamId, int userId)
     {
         await _workstreamRepository.RemoveWorkstreamUserAsync(workstreamId, userId);

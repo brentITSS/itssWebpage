@@ -12,5 +12,6 @@ public interface IWorkstreamService
     Task<bool> DeleteWorkstreamAsync(int workstreamId);
     Task<List<UserResponseDto>> GetWorkstreamUsersAsync(int workstreamId);
     Task AssignUserToWorkstreamAsync(int workstreamId, AssignWorkstreamUserRequest request);
+    Task UpdateUserPermissionInWorkstreamAsync(int workstreamId, int userId, UpdateWorkstreamUserPermissionRequest request);
     Task RemoveUserFromWorkstreamAsync(int workstreamId, int userId);
 }

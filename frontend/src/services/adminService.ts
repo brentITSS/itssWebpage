@@ -91,6 +91,10 @@ export interface AssignWorkstreamUserRequest {
   permissionTypeId: number;
 }
 
+export interface UpdateWorkstreamUserPermissionRequest {
+  permissionTypeId: number;
+}
+
 export interface RoleDto {
   roleId: number;
   roleName: string;
@@ -289,6 +293,17 @@ export const adminService = {
   assignUserToWorkstream: async (workstreamId: number, request: AssignWorkstreamUserRequest): Promise<void> => {
     await apiClient<void>(`/workstreams/${workstreamId}/users`, {
       method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateWorkstreamUserPermission: async (
+    workstreamId: number,
+    userId: number,
+    request: UpdateWorkstreamUserPermissionRequest
+  ): Promise<void> => {
+    await apiClient<void>(`/workstreams/${workstreamId}/users/${userId}`, {
+      method: 'PUT',
       body: JSON.stringify(request),
     });
   },

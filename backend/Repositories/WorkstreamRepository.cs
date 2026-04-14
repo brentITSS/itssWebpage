@@ -74,9 +74,22 @@ public class WorkstreamRepository : IWorkstreamRepository
             .ToListAsync();
     }
 
+    public async Task<WorkstreamUser?> GetWorkstreamUserAsync(int workstreamId, int userId)
+    {
+        return await _context.WorkstreamUsers
+            .FirstOrDefaultAsync(wu => wu.WorkstreamId == workstreamId && wu.UserId == userId);
+    }
+
     public async Task<WorkstreamUser> AddWorkstreamUserAsync(WorkstreamUser workstreamUser)
     {
         _context.WorkstreamUsers.Add(workstreamUser);
+        await _context.SaveChangesAsync();
+        return workstreamUser;
+    }
+
+    public async Task<WorkstreamUser> UpdateWorkstreamUserAsync(WorkstreamUser workstreamUser)
+    {
+        _context.WorkstreamUsers.Update(workstreamUser);
         await _context.SaveChangesAsync();
         return workstreamUser;
     }

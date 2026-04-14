@@ -28,6 +28,11 @@ public class AssignWorkstreamUserRequest
     public int PermissionTypeId { get; set; }
 }
 
+public class UpdateWorkstreamUserPermissionRequest
+{
+    public int PermissionTypeId { get; set; }
+}
+
 public class PermissionTypeDto
 {
     public int PermissionTypeId { get; set; }

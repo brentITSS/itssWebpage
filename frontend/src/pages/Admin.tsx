@@ -36,6 +36,14 @@ const Admin: React.FC = () => {
     </svg>
   );
 
+  const GuideIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 10v6" />
+      <circle cx="12" cy="7.5" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+
   const navItemClass = ({ isActive }: { isActive: boolean }) =>
     [
       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
@@ -87,6 +95,10 @@ const Admin: React.FC = () => {
             <NavLink to="/Admin/Permissions" className={navItemClass} title="Permissions">
               <PermissionsIcon />
               {!collapsed && <span>Permissions</span>}
+            </NavLink>
+            <NavLink to="/Admin/Permission Guide" className={navItemClass} title="Permission Guide">
+              <GuideIcon />
+              {!collapsed && <span>Permission Guide</span>}
             </NavLink>
           </nav>
 

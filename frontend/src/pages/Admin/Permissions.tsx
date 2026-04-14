@@ -14,6 +14,7 @@ const Permissions: React.FC = () => {
   const [selectedWorkstream, setSelectedWorkstream] = useState<number | null>(null);
   const [workstreamUsers, setWorkstreamUsers] = useState<UserResponseDto[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [editingWorkstreamUser, setEditingWorkstreamUser] = useState<UserResponseDto | null>(null);
   const [wsUserSearch, setWsUserSearch] = useState('');
 
   const [propertyGroups, setPropertyGroups] = useState<PropertyGroupResponseDto[]>([]);
@@ -104,6 +105,24 @@ const Permissions: React.FC = () => {
       loadWorkstreamUsers(selectedWorkstream);
     } catch (err: any) {
       setError(err.message || 'Failed to remove user from workstream');
+    }
+  };
+
+  const handleUpdateUserPermission = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedWorkstream || !editingWorkstreamUser) return;
+
+    const formData = new FormData(e.currentTarget);
+    const permissionTypeId = parseInt(formData.get('permissionTypeId') as string, 10);
+
+    try {
+      await adminService.updateWorkstreamUserPermission(selectedWorkstream, editingWorkstreamUser.userId, {
+        permissionTypeId,
+      });
+      setEditingWorkstreamUser(null);
+      loadWorkstreamUsers(selectedWorkstream);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update permission');
     }
   };
 
@@ -301,11 +320,18 @@ const Permissions: React.FC = () => {
                           </div>
                           <div className="mt-3 text-sm text-slate-600">
                             <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Permission
+                              Permission level
                             </span>
                             {access?.permissionTypeName || '—'}
                           </div>
                           <div className="mt-4 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingWorkstreamUser(user)}
+                              className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                            >
+                              Change permission
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveUser(user.userId)}
@@ -357,6 +383,49 @@ const Permissions: React.FC = () => {
                       </button>
                       <button type="submit" className="btn-primary">
                         Assign
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {editingWorkstreamUser && selectedWorkstream && (
+              <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-slate-900/45 backdrop-blur-sm">
+                <div className="relative top-16 mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+                  <h3 className="mb-1 text-lg font-semibold text-slate-900">Change permission</h3>
+                  <p className="mb-4 text-sm text-slate-500">{editingWorkstreamUser.email}</p>
+                  <form onSubmit={handleUpdateUserPermission}>
+                    <div className="mb-4">
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Permission type *</label>
+                      <select
+                        name="permissionTypeId"
+                        required
+                        defaultValue={
+                          editingWorkstreamUser.workstreamAccess.find(
+                            (wa) => wa.workstreamId === selectedWorkstream
+                          )?.permissionTypeId ?? ''
+                        }
+                        className="field"
+                      >
+                        <option value="">Select permission type</option>
+                        {permissionTypes.map((pt) => (
+                          <option key={pt.permissionTypeId} value={pt.permissionTypeId}>
+                            {pt.permissionTypeName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingWorkstreamUser(null)}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn-primary">
+                        Save
                       </button>
                     </div>
                   </form>

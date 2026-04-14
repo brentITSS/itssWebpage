@@ -13,6 +13,8 @@ public interface IWorkstreamRepository
     Task<bool> DeleteAsync(int workstreamId);
     Task<List<WorkstreamUser>> GetWorkstreamUsersAsync(int workstreamId);
     Task<List<WorkstreamUser>> GetUserWorkstreamsAsync(int userId);
+    Task<WorkstreamUser?> GetWorkstreamUserAsync(int workstreamId, int userId);
     Task<WorkstreamUser> AddWorkstreamUserAsync(WorkstreamUser workstreamUser);
+    Task<WorkstreamUser> UpdateWorkstreamUserAsync(WorkstreamUser workstreamUser);
     Task<bool> RemoveWorkstreamUserAsync(int workstreamId, int userId);
 }

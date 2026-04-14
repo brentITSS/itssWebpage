@@ -121,6 +121,21 @@ public class WorkstreamsController : ControllerBase
         }
     }
 
+    [HttpPut("{id}/users/{userId}")]
+    [Authorize(Roles = "Global Admin")]
+    public async Task<ActionResult> UpdateUserPermissionInWorkstream(int id, int userId, [FromBody] UpdateWorkstreamUserPermissionRequest request)
+    {
+        try
+        {
+            await _workstreamService.UpdateUserPermissionInWorkstreamAsync(id, userId, request);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpDelete("{id}/users/{userId}")]
     [Authorize(Roles = "Global Admin")]
     public async Task<ActionResult> RemoveUserFromWorkstream(int id, int userId)

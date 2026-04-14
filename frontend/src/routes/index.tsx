@@ -8,6 +8,7 @@ import Users from '../pages/Admin/UsersLayoutAlt';
 import Roles from '../pages/Admin/Roles';
 import Workstreams from '../pages/Admin/Workstreams';
 import Permissions from '../pages/Admin/Permissions';
+import PermissionGuide from '../pages/Admin/PermissionGuide';
 import PropertyHubLayout from '../pages/PropertyHub/Layout';
 import PropertyHubHome from '../pages/PropertyHub/Home';
 import PropertyHubAdmin from '../pages/PropertyHub/Admin';
@@ -66,6 +67,7 @@ const AppRoutes: React.FC = () => {
         <Route path="Roles" element={<Roles />} />
         <Route path="Workstreams" element={<Workstreams />} />
         <Route path="Permissions" element={<Permissions />} />
+        <Route path="Permission Guide" element={<PermissionGuide />} />
       </Route>
 
       {/* Property Hub Routes */}
