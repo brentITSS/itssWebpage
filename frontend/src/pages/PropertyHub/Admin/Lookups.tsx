@@ -468,7 +468,7 @@ const Lookups: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Lookup Data</h2>
       </div>
@@ -480,137 +480,134 @@ const Lookups: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
+      <div className="mb-3 border-b border-gray-200">
+        <div className="overflow-x-auto">
+          <nav className="-mb-px flex min-w-max gap-8">
             <button
+              type="button"
               onClick={() => setActiveTab('journal')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
                 activeTab === 'journal'
                   ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               }`}
             >
               Journal Types
-              {activeTab === 'journal' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowJournalModal(true);
-                  }}
-                  className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
-                >
-                  Create Journal Type
-                </button>
-              )}
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('contact')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
                 activeTab === 'contact'
                   ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               }`}
             >
               Contact Log Types
-              {activeTab === 'contact' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowContactModal(true);
-                  }}
-                  className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
-                >
-                  Create Contact Log Type
-                </button>
-              )}
             </button>
-          <button
-            onClick={() => setActiveTab('tag')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'tag'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Tag Types
-            {activeTab === 'tag' && (
-              <button
-                onClick={() => setShowTagModal(true)}
-                className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
-              >
-                Create Tag Type
-              </button>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('maintenance')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'maintenance'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Maintenance types
-            {activeTab === 'maintenance' && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMaintenanceModal(true);
-                }}
-                className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
-              >
-                Create maintenance type
-              </button>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('maint_status')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'maint_status'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Maintenance status
-            {activeTab === 'maint_status' && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMaintStatusModal(true);
-                }}
-                className="ml-4 rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-              >
-                Create status
-              </button>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('tag')}
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                activeTab === 'tag'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Tag Types
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('maintenance')}
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                activeTab === 'maintenance'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Maintenance Types
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('maint_status')}
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                activeTab === 'maint_status'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Maintenance Status
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('reminder_priority')}
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                activeTab === 'reminder_priority'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Reminder Priority
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        {activeTab === 'journal' && (
           <button
             type="button"
-            onClick={() => setActiveTab('reminder_priority')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'reminder_priority'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            onClick={() => setShowJournalModal(true)}
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
           >
-            Reminder priority
-            {activeTab === 'reminder_priority' && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRemPriModal(true);
-                }}
-                className="ml-4 rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-              >
-                Create priority
-              </button>
-            )}
+            Create Journal Type
           </button>
-        </nav>
+        )}
+        {activeTab === 'contact' && (
+          <button
+            type="button"
+            onClick={() => setShowContactModal(true)}
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            Create Contact Log Type
+          </button>
+        )}
+        {activeTab === 'tag' && (
+          <button
+            type="button"
+            onClick={() => setShowTagModal(true)}
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            Create Tag Type
+          </button>
+        )}
+        {activeTab === 'maintenance' && (
+          <button
+            type="button"
+            onClick={() => setShowMaintenanceModal(true)}
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            Create Maintenance Type
+          </button>
+        )}
+        {activeTab === 'maint_status' && (
+          <button
+            type="button"
+            onClick={() => setShowMaintStatusModal(true)}
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            Create Status
+          </button>
+        )}
+        {activeTab === 'reminder_priority' && (
+          <button
+            type="button"
+            onClick={() => setShowRemPriModal(true)}
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            Create Priority
+          </button>
+        )}
       </div>
 
       {/* Journal Types Tab */}

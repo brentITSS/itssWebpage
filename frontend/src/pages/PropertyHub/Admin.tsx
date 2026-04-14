@@ -85,7 +85,7 @@ const PropertyHubAdmin: React.FC = () => {
   const navItemClass = ({ isActive }: { isActive: boolean }) =>
     [
       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
-      collapsed ? 'justify-center' : '',
+      collapsed ? 'xl:justify-center' : '',
       isActive ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
     ].join(' ');
 
@@ -123,21 +123,21 @@ const PropertyHubAdmin: React.FC = () => {
         </div>
       </section>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:gap-6">
         <aside
-          className={`rounded-xl border border-slate-200 bg-white px-3 py-4 transition-all duration-200 ${
-            collapsed ? 'w-20' : 'w-72'
+          className={`w-full rounded-xl border border-slate-200 bg-white px-3 py-4 transition-all duration-200 xl:sticky xl:top-6 xl:self-start ${
+            collapsed ? 'xl:w-20' : 'xl:w-72'
           }`}
         >
           <div className="mb-4 flex items-center justify-between">
-            <div className={collapsed ? 'hidden' : 'block'}>
+            <div className={collapsed ? 'xl:hidden' : 'block'}>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Property Hub</p>
               <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Admin Tools</h3>
             </div>
             <button
               type="button"
               onClick={() => setCollapsed((prev) => !prev)}
-              className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              className="hidden rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 xl:inline-flex"
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -147,27 +147,27 @@ const PropertyHubAdmin: React.FC = () => {
             </button>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="grid grid-cols-1 gap-1 sm:grid-cols-2 xl:grid-cols-1">
             <NavLink to="/Property Hub/Admin/Property Groups" className={navItemClass} title="Property Groups">
               <GroupsIcon />
-              {!collapsed && <span>Property Groups</span>}
+              <span className={collapsed ? 'xl:hidden' : ''}>Property Groups</span>
             </NavLink>
             <NavLink to="/Property Hub/Admin/Properties" className={navItemClass} title="Properties">
               <PropertiesIcon />
-              {!collapsed && <span>Properties</span>}
+              <span className={collapsed ? 'xl:hidden' : ''}>Properties</span>
             </NavLink>
             <NavLink to="/Property Hub/Admin/Tenancies" className={navItemClass} title="Tenancies">
               <TenanciesIcon />
-              {!collapsed && <span>Tenancies</span>}
+              <span className={collapsed ? 'xl:hidden' : ''}>Tenancies</span>
             </NavLink>
             <NavLink to="/Property Hub/Admin/Lookups" className={navItemClass} title="Lookups">
               <LookupsIcon />
-              {!collapsed && <span>Lookups</span>}
+              <span className={collapsed ? 'xl:hidden' : ''}>Lookups</span>
             </NavLink>
             {canAccessUserManagement ? (
               <NavLink to="/Admin/Users" className={navItemClass} title="User Management">
                 <UsersIcon />
-                {!collapsed && <span>User Management</span>}
+                <span className={collapsed ? 'xl:hidden' : ''}>User Management</span>
               </NavLink>
             ) : (
               <button
@@ -176,33 +176,35 @@ const PropertyHubAdmin: React.FC = () => {
                   setAccessToast('User Management is locked. You need Global Admin access to open it.')
                 }
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition ${
-                  collapsed ? 'justify-center' : ''
+                  collapsed ? 'xl:justify-center' : ''
                 } hover:bg-slate-100`}
                 title="User Management (locked)"
                 aria-label="User Management is locked"
               >
                 <UsersIcon />
-                {!collapsed && (
-                  <>
-                    <span>User Management</span>
-                    <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      <LockIcon />
-                      Locked
-                    </span>
-                  </>
-                )}
+                <span className={collapsed ? 'xl:hidden' : ''}>User Management</span>
+                <span
+                  className={`ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${
+                    collapsed ? 'xl:hidden' : ''
+                  }`}
+                >
+                  <LockIcon />
+                  Locked
+                </span>
               </button>
             )}
           </nav>
 
-          {!collapsed && (
-            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-              Tip: collapse the sidebar for more workspace.
-            </div>
-          )}
+          <div
+            className={`mt-6 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 ${
+              collapsed ? 'xl:hidden' : ''
+            }`}
+          >
+            Tip: collapse the sidebar for more workspace.
+          </div>
         </aside>
 
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 overflow-x-hidden">
           <Outlet />
         </main>
       </div>
