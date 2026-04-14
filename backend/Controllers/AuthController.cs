@@ -66,8 +66,18 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Email is required." });
         }
 
-        var response = await _authService.RequestPasswordResetAsync(request.Email.Trim());
-        return Ok(response);
+        try
+        {
+            var response = await _authService.RequestPasswordResetAsync(request.Email.Trim());
+            return Ok(response);
+        }
+        catch
+        {
+            return StatusCode(500, new
+            {
+                message = "Password reset is temporarily unavailable. Please contact support if this persists."
+            });
+        }
     }
 
     [HttpPost("complete-password-reset")]
@@ -83,10 +93,20 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Password must be at least 8 characters." });
         }
 
-        var ok = await _authService.CompletePasswordResetAsync(request.Token.Trim(), request.NewPassword);
-        if (!ok)
+        try
         {
-            return BadRequest(new { message = "This reset link is invalid or has expired. Please request a new one." });
+            var ok = await _authService.CompletePasswordResetAsync(request.Token.Trim(), request.NewPassword);
+            if (!ok)
+            {
+                return BadRequest(new { message = "This reset link is invalid or has expired. Please request a new one." });
+            }
+        }
+        catch
+        {
+            return StatusCode(500, new
+            {
+                message = "Password reset is temporarily unavailable. Please contact support if this persists."
+            });
         }
 
         return NoContent();
