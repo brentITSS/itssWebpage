@@ -34,6 +34,7 @@ public class TagService : ITagService
         var tagType = new TagType
         {
             TagTypeName = request.TagTypeName,
+            Color = NormalizeColor(request.Color),
             Description = request.Description,
             IsActive = request.IsActive ?? true
         };
@@ -48,6 +49,7 @@ public class TagService : ITagService
         if (tagType == null) return null;
 
         if (request.TagTypeName != null) tagType.TagTypeName = request.TagTypeName;
+        if (request.Color != null) tagType.Color = NormalizeColor(request.Color);
         if (request.Description != null) tagType.Description = request.Description;
         if (request.IsActive.HasValue) tagType.IsActive = request.IsActive.Value;
 
@@ -98,7 +100,7 @@ public class TagService : ITagService
             TagLogId = tagLog.TagLogId,
             TagTypeId = tagLog.TagTypeId ?? 0,
             TagTypeName = tagType.TagTypeName ?? string.Empty,
-            Color = null, // TagType doesn't have Color in database
+            Color = tagType.Color,
             EntityType = tagLog.EntityType ?? request.EntityType,
             EntityId = tagLog.EntityId ?? request.EntityId,
             CreatedDate = DateTime.UtcNow
@@ -113,7 +115,7 @@ public class TagService : ITagService
             TagLogId = tl.TagLogId,
             TagTypeId = tl.TagTypeId ?? 0,
             TagTypeName = tl.TagType?.TagTypeName ?? string.Empty,
-            Color = null, // TagType doesn't have Color in database
+            Color = tl.TagType?.Color,
             EntityType = tl.EntityType ?? entityType,
             EntityId = tl.EntityId ?? entityId,
             CreatedDate = DateTime.UtcNow
@@ -145,10 +147,26 @@ public class TagService : ITagService
         {
             TagTypeId = tagType.TagTypeId,
             TagTypeName = tagType.TagTypeName ?? string.Empty,
-            Color = null, // TagType doesn't have Color in database
+            Color = tagType.Color,
             Description = tagType.Description,
             IsActive = tagType.IsActive,
             CreatedDate = DateTime.UtcNow
         };
+    }
+
+    private static string? NormalizeColor(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+        {
+            return null;
+        }
+
+        var trimmed = color.Trim();
+        if (trimmed.StartsWith("#"))
+        {
+            return trimmed;
+        }
+
+        return $"#{trimmed}";
     }
 }

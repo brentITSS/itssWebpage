@@ -18,6 +18,10 @@ public class TagType
     [Column("tagDescription")]
     public string? Description { get; set; }
 
+    [MaxLength(32)]
+    [Column("tagColor")]
+    public string? Color { get; set; }
+
     [Column("tagActive")]
     public bool? IsActive { get; set; }
 
