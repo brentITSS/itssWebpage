@@ -135,6 +135,11 @@ jobs:
             **/node_modules**
           state-name: .ftp-deploy-sync-state.json
 
+      # Transient ETIMEDOUT on :21 is common; brief wait before retry.
+      - name: Wait before FTP retry
+        if: steps.deploy_attempt_1.outcome == 'failure'
+        run: sleep 45
+
       - name: Retry deploy to Hostinger via FTP
         id: deploy_attempt_2
         if: steps.deploy_attempt_1.outcome == 'failure'
@@ -155,8 +160,32 @@ jobs:
             **/node_modules**
           state-name: .ftp-deploy-sync-state.json
 
-      - name: Validate deploy attempts
+      - name: Wait before FTP retry (attempt 3)
         if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure'
+        run: sleep 90
+
+      - name: Retry deploy to Hostinger via FTP (attempt 3)
+        id: deploy_attempt_3
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          timeout: 300000
+          local-dir: ./frontend/build/
+          server-dir: /domains/itsson.co.uk/public_html/
+          log-level: verbose
+          dangerous-clean-slate: true
+          dry-run: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules**
+          state-name: .ftp-deploy-sync-state.json
+
+      - name: Validate deploy attempts
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure' && steps.deploy_attempt_3.outcome == 'failure'
         run: |
-          echo "Both FTP deployment attempts failed."
+          echo "All FTP deployment attempts failed (control socket ETIMEDOUT usually means host unreachable, wrong HOSTINGER_FTP_SERVER, or firewall blocking GitHub Actions from port 21)."
           exit 1
