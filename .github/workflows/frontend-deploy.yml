@@ -15,8 +15,12 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: production
+    # Optional repo Settings → Variables: HOSTINGER_FTP_PROTOCOL (ftp | ftps | ftps-legacy), HOSTINGER_FTP_PORT (e.g. 21).
+    env:
+      FTP_DEPLOY_PROTOCOL: ${{ vars.HOSTINGER_FTP_PROTOCOL != '' && vars.HOSTINGER_FTP_PROTOCOL || 'ftp' }}
+      FTP_DEPLOY_PORT: ${{ vars.HOSTINGER_FTP_PORT != '' && vars.HOSTINGER_FTP_PORT || '21' }}
 
     steps:
       - name: Checkout code
@@ -42,6 +46,7 @@ jobs:
             exit 1
           fi
           echo "FTP secrets are present."
+          echo "Optional repo Variables: HOSTINGER_FTP_PROTOCOL (ftp | ftps | ftps-legacy), HOSTINGER_FTP_PORT (default 21)."
 
       - name: Create .env.production file
         working-directory: ./frontend
@@ -114,7 +119,35 @@ jobs:
             echo "Sample JS files:"
             ls -lh build/static/js/ | head -5
           fi
-          
+
+      # Warm DNS + TCP from this runner; does not block deploy if it fails (continue-on-error).
+      - name: Preflight — TCP to FTP control port
+        id: ftp_preflight
+        continue-on-error: true
+        env:
+          FTP_SERVER: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          FTP_PORT: ${{ env.FTP_DEPLOY_PORT }}
+        run: |
+          set +e
+          host="${FTP_SERVER:?}"
+          port="${FTP_PORT:?}"
+          echo "Preflight: trying TCP to ${host}:${port} (values masked in logs if secret) …"
+          ok=0
+          for i in 1 2 3 4 5 6 7 8; do
+            if timeout 12 bash -c "echo >/dev/tcp/${host}/${port}" 2>/dev/null; then
+              echo "Preflight OK on attempt $i"
+              ok=1
+              break
+            fi
+            echo "Preflight attempt $i failed, sleep 15s…"
+            sleep 15
+          done
+          if [ "$ok" != 1 ]; then
+            echo "::warning::Preflight could not open TCP to the FTP host from this GitHub runner. Deploy steps still run; if they fail with ETIMEDOUT on :21, allow GitHub egress (see https://api.github.com/meta ) or use Hostinger Git / SSH deploy instead of FTP."
+            exit 1
+          fi
+          exit 0
+
       - name: Deploy to Hostinger via FTP
         id: deploy_attempt_1
         continue-on-error: true
@@ -123,6 +156,8 @@ jobs:
           server: ${{ secrets.HOSTINGER_FTP_SERVER }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          protocol: ${{ env.FTP_DEPLOY_PROTOCOL }}
+          port: ${{ env.FTP_DEPLOY_PORT }}
           timeout: 300000
           local-dir: ./frontend/build/
           server-dir: /domains/itsson.co.uk/public_html/
@@ -148,6 +183,8 @@ jobs:
           server: ${{ secrets.HOSTINGER_FTP_SERVER }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          protocol: ${{ env.FTP_DEPLOY_PROTOCOL }}
+          port: ${{ env.FTP_DEPLOY_PORT }}
           timeout: 300000
           local-dir: ./frontend/build/
           server-dir: /domains/itsson.co.uk/public_html/
@@ -172,6 +209,60 @@ jobs:
           server: ${{ secrets.HOSTINGER_FTP_SERVER }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          protocol: ${{ env.FTP_DEPLOY_PROTOCOL }}
+          port: ${{ env.FTP_DEPLOY_PORT }}
+          timeout: 300000
+          local-dir: ./frontend/build/
+          server-dir: /domains/itsson.co.uk/public_html/
+          log-level: verbose
+          dangerous-clean-slate: true
+          dry-run: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules**
+          state-name: .ftp-deploy-sync-state.json
+
+      - name: Wait before FTP retry (attempt 4)
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure' && steps.deploy_attempt_3.outcome == 'failure'
+        run: sleep 120
+
+      - name: Retry deploy to Hostinger via FTP (attempt 4)
+        id: deploy_attempt_4
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure' && steps.deploy_attempt_3.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          protocol: ${{ env.FTP_DEPLOY_PROTOCOL }}
+          port: ${{ env.FTP_DEPLOY_PORT }}
+          timeout: 300000
+          local-dir: ./frontend/build/
+          server-dir: /domains/itsson.co.uk/public_html/
+          log-level: verbose
+          dangerous-clean-slate: true
+          dry-run: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules**
+          state-name: .ftp-deploy-sync-state.json
+
+      - name: Wait before FTP retry (attempt 5)
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure' && steps.deploy_attempt_3.outcome == 'failure' && steps.deploy_attempt_4.outcome == 'failure'
+        run: sleep 180
+
+      - name: Retry deploy to Hostinger via FTP (attempt 5)
+        id: deploy_attempt_5
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure' && steps.deploy_attempt_3.outcome == 'failure' && steps.deploy_attempt_4.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          protocol: ${{ env.FTP_DEPLOY_PROTOCOL }}
+          port: ${{ env.FTP_DEPLOY_PORT }}
           timeout: 300000
           local-dir: ./frontend/build/
           server-dir: /domains/itsson.co.uk/public_html/
@@ -185,7 +276,9 @@ jobs:
           state-name: .ftp-deploy-sync-state.json
 
       - name: Validate deploy attempts
-        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure' && steps.deploy_attempt_3.outcome == 'failure'
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure' && steps.deploy_attempt_3.outcome == 'failure' && steps.deploy_attempt_4.outcome == 'failure' && steps.deploy_attempt_5.outcome == 'failure'
         run: |
-          echo "All FTP deployment attempts failed (control socket ETIMEDOUT usually means host unreachable, wrong HOSTINGER_FTP_SERVER, or firewall blocking GitHub Actions from port 21)."
+          echo "All five FTP deployment attempts failed."
+          echo "Control socket ETIMEDOUT on port 21 usually means this runner cannot reach your FTP host (wrong HOSTINGER_FTP_SERVER, Hostinger firewall, or blocking of GitHub-hosted runner IP ranges)."
+          echo "Try: (1) Repo Variables HOSTINGER_FTP_PROTOCOL=ftps if your panel requires TLS; (2) confirm FTP hostname in hPanel matches HOSTINGER_FTP_SERVER; (3) ask Hostinger to allow GitHub Actions IPs — JSON list: https://api.github.com/meta (actions key); (4) use Hostinger Git deployment or SSH/rsync instead of FTP."
           exit 1
