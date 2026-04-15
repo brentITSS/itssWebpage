@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { getPostLoginPath } from '../utils/access';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -19,9 +20,7 @@ const Login: React.FC = () => {
       if (response && response.token) {
         // Token is already stored by authService.login
         // If this is a temporary password flow, force user into password change.
-        const landingPage = response.user.mustChangePassword
-          ? '/ChangePassword'
-          : response.user.defaultLoginLandingPage || '/Admin';
+        const landingPage = getPostLoginPath(response.user);
         navigate(landingPage);
       } else {
         setError('Invalid email or password');

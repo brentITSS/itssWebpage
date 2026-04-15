@@ -274,11 +274,47 @@ public class AuthService : IAuthService
 
         // Check if user has "Admin" permission type on Property Hub workstream
         var propertyHubAccess = user.WorkstreamAccess.FirstOrDefault(wa =>
-            (wa.WorkstreamName.Equals("Property Hub", StringComparison.OrdinalIgnoreCase) ||
-             wa.WorkstreamName.Contains("Property", StringComparison.OrdinalIgnoreCase)) &&
+            MatchesPropertyHubWorkstreamName(wa.WorkstreamName) &&
             wa.PermissionTypeName.Equals("Admin", StringComparison.OrdinalIgnoreCase));
 
         return propertyHubAccess != null;
+    }
+
+    /// <inheritdoc />
+    public bool CanMutatePropertyHubOperationalData(UserDto user)
+    {
+        if (user.IsGlobalAdmin) return true;
+
+        var ranks = user.WorkstreamAccess
+            .Where(wa => MatchesPropertyHubWorkstreamName(wa.WorkstreamName))
+            .Select(wa => GetPropertyHubOperationalWriteRank(wa.PermissionTypeName))
+            .ToList();
+
+        if (ranks.Count == 0) return false;
+
+        // Edit (2) or Admin (3) on a Property Hub workstream may mutate operational records; View (1) is read-only.
+        return ranks.Max() >= 2;
+    }
+
+    private static bool MatchesPropertyHubWorkstreamName(string workstreamName)
+    {
+        return workstreamName.Equals("Property Hub", StringComparison.OrdinalIgnoreCase) ||
+               workstreamName.Contains("Property", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Rank for operational write access: 0 = none, 1 = view/read, 2 = edit, 3 = admin.
+    /// Unknown permission names default to view-only (1) for safety.
+    /// </summary>
+    private static int GetPropertyHubOperationalWriteRank(string? permissionTypeName)
+    {
+        if (string.IsNullOrWhiteSpace(permissionTypeName)) return 0;
+
+        var p = permissionTypeName.Trim().ToLowerInvariant();
+        if (p == "admin") return 3;
+        if (p is "edit" or "editor") return 2;
+        if (p is "view" or "read" or "readonly") return 1;
+        return 1;
     }
 
     /// <summary>

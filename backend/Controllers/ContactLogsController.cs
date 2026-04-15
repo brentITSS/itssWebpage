@@ -160,6 +160,9 @@ public class ContactLogsController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to create contact logs.");
+
         var contactLog = await _contactLogService.CreateContactLogAsync(request, currentUserId.Value);
         return CreatedAtAction(nameof(GetContactLog), new { id = contactLog.ContactLogId }, contactLog);
     }
@@ -181,6 +184,9 @@ public class ContactLogsController : ControllerBase
         {
             return Forbid("Access denied: Property Hub workstream access required");
         }
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to update contact logs.");
 
         var contactLog = await _contactLogService.UpdateContactLogAsync(id, request, currentUserId.Value);
         if (contactLog == null) return NotFound();
@@ -206,6 +212,9 @@ public class ContactLogsController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to delete contact logs.");
+
         var result = await _contactLogService.DeleteContactLogAsync(id, currentUserId.Value);
         if (!result) return NotFound();
 
@@ -230,6 +239,9 @@ public class ContactLogsController : ControllerBase
         {
             return Forbid("Access denied: Property Hub workstream access required");
         }
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to upload attachments.");
 
         if (file == null || file.Length == 0)
         {
@@ -264,6 +276,9 @@ public class ContactLogsController : ControllerBase
         {
             return Forbid("Access denied: Property Hub workstream access required");
         }
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to delete attachments.");
 
         var result = await _contactLogService.DeleteAttachmentAsync(attachmentId, currentUserId.Value);
         if (!result) return NotFound();

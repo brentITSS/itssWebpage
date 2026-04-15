@@ -56,7 +56,8 @@ export const authService = {
     // Store token
     localStorage.setItem('token', response.token);
     localStorage.setItem('mustChangePassword', response.user.mustChangePassword ? 'true' : 'false');
-    
+    window.dispatchEvent(new Event('itss-auth-changed'));
+
     return response;
   },
 
@@ -67,6 +68,7 @@ export const authService = {
   logout: (): void => {
     localStorage.removeItem('token');
     localStorage.removeItem('mustChangePassword');
+    window.dispatchEvent(new Event('itss-auth-changed'));
     window.location.href = '/Login';
   },
 
@@ -94,5 +96,6 @@ export const authService = {
       body: JSON.stringify(request),
     });
     localStorage.setItem('mustChangePassword', 'false');
+    window.dispatchEvent(new Event('itss-auth-changed'));
   },
 };

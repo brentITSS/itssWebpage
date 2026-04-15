@@ -71,6 +71,13 @@ public class TagsController : ControllerBase
         var currentUserId = GetCurrentUserId();
         if (currentUserId == null) return Unauthorized();
 
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser))
+            return Forbid("Access denied: Property Hub workstream access required");
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to assign tags.");
+
         try
         {
             var tagLog = await _tagService.CreateTagLogAsync(request, currentUserId.Value);
@@ -96,6 +103,13 @@ public class TagsController : ControllerBase
         var currentUserId = GetCurrentUserId();
         if (currentUserId == null) return Unauthorized();
 
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser))
+            return Forbid("Access denied: Property Hub workstream access required");
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to remove tags.");
+
         var result = await _tagService.DeleteTagLogAsync(id, currentUserId.Value);
         if (!result) return NotFound();
 
@@ -110,5 +124,14 @@ public class TagsController : ControllerBase
             return null;
         }
         return userId;
+    }
+
+    private static bool HasPropertyHubAccess(UserDto user)
+    {
+        if (user.IsGlobalAdmin) return true;
+
+        return user.WorkstreamAccess.Any(wa =>
+            wa.WorkstreamName.Equals("Property Hub", StringComparison.OrdinalIgnoreCase) ||
+            wa.WorkstreamName.Contains("Property", StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -26,9 +26,11 @@ const PermissionGuide: React.FC = () => {
             property group user assignments.
           </p>
           <p>
-            <span className="font-semibold">Property Hub User:</span> users assigned to the Property Hub workstream
-            with non-admin permission (for example, Edit/View). They can use operational areas such as Journal Logs,
-            Contact Logs, Reminders, and Maintenance, but are blocked from Property Hub admin-only actions.
+            <span className="font-semibold">Property Hub User (workstream user):</span> users assigned to the Property
+            Hub workstream with non-admin permission (for example, Edit/View). In the Property Hub top navigation they
+            only see <span className="font-semibold">Home</span> and <span className="font-semibold">Logout</span> (no
+            Admin or operational tabs). They can still use operational CRUD when they open the corresponding URLs (for
+            example from bookmarks or links from Home). Property Hub admin-only routes and API actions remain blocked.
           </p>
         </div>
       </section>
@@ -37,12 +39,14 @@ const PermissionGuide: React.FC = () => {
         <h3 className="text-lg font-semibold text-slate-900">What is hidden or restricted</h3>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
           <li>
-            Global Admin pages are intended for Global Admins only. API enforces this on user/role/workstream
-            management endpoints.
+            Global Admin pages (<code className="rounded bg-slate-100 px-1">/Admin/…</code>) are restricted to Global
+            Admins in the UI. Property Hub workstream admins cannot open Global Admin. API also enforces this on
+            user/role/workstream management endpoints.
           </li>
           <li>
-            Property Hub Admin actions (create/update/delete for groups/properties/tenancies/lookups, and user
-            assignment to property groups) require Property Hub Admin or Global Admin.
+            Property Hub Admin section (<code className="rounded bg-slate-100 px-1">/Property Hub/Admin/…</code>) is
+            only for Global Admins or users with <span className="font-semibold">Admin</span> permission on a Property
+            Hub workstream (workstream admin). Workstream users are redirected to Home if they try to open it.
           </li>
           <li>
             Property Hub operational records (journals/contact logs/reminders/maintenance) require Property Hub
@@ -67,8 +71,9 @@ const PermissionGuide: React.FC = () => {
             consistent.
           </li>
           <li>
-            Frontend route guards currently check for token presence; API remains the final authority and returns 403 if
-            access is insufficient.
+            The SPA enforces route access from your profile (<code className="rounded bg-slate-100 px-1">/auth/me</code>
+            ): Global Admin vs Property Hub workstream admin vs workstream user (top nav and admin routes). API remains
+            the final authority and returns 403 if access is insufficient.
           </li>
         </ul>
       </section>

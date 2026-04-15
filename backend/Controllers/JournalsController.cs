@@ -138,6 +138,9 @@ public class JournalsController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to create journal logs.");
+
         var journalLog = await _journalLogService.CreateJournalLogAsync(request, currentUserId.Value);
         return CreatedAtAction(nameof(GetJournalLog), new { id = journalLog.JournalLogId }, journalLog);
     }
@@ -159,6 +162,9 @@ public class JournalsController : ControllerBase
         {
             return Forbid("Access denied: Property Hub workstream access required");
         }
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to update journal logs.");
 
         var journalLog = await _journalLogService.UpdateJournalLogAsync(id, request, currentUserId.Value);
         if (journalLog == null) return NotFound();
@@ -184,6 +190,9 @@ public class JournalsController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to delete journal logs.");
+
         var result = await _journalLogService.DeleteJournalLogAsync(id, currentUserId.Value);
         if (!result) return NotFound();
 
@@ -208,6 +217,9 @@ public class JournalsController : ControllerBase
         {
             return Forbid("Access denied: Property Hub workstream access required");
         }
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to upload attachments.");
 
         if (file == null || file.Length == 0)
         {
@@ -242,6 +254,9 @@ public class JournalsController : ControllerBase
         {
             return Forbid("Access denied: Property Hub workstream access required");
         }
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to delete attachments.");
 
         var result = await _journalLogService.DeleteAttachmentAsync(attachmentId, currentUserId.Value);
         if (!result) return NotFound();

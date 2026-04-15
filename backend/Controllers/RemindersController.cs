@@ -74,6 +74,9 @@ public class RemindersController : ControllerBase
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
 
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to create reminders.");
+
         try
         {
             var created = await _reminderService.CreateReminderAsync(request, currentUser.Email);
@@ -96,6 +99,9 @@ public class RemindersController : ControllerBase
 
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to update reminders.");
 
         try
         {
@@ -120,6 +126,9 @@ public class RemindersController : ControllerBase
 
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to delete reminders.");
 
         var ok = await _reminderService.DeleteReminderAsync(id);
         if (!ok) return NotFound();

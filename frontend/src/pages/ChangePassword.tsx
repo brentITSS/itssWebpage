@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { getPostLoginPath } from '../utils/access';
 
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +27,8 @@ const ChangePassword: React.FC = () => {
     setLoading(true);
     try {
       await authService.changePassword({ newPassword });
-      navigate('/Property Hub/Home');
+      const user = await authService.getCurrentUser();
+      navigate(getPostLoginPath(user));
     } catch (err: any) {
       setError(err.message || 'Unable to change password.');
     } finally {

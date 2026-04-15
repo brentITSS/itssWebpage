@@ -74,6 +74,9 @@ public class MaintenanceController : ControllerBase
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
 
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to create maintenance records.");
+
         try
         {
             var created = await _maintenanceService.CreateMaintenanceAsync(request);
@@ -96,6 +99,9 @@ public class MaintenanceController : ControllerBase
 
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to update maintenance records.");
 
         try
         {
@@ -120,6 +126,9 @@ public class MaintenanceController : ControllerBase
 
         if (!HasPropertyHubAccess(currentUser))
             return Forbid("Access denied: Property Hub workstream access required");
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to delete maintenance records.");
 
         var ok = await _maintenanceService.DeleteMaintenanceAsync(id);
         if (!ok) return NotFound();

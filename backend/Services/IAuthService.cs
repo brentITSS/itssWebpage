@@ -40,6 +40,12 @@ public interface IAuthService
     bool HasPropertyHubAdminAccess(UserDto user);
 
     /// <summary>
+    /// True if the user may create/update/delete Property Hub operational data (journals, contact logs, reminders,
+    /// maintenance, tag assignments). View-only workstream permission returns false; Edit or Admin returns true.
+    /// </summary>
+    bool CanMutatePropertyHubOperationalData(UserDto user);
+
+    /// <summary>
     /// Create a time-limited password reset token for the user (if the account exists and is active).
     /// </summary>
     Task<ForgotPasswordResponse> RequestPasswordResetAsync(string email);

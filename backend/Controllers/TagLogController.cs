@@ -65,6 +65,9 @@ public class TagLogController : ControllerBase
             return Forbid("Access denied: Property Hub workstream access required");
         }
 
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to assign tags.");
+
         // Validate entity type
         var validEntityTypes = new[] { "Property", "PropertyGroup", "Tenant", "ContactLog", "JournalLog" };
         if (!validEntityTypes.Contains(request.EntityType, StringComparer.OrdinalIgnoreCase))
@@ -100,6 +103,9 @@ public class TagLogController : ControllerBase
         {
             return Forbid("Access denied: Property Hub workstream access required");
         }
+
+        if (!_authService.CanMutatePropertyHubOperationalData(currentUser))
+            return Forbid("Access denied: Edit or higher permission is required to remove tags.");
 
         var result = await _tagService.DeleteTagLogAsync(id, currentUserId.Value);
         if (!result) return NotFound();

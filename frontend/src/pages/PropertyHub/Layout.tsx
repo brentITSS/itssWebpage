@@ -1,8 +1,13 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useAuthAccess } from '../../context/AuthAccessContext';
+import { authService } from '../../services/authService';
 
 const PropertyHubLayout: React.FC = () => {
   const location = useLocation();
+  const { isPropertyHubUserOnly } = useAuthAccess();
+  /** Workstream users (non-admin on Property Hub) only see Home + Logout in the top bar. */
+  const showFullTopNav = !isPropertyHubUserOnly;
   // Normalize pathname for matching (handle URL encoding)
   const pathname = decodeURIComponent(location.pathname);
   
@@ -39,45 +44,47 @@ const PropertyHubLayout: React.FC = () => {
               >
                 Home
               </Link>
-              <Link
-                to="/Property Hub/Admin"
-                className={tabClass(isAdminActive)}
-              >
-                Admin
-              </Link>
-              <Link
-                to="/Property Hub/Journal Logs"
-                className={tabClass(isJournalLogs)}
-              >
-                Journal Logs
-              </Link>
-              <Link
-                to="/Property Hub/Contact Logs"
-                className={tabClass(isContactLogs)}
-              >
-                Contact Logs
-              </Link>
-              <Link
-                to="/Property Hub/Reminders"
-                className={tabClass(isReminders)}
-              >
-                Reminders
-              </Link>
-              <Link
-                to="/Property Hub/Maintenance"
-                className={tabClass(isMaintenance)}
-              >
-                Maintenance
-              </Link>
-              <Link
-                to="/Login"
+              {showFullTopNav && (
+                <>
+                  <Link
+                    to="/Property Hub/Admin"
+                    className={tabClass(isAdminActive)}
+                  >
+                    Admin
+                  </Link>
+                  <Link
+                    to="/Property Hub/Journal Logs"
+                    className={tabClass(isJournalLogs)}
+                  >
+                    Journal Logs
+                  </Link>
+                  <Link
+                    to="/Property Hub/Contact Logs"
+                    className={tabClass(isContactLogs)}
+                  >
+                    Contact Logs
+                  </Link>
+                  <Link
+                    to="/Property Hub/Reminders"
+                    className={tabClass(isReminders)}
+                  >
+                    Reminders
+                  </Link>
+                  <Link
+                    to="/Property Hub/Maintenance"
+                    className={tabClass(isMaintenance)}
+                  >
+                    Maintenance
+                  </Link>
+                </>
+              )}
+              <button
+                type="button"
                 className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-                onClick={() => {
-                  localStorage.removeItem('token');
-                }}
+                onClick={() => authService.logout()}
               >
                 Logout
-              </Link>
+              </button>
             </div>
           </div>
         </div>

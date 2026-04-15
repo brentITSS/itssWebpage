@@ -1,5 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useAuthAccess } from '../context/AuthAccessContext';
+import {
+  getRootPathForAuthenticatedUser,
+  hasPropertyHubWorkstreamAccess,
+  isPropertyHubWorkstreamAdmin,
+} from '../utils/access';
 import Login from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
@@ -32,12 +38,39 @@ import MaintenanceDetail from '../pages/PropertyHub/Maintenance/Detail';
 import PropertyDashboard from '../pages/PropertyHub/PropertyDashboard';
 import TenantsList from '../pages/PropertyHub/Tenants/List';
 
-// Protected route wrapper - checks for Global Admin role
+const AccessDenied: React.FC = () => {
+  useEffect(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('mustChangePassword');
+    window.dispatchEvent(new Event('itss-auth-changed'));
+  }, []);
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 px-4">
+      <div className="max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-lg font-semibold text-slate-900">No workspace access</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Your account is signed in but is not assigned to Property Hub and is not a Global Admin. Contact an
+          administrator.
+        </p>
+        <a href="/Login" className="mt-6 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+          Back to sign in
+        </a>
+      </div>
+    </div>
+  );
+};
+
+const loadingScreen = (
+  <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-medium text-slate-600">
+    Loading…
+  </div>
+);
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const token = localStorage.getItem('token');
   const mustChangePassword = localStorage.getItem('mustChangePassword') === 'true';
   const location = useLocation();
-  
+
   if (!token) {
     return <Navigate to="/Login" replace />;
   }
@@ -46,17 +79,78 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/ChangePassword" replace />;
   }
 
-  // TODO: Add additional check for Global Admin role from token/JWT
-  // For now, just check if token exists
-  
   return <>{children}</>;
+};
+
+/** Global Admin site: Global Admins only. */
+const GlobalAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuthAccess();
+
+  if (loading) {
+    return loadingScreen;
+  }
+
+  if (!user?.isGlobalAdmin) {
+    return <Navigate to="/Property Hub/Home" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+/** Property Hub shell: Global Admin or any Property Hub workstream assignment. */
+const PropertyHubAccessGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuthAccess();
+
+  if (loading) {
+    return loadingScreen;
+  }
+
+  if (user && (user.isGlobalAdmin || hasPropertyHubWorkstreamAccess(user))) {
+    return <>{children}</>;
+  }
+
+  return <Navigate to="/Login" replace />;
+};
+
+/** Property Hub Admin section: Global Admin or Property Hub workstream admin (permission type Admin). */
+const PropertyHubAdminGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuthAccess();
+
+  if (loading) {
+    return loadingScreen;
+  }
+
+  if (user && isPropertyHubWorkstreamAdmin(user)) {
+    return <>{children}</>;
+  }
+
+  return <Navigate to="/Property Hub/Home" replace />;
+};
+
+const RootRedirect: React.FC = () => {
+  const token = localStorage.getItem('token');
+  const { user, loading } = useAuthAccess();
+
+  if (!token) {
+    return <Navigate to="/Login" replace />;
+  }
+
+  if (loading) {
+    return loadingScreen;
+  }
+
+  if (!user) {
+    return <Navigate to="/Login" replace />;
+  }
+
+  return <Navigate to={getRootPathForAuthenticatedUser(user)} replace />;
 };
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Login Route */}
       <Route path="/Login" element={<Login />} />
+      <Route path="/AccessDenied" element={<AccessDenied />} />
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/ResetPassword" element={<ResetPassword />} />
       <Route
@@ -68,12 +162,13 @@ const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Global Admin Routes */}
       <Route
         path="/Admin"
         element={
           <ProtectedRoute>
-            <Admin />
+            <GlobalAdminRoute>
+              <Admin />
+            </GlobalAdminRoute>
           </ProtectedRoute>
         }
       >
@@ -85,34 +180,39 @@ const AppRoutes: React.FC = () => {
         <Route path="Permission Guide" element={<PermissionGuide />} />
       </Route>
 
-      {/* Property Hub Routes */}
       <Route
         path="/Property Hub"
         element={
           <ProtectedRoute>
-            <PropertyHubLayout />
+            <PropertyHubAccessGate>
+              <PropertyHubLayout />
+            </PropertyHubAccessGate>
           </ProtectedRoute>
         }
       >
+        <Route index element={<Navigate to="/Property Hub/Home" replace />} />
         <Route path="Home" element={<PropertyHubHome />} />
         <Route path="Property/:propertyId" element={<PropertyDashboard />} />
 
-        {/* Property Hub Admin Routes */}
-        <Route path="Admin" element={<PropertyHubAdmin />}>
+        <Route
+          path="Admin"
+          element={
+            <PropertyHubAdminGate>
+              <PropertyHubAdmin />
+            </PropertyHubAdminGate>
+          }
+        >
           <Route index element={<Navigate to="/Property Hub/Admin/Property Groups" replace />} />
           <Route path="Property Groups" element={<PropertyGroups />} />
           <Route path="Properties" element={<Properties />} />
           <Route path="Tenancies" element={<Tenancies />} />
           <Route path="Lookups" element={<Lookups />} />
-          {/* User Management route will be added later */}
         </Route>
 
-        {/* Journal Logs Routes */}
         <Route path="Journal Logs" element={<JournalLogsList />} />
         <Route path="Journal Logs/New" element={<JournalLogForm />} />
         <Route path="Journal Logs/:id" element={<JournalLogDetail />} />
 
-        {/* Contact Logs Routes */}
         <Route path="Contact Logs" element={<ContactLogsList />} />
         <Route path="Contact Logs/New" element={<ContactLogForm />} />
         <Route path="Contact Logs/:id" element={<ContactLogDetail />} />
@@ -128,8 +228,7 @@ const AppRoutes: React.FC = () => {
         <Route path="Tenants" element={<TenantsList />} />
       </Route>
 
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/Admin" replace />} />
+      <Route path="/" element={<RootRedirect />} />
     </Routes>
   );
 };
