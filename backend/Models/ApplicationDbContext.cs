@@ -137,6 +137,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(r => r.Notes).HasColumnName("reminderDetail").HasColumnType("nvarchar(max)");
             entity.Property(r => r.CreatedBy).HasColumnName("createdBy").HasMaxLength(255);
             entity.Property(r => r.CreatedDate).HasColumnName("createdDate");
+            entity.Property(r => r.ReminderDate).HasColumnName("reminderDate");
             entity.Property(r => r.ReminderActive).HasColumnName("reminderActive");
             entity.Property(r => r.ReminderPriorityId).HasColumnName("reminderPriorityID");
             entity.Property(r => r.RowVersion).HasColumnName("SSMA_TimeStamp").IsRowVersion();

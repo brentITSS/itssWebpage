@@ -87,6 +87,7 @@ public class ReminderService : IReminderService
             Title = request.Title,
             ReminderPriorityId = request.ReminderPriorityId,
             Notes = request.Notes,
+            ReminderDate = request.ReminderDate,
             CreatedBy = createdBy,
             CreatedDate = DateTime.UtcNow,
             ReminderActive = request.IsCompleted ? false : true,
@@ -111,6 +112,7 @@ public class ReminderService : IReminderService
         reminder.ReminderPriorityId = request.ReminderPriorityId;
         if (request.Title != null) reminder.Title = request.Title;
         if (request.Notes != null) reminder.Notes = request.Notes;
+        reminder.ReminderDate = request.ReminderDate;
         if (request.IsCompleted.HasValue)
             reminder.ReminderActive = request.IsCompleted.Value ? false : true;
 
@@ -242,6 +244,7 @@ public class ReminderService : IReminderService
             Notes = r.Notes,
             CreatedBy = r.CreatedBy,
             CreatedDate = r.CreatedDate,
+            ReminderDate = r.ReminderDate,
             ReminderActive = r.ReminderActive,
             IsCompleted = r.ReminderActive == false,
         };

@@ -164,7 +164,8 @@ const RemindersList: React.FC = () => {
           </p>
         )}
         <p className="mt-2 text-xs text-slate-500">
-          {r.createdDate ? `Created ${formatDateUk(r.createdDate)}` : ''}
+          {r.reminderDate ? `Reminder ${formatDateUk(r.reminderDate)}` : 'No reminder date'}
+          {r.createdDate ? ` · Created ${formatDateUk(r.createdDate)}` : ''}
           {r.tenantName ? ` · ${r.tenantName}` : ''}
         </p>
         <div className="mt-3">
@@ -187,15 +188,24 @@ const RemindersList: React.FC = () => {
           title="Reminders"
           subtitle={`${openCount} open · ${scopedForList.length} total for this property`}
           actions={
-            <button
-              type="button"
-              onClick={() =>
-                navigate(`/Property Hub/Reminders/New?propertyId=${scopedProperty.propertyId}`)
-              }
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-            >
-              + Add reminder
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/Property Hub/Reminders/Calendar?propertyId=${scopedProperty.propertyId}`)}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Calendar
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(`/Property Hub/Reminders/New?propertyId=${scopedProperty.propertyId}`)
+                }
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                + Add reminder
+              </button>
+            </div>
           }
         />
 
@@ -232,16 +242,25 @@ const RemindersList: React.FC = () => {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Reminders</h2>
-        <button
-          type="button"
-          onClick={() => {
-            const q = filterPropertyId ? `?propertyId=${filterPropertyId}` : '';
-            navigate(`/Property Hub/Reminders/New${q}`);
-          }}
-          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          New reminder
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/Property Hub/Reminders/Calendar')}
+            className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+          >
+            Calendar view
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const q = filterPropertyId ? `?propertyId=${filterPropertyId}` : '';
+              navigate(`/Property Hub/Reminders/New${q}`);
+            }}
+            className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            New reminder
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -298,6 +317,7 @@ const RemindersList: React.FC = () => {
           <table className="min-w-[1160px] w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Reminder Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Created</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Reminder</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Priority</th>
@@ -311,7 +331,7 @@ const RemindersList: React.FC = () => {
           <tbody className="divide-y divide-gray-200 bg-white">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
                   No reminders found
                 </td>
               </tr>
@@ -322,6 +342,9 @@ const RemindersList: React.FC = () => {
                   className="cursor-pointer hover:bg-gray-50"
                   onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
                 >
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    {r.reminderDate ? formatDateUk(r.reminderDate) : '—'}
+                  </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {r.createdDate ? formatDateUk(r.createdDate) : '—'}
                   </td>

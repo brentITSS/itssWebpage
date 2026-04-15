@@ -23,7 +23,9 @@ public class ReminderRepository : IReminderRepository
             .Include(r => r.Tenant)
                 .ThenInclude(t => t!.Tenancy!)
                     .ThenInclude(tn => tn.Property)
-            .OrderByDescending(r => r.CreatedDate ?? DateTime.MinValue)
+            .OrderBy(r => r.ReminderDate == null ? 1 : 0)
+            .ThenBy(r => r.ReminderDate ?? DateTime.MaxValue)
+            .ThenByDescending(r => r.CreatedDate ?? DateTime.MinValue)
             .ToListAsync();
     }
 

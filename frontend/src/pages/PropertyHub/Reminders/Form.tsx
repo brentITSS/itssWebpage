@@ -9,6 +9,13 @@ import {
 import { propertyService, PropertyResponseDto, PropertyGroupResponseDto } from '../../../services/propertyService';
 import { propertyAdminService, TenantResponseDto, TenancyResponseDto } from '../../../services/propertyAdminService';
 
+const toDateInputValue = (value?: string | null): string => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+};
+
 const ReminderForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -34,6 +41,7 @@ const ReminderForm: React.FC = () => {
     title: '',
     reminderPriorityId: undefined,
     notes: '',
+    reminderDate: '',
     isCompleted: false,
   });
 
@@ -64,6 +72,7 @@ const ReminderForm: React.FC = () => {
           title: r.title,
           reminderPriorityId: r.reminderPriorityId,
           notes: r.notes || '',
+          reminderDate: toDateInputValue(r.reminderDate),
           isCompleted: r.isCompleted,
         });
       } else {
@@ -133,12 +142,17 @@ const ReminderForm: React.FC = () => {
           reminderPriorityId: formData.reminderPriorityId ?? null,
           title: formData.title,
           notes: formData.notes,
+          reminderDate: formData.reminderDate || null,
           isCompleted: formData.isCompleted,
         };
         await reminderService.updateReminder(reminderId, upd);
         navigate(`/Property Hub/Reminders/${reminderId}`);
       } else {
-        const created = await reminderService.createReminder(formData);
+        const createPayload: CreateReminderRequest = {
+          ...formData,
+          reminderDate: formData.reminderDate || undefined,
+        };
+        const created = await reminderService.createReminder(createPayload);
         navigate(`/Property Hub/Reminders/${created.reminderId}`);
       }
     } catch (err: any) {
@@ -277,6 +291,15 @@ const ReminderForm: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full rounded-md border border-gray-300 px-3 py-2"
               placeholder="Short summary (maps to tblReminder.reminder)"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Reminder date</label>
+            <input
+              type="date"
+              value={formData.reminderDate || ''}
+              onChange={(e) => setFormData({ ...formData, reminderDate: e.target.value })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             />
           </div>
           <div>

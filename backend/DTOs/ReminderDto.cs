@@ -47,6 +47,7 @@ public class ReminderResponseDto
     public string? Notes { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedDate { get; set; }
+    public DateTime? ReminderDate { get; set; }
     /// <summary>Underlying tblReminder.reminderActive (null/true = open).</summary>
     public bool? ReminderActive { get; set; }
     /// <summary>True when reminderActive is explicitly false.</summary>
@@ -62,6 +63,7 @@ public class CreateReminderRequest
     public string Title { get; set; } = string.Empty;
     public int? ReminderPriorityId { get; set; }
     public string? Notes { get; set; }
+    public DateTime? ReminderDate { get; set; }
     /// <summary>When true, stored as reminderActive = false.</summary>
     public bool IsCompleted { get; set; }
 }
@@ -75,5 +77,6 @@ public class UpdateReminderRequest
     public int? ReminderPriorityId { get; set; }
     public string? Title { get; set; }
     public string? Notes { get; set; }
+    public DateTime? ReminderDate { get; set; }
     public bool? IsCompleted { get; set; }
 }

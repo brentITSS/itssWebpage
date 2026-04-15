@@ -40,6 +40,9 @@ public class Reminder
     [Column("createdDate")]
     public DateTime? CreatedDate { get; set; }
 
+    [Column("reminderDate")]
+    public DateTime? ReminderDate { get; set; }
+
     /// <summary>When true or null, the reminder is still active; false means completed/dismissed.</summary>
     [Column("reminderActive")]
     public bool? ReminderActive { get; set; }

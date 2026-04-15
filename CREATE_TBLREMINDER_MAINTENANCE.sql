@@ -5,7 +5,7 @@
 
   - tblReminder: production table already exists. The app maps to:
       reminderID, tenantID, tenancyID, propertyGrpID, propertyID,
-      reminder, reminderDetail, createdBy, createdDate, reminderActive, SSMA_TimeStamp.
+      reminder, reminderDetail, createdBy, createdDate, reminderDate, reminderActive, SSMA_TimeStamp.
     This script does NOT create tblReminder.
   - tblMaintenanceType + tblMaintenance: created if missing.
   - For maintenance status + reminder priority lookups and FK columns, run

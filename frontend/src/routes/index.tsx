@@ -32,6 +32,7 @@ import ContactLogDetail from '../pages/PropertyHub/ContactLogs/Detail';
 import RemindersList from '../pages/PropertyHub/Reminders/List';
 import ReminderForm from '../pages/PropertyHub/Reminders/Form';
 import ReminderDetail from '../pages/PropertyHub/Reminders/Detail';
+import RemindersCalendar from '../pages/PropertyHub/Reminders/Calendar';
 import MaintenanceList from '../pages/PropertyHub/Maintenance/List';
 import MaintenanceForm from '../pages/PropertyHub/Maintenance/Form';
 import MaintenanceDetail from '../pages/PropertyHub/Maintenance/Detail';
@@ -218,6 +219,7 @@ const AppRoutes: React.FC = () => {
         <Route path="Contact Logs/:id" element={<ContactLogDetail />} />
 
         <Route path="Reminders" element={<RemindersList />} />
+        <Route path="Reminders/Calendar" element={<RemindersCalendar />} />
         <Route path="Reminders/New" element={<ReminderForm />} />
         <Route path="Reminders/:id" element={<ReminderDetail />} />
 

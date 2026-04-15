@@ -2,6 +2,7 @@ using backend.DTOs;
 using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
 using System.Security.Claims;
 
 namespace backend.Controllers;
@@ -60,6 +61,59 @@ public class RemindersController : ControllerBase
             isPropertyHubAdmin);
         if (dto == null) return NotFound();
         return Ok(dto);
+    }
+
+    [HttpGet("{id:int}/ics")]
+    public async Task<ActionResult> DownloadReminderAsIcs(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!HasPropertyHubAccess(currentUser))
+            return Forbid("Access denied: Property Hub workstream access required");
+
+        var isPropertyHubAdmin = _authService.HasPropertyHubAdminAccess(currentUser);
+        var reminder = await _reminderService.GetReminderByIdForUserAsync(
+            id,
+            currentUserId.Value,
+            currentUser.IsGlobalAdmin,
+            isPropertyHubAdmin);
+        if (reminder == null) return NotFound();
+
+        if (!reminder.ReminderDate.HasValue)
+            return BadRequest(new { message = "Reminder date is required before downloading an appointment." });
+
+        var startDate = reminder.ReminderDate.Value.Date;
+        var endDateExclusive = startDate.AddDays(1);
+        var description = BuildIcsDescription(reminder);
+        var uid = $"reminder-{reminder.ReminderId}@itss-property-hub";
+        var now = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+
+        var ics = string.Join("\r\n", new[]
+        {
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//ITSS//Property Hub//EN",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+            "BEGIN:VEVENT",
+            $"UID:{uid}",
+            $"DTSTAMP:{now}",
+            $"DTSTART;VALUE=DATE:{startDate:yyyyMMdd}",
+            $"DTEND;VALUE=DATE:{endDateExclusive:yyyyMMdd}",
+            $"SUMMARY:{EscapeIcsText(reminder.Title)}",
+            $"DESCRIPTION:{EscapeIcsText(description)}",
+            "STATUS:CONFIRMED",
+            "END:VEVENT",
+            "END:VCALENDAR"
+        }) + "\r\n";
+
+        var bytes = Encoding.UTF8.GetBytes(ics);
+        var filename = $"reminder-{reminder.ReminderId}.ics";
+        return File(bytes, "text/calendar; charset=utf-8", filename);
     }
 
     [HttpPost]
@@ -150,5 +204,37 @@ public class RemindersController : ControllerBase
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             return null;
         return userId;
+    }
+
+    private static string BuildIcsDescription(ReminderResponseDto reminder)
+    {
+        var lines = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(reminder.Notes))
+            lines.Add(reminder.Notes.Trim());
+
+        if (!string.IsNullOrWhiteSpace(reminder.PropertyGroupName))
+            lines.Add($"Property group: {reminder.PropertyGroupName}");
+        if (!string.IsNullOrWhiteSpace(reminder.PropertyName))
+            lines.Add($"Property: {reminder.PropertyName}");
+        if (!string.IsNullOrWhiteSpace(reminder.TenancySummary))
+            lines.Add($"Tenancy: {reminder.TenancySummary}");
+        if (!string.IsNullOrWhiteSpace(reminder.TenantName))
+            lines.Add($"Tenant: {reminder.TenantName}");
+        if (!string.IsNullOrWhiteSpace(reminder.ReminderPriorityName))
+            lines.Add($"Priority: {reminder.ReminderPriorityName}");
+
+        return lines.Count == 0 ? "Reminder from Property Hub." : string.Join(Environment.NewLine, lines);
+    }
+
+    private static string EscapeIcsText(string value)
+    {
+        return value
+            .Replace(@"\", @"\\")
+            .Replace(";", @"\;")
+            .Replace(",", @"\,")
+            .Replace("\r\n", @"\n")
+            .Replace("\n", @"\n")
+            .Replace("\r", string.Empty);
     }
 }

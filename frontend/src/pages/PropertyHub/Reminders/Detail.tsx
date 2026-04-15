@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { reminderService, ReminderResponseDto } from '../../../services/reminderService';
 import ReminderForm from './Form';
-import { formatDateTimeUk } from '../../../dateFormat';
+import { formatDateTimeUk, formatDateUk } from '../../../dateFormat';
 
 const ReminderDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -69,6 +69,19 @@ const ReminderDetail: React.FC = () => {
           </button>
           <button
             type="button"
+            onClick={async () => {
+              try {
+                await reminderService.downloadReminderAppointment(reminder.reminderId);
+              } catch (err: any) {
+                setError(err.message || 'Failed to download appointment');
+              }
+            }}
+            className="px-4 py-2 border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50"
+          >
+            Download appointment
+          </button>
+          <button
+            type="button"
             onClick={() => navigate('/Property Hub/Reminders')}
             className="px-4 py-2 border border-gray-300 rounded-md"
           >
@@ -94,6 +107,10 @@ const ReminderDetail: React.FC = () => {
         <p>
           <span className="font-medium text-gray-700">Completed: </span>
           {reminder.isCompleted ? 'Yes' : 'No'}
+        </p>
+        <p>
+          <span className="font-medium text-gray-700">Reminder date: </span>
+          {formatDateUk(reminder.reminderDate)}
         </p>
         <p>
           <span className="font-medium text-gray-700">Created: </span>

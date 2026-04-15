@@ -2,6 +2,7 @@ import apiClient from './api';
 import type { ReminderPriorityDto } from './propertyAdminService';
 
 export type { ReminderPriorityDto };
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 export interface ReminderResponseDto {
   reminderId: number;
@@ -20,6 +21,7 @@ export interface ReminderResponseDto {
   notes?: string;
   createdBy?: string;
   createdDate?: string;
+  reminderDate?: string;
   reminderActive?: boolean;
   isCompleted: boolean;
 }
@@ -32,6 +34,7 @@ export interface CreateReminderRequest {
   title: string;
   reminderPriorityId?: number;
   notes?: string;
+  reminderDate?: string;
   isCompleted: boolean;
 }
 
@@ -44,6 +47,7 @@ export interface UpdateReminderRequest {
   reminderPriorityId?: number | null;
   title?: string;
   notes?: string | null;
+  reminderDate?: string | null;
   isCompleted?: boolean;
 }
 
@@ -76,5 +80,35 @@ export const reminderService = {
 
   getReminderPriorities: async (): Promise<ReminderPriorityDto[]> => {
     return await apiClient<ReminderPriorityDto[]>('/lookups/reminder-priorities');
+  },
+
+  downloadReminderAppointment: async (id: number): Promise<void> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/reminders/${id}/ics`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+
+    if (!response.ok) {
+      const raw = await response.text();
+      let msg = raw;
+      try {
+        const parsed = JSON.parse(raw) as { message?: string };
+        if (parsed?.message) msg = parsed.message;
+      } catch {
+        /* keep raw text */
+      }
+      throw new Error(msg || 'Failed to download appointment');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `reminder-${id}.ics`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
   },
 };
