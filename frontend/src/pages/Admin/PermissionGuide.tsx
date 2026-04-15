@@ -77,6 +77,77 @@ const PermissionGuide: React.FC = () => {
           </li>
         </ul>
       </section>
+
+      <section className={cardClass}>
+        <h3 className="text-lg font-semibold text-slate-900">Permission matrix</h3>
+        <p className="mt-2 text-sm text-slate-600">
+          Quick reference for what each access level can do.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full border-collapse text-left text-sm text-slate-700">
+            <thead>
+              <tr className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <th className="border border-slate-200 px-3 py-2">Capability</th>
+                <th className="border border-slate-200 px-3 py-2">Global Admin</th>
+                <th className="border border-slate-200 px-3 py-2">Workstream Admin</th>
+                <th className="border border-slate-200 px-3 py-2">Workstream User (Edit)</th>
+                <th className="border border-slate-200 px-3 py-2">Workstream User (View)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2 font-medium text-slate-900">Open Global Admin (`/Admin/...`)</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">No</td>
+                <td className="border border-slate-200 px-3 py-2">No</td>
+                <td className="border border-slate-200 px-3 py-2">No</td>
+              </tr>
+              <tr className="bg-slate-50/50">
+                <td className="border border-slate-200 px-3 py-2 font-medium text-slate-900">Open Property Hub Home</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2 font-medium text-slate-900">See full Property Hub top nav</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">No (Home + Logout only)</td>
+                <td className="border border-slate-200 px-3 py-2">No (Home + Logout only)</td>
+              </tr>
+              <tr className="bg-slate-50/50">
+                <td className="border border-slate-200 px-3 py-2 font-medium text-slate-900">Open Property Hub Admin (`/Property Hub/Admin/...`)</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">No</td>
+                <td className="border border-slate-200 px-3 py-2">No</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2 font-medium text-slate-900">Operational read (journals/contact/reminders/maintenance)</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+              </tr>
+              <tr className="bg-slate-50/50">
+                <td className="border border-slate-200 px-3 py-2 font-medium text-slate-900">Operational create/update/delete</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">No (API blocks)</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2 font-medium text-slate-900">Manage Property Hub setup data (groups/properties/tenancies/lookups)</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">Yes</td>
+                <td className="border border-slate-200 px-3 py-2">No</td>
+                <td className="border border-slate-200 px-3 py-2">No</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };
