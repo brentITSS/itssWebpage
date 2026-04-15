@@ -41,6 +41,35 @@ public class RemindersController : ControllerBase
         return Ok(list);
     }
 
+    /// <summary>Open reminders with a reminder date strictly before today (UTC date), scoped like the calendar.</summary>
+    [HttpGet("overdue")]
+    public async Task<ActionResult<List<ReminderResponseDto>>> GetOverdue(
+        [FromQuery] int? propertyGroupId,
+        [FromQuery] int? propertyId,
+        [FromQuery] int? tenancyId,
+        [FromQuery] int? tenantId)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+
+        if (!HasPropertyHubAccess(currentUser))
+            return Forbid("Access denied: Property Hub workstream access required");
+
+        var isPropertyHubAdmin = _authService.HasPropertyHubAdminAccess(currentUser);
+        var list = await _reminderService.GetOverdueRemindersForUserAsync(
+            currentUserId.Value,
+            currentUser.IsGlobalAdmin,
+            isPropertyHubAdmin,
+            propertyGroupId,
+            propertyId,
+            tenancyId,
+            tenantId);
+        return Ok(list);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ReminderResponseDto>> GetById(int id)
     {

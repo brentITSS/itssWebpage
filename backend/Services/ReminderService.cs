@@ -64,6 +64,33 @@ public class ReminderService : IReminderService
             .ToList();
     }
 
+    public async Task<List<ReminderResponseDto>> GetOverdueRemindersForUserAsync(
+        int userId,
+        bool isGlobalAdmin,
+        bool isPropertyHubAdmin,
+        int? propertyGroupId,
+        int? propertyId,
+        int? tenancyId,
+        int? tenantId)
+    {
+        var all = await _reminderRepository.GetAllAsync();
+        var userGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
+        var todayUtc = DateTime.UtcNow.Date;
+
+        return all
+            .Where(r => CanAccessReminder(r, userGroupIds, isGlobalAdmin, isPropertyHubAdmin))
+            .Where(r => r.ReminderDate.HasValue && r.ReminderDate.Value.Date < todayUtc)
+            .Where(r => r.ReminderActive != false)
+            .Where(r => !propertyGroupId.HasValue || r.PropertyGroupId == propertyGroupId.Value)
+            .Where(r => !propertyId.HasValue || r.PropertyId == propertyId.Value)
+            .Where(r => !tenancyId.HasValue || r.TenancyId == tenancyId.Value)
+            .Where(r => !tenantId.HasValue || r.TenantId == tenantId.Value)
+            .OrderBy(r => r.ReminderDate ?? DateTime.MaxValue)
+            .ThenByDescending(r => r.CreatedDate ?? DateTime.MinValue)
+            .Select(MapToDto)
+            .ToList();
+    }
+
     public async Task<ReminderResponseDto?> GetReminderByIdForUserAsync(int reminderId, int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
     {
         var r = await _reminderRepository.GetByIdAsync(reminderId);

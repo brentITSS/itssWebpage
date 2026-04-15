@@ -64,6 +64,36 @@ const monthTitle = (value: Date): string =>
 
 type QuickFilter = 'all' | 'today' | 'overdue' | 'thisWeek';
 
+const buildEventDescriptionFromReminder = (r: ReminderResponseDto): string => {
+  const lines: string[] = [];
+  if (r.notes?.trim()) lines.push(r.notes.trim());
+  if (r.propertyGroupName) lines.push(`Property group: ${r.propertyGroupName}`);
+  if (r.propertyName) lines.push(`Property: ${r.propertyName}`);
+  if (r.tenancySummary) lines.push(`Tenancy: ${r.tenancySummary}`);
+  if (r.tenantName) lines.push(`Tenant: ${r.tenantName}`);
+  if (r.reminderPriorityName) lines.push(`Priority: ${r.reminderPriorityName}`);
+  return lines.length > 0 ? lines.join('\n') : 'Reminder from Property Hub.';
+};
+
+const reminderResponseToCalendarEvent = (r: ReminderResponseDto): CalendarEventDto => ({
+  eventType: 'reminder',
+  sourceId: r.reminderId,
+  title: r.title,
+  start: r.reminderDate || r.createdDate || '',
+  isAllDay: true,
+  description: buildEventDescriptionFromReminder(r),
+  isCompleted: r.isCompleted,
+  color: r.reminderPriorityColor || '#b45309',
+  propertyGroupId: r.propertyGroupId,
+  propertyGroupName: r.propertyGroupName,
+  propertyId: r.propertyId,
+  propertyName: r.propertyName,
+  tenancyId: r.tenancyId,
+  tenancySummary: r.tenancySummary,
+  tenantId: r.tenantId,
+  tenantName: r.tenantName,
+});
+
 /** Hover preview: uses calendar event payload only (no extra fetch). */
 const CalendarReminderChip: React.FC<{
   event: CalendarEventDto;
@@ -156,6 +186,11 @@ const RemindersCalendar: React.FC = () => {
 
   const [overflowDayYmd, setOverflowDayYmd] = useState<string | null>(null);
 
+  const [overdueReminders, setOverdueReminders] = useState<ReminderResponseDto[]>([]);
+  const [overdueLoading, setOverdueLoading] = useState(false);
+  const [overdueError, setOverdueError] = useState<string | null>(null);
+  const [overduePanelOpen, setOverduePanelOpen] = useState(true);
+
   useEffect(() => {
     if (!popoverEvent) {
       setPopoverReminder(null);
@@ -180,18 +215,6 @@ const RemindersCalendar: React.FC = () => {
       cancelled = true;
     };
   }, [popoverEvent]);
-
-  useEffect(() => {
-    if (!popoverEvent && !overflowDayYmd) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setPopoverEvent(null);
-        setOverflowDayYmd(null);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [popoverEvent, overflowDayYmd]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -258,6 +281,16 @@ const RemindersCalendar: React.FC = () => {
     setEvents(data);
   }, [month, propertyGroupId, propertyId, tenancyId, tenantId, includeCompleted, quickFilter]);
 
+  const loadOverdue = useCallback(async () => {
+    const data = await reminderService.getOverdueReminders({
+      propertyGroupId: propertyGroupId || undefined,
+      propertyId: propertyId || undefined,
+      tenancyId: tenancyId || undefined,
+      tenantId: tenantId || undefined,
+    });
+    setOverdueReminders(data);
+  }, [propertyGroupId, propertyId, tenancyId, tenantId]);
+
   useEffect(() => {
     const propertyIdParam = searchParams.get('propertyId');
     if (!propertyIdParam) return;
@@ -295,6 +328,21 @@ const RemindersCalendar: React.FC = () => {
     };
     run();
   }, [loadEvents]);
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setOverdueLoading(true);
+        setOverdueError(null);
+        await loadOverdue();
+      } catch (err: any) {
+        setOverdueError(err.message || 'Failed to load overdue reminders');
+      } finally {
+        setOverdueLoading(false);
+      }
+    };
+    run();
+  }, [loadOverdue]);
 
   const applyQuickFilter = (q: QuickFilter) => {
     setQuickFilter(q);
@@ -345,6 +393,31 @@ const RemindersCalendar: React.FC = () => {
     setOverflowDayYmd(null);
     setPopoverEvent(e);
   };
+
+  /** Close detail modal and refresh overdue list + calendar events (e.g. after edits elsewhere or future inline actions). */
+  const closeReminderPopover = useCallback(async () => {
+    setPopoverEvent(null);
+    try {
+      await Promise.all([loadOverdue(), loadEvents()]);
+    } catch (err: any) {
+      setOverdueError(err.message || 'Failed to refresh overdue list');
+      setError(err.message || 'Failed to refresh calendar');
+    }
+  }, [loadOverdue, loadEvents]);
+
+  useEffect(() => {
+    if (!popoverEvent && !overflowDayYmd) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (overflowDayYmd) {
+        setOverflowDayYmd(null);
+      } else if (popoverEvent) {
+        void closeReminderPopover();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [popoverEvent, overflowDayYmd, closeReminderPopover]);
 
   const handleDownloadIcs = async (reminderId: number) => {
     try {
@@ -509,6 +582,60 @@ const RemindersCalendar: React.FC = () => {
         </div>
       </div>
 
+      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/90 shadow-sm">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-amber-100/50"
+          onClick={() => setOverduePanelOpen((o) => !o)}
+          aria-expanded={overduePanelOpen}
+        >
+          <div className="min-w-0">
+            <span className="font-semibold text-amber-950">Overdue reminders</span>
+            <span className="ml-2 text-sm font-normal text-amber-900/85">
+              {overdueLoading ? 'Loading…' : `${overdueReminders.length} open`}
+            </span>
+          </div>
+          <span className="shrink-0 text-slate-600" aria-hidden>
+            {overduePanelOpen ? '▼' : '▶'}
+          </span>
+        </button>
+        {overduePanelOpen && (
+          <div className="border-t border-amber-200 px-4 pb-4 pt-2">
+            {overdueError && (
+              <p className="mb-2 text-sm text-red-700" role="alert">
+                {overdueError}
+              </p>
+            )}
+            {!overdueLoading && overdueReminders.length === 0 && !overdueError && (
+              <p className="text-sm text-amber-900/85">No overdue reminders for the current filters.</p>
+            )}
+            {overdueReminders.length > 0 && (
+              <ul className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
+                {overdueReminders.map((r) => (
+                  <li key={r.reminderId}>
+                    <button
+                      type="button"
+                      className="flex w-full flex-col gap-0.5 rounded-md border border-amber-200/90 bg-white px-3 py-2 text-left text-sm shadow-sm hover:bg-amber-50/80"
+                      onClick={() => openEventPopover(reminderResponseToCalendarEvent(r))}
+                    >
+                      <span className="font-medium text-slate-900">{r.title}</span>
+                      <span className="text-xs text-slate-600">
+                        Due {formatDateUk(r.reminderDate)}
+                        {r.propertyName ? ` · ${r.propertyName}` : ''}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-xs text-amber-900/75">
+              Open reminders with a reminder date before today (server UTC). Respects the property group, property,
+              tenancy, and tenant filters above.
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-lg bg-white p-4 shadow">
         <div className="mb-4 flex items-center justify-between">
           <button
@@ -635,7 +762,7 @@ const RemindersCalendar: React.FC = () => {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           role="presentation"
-          onClick={() => setPopoverEvent(null)}
+          onClick={() => void closeReminderPopover()}
         >
           <div
             role="dialog"
@@ -651,7 +778,7 @@ const RemindersCalendar: React.FC = () => {
               <button
                 type="button"
                 className="shrink-0 rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-                onClick={() => setPopoverEvent(null)}
+                onClick={() => void closeReminderPopover()}
               >
                 Close
               </button>
@@ -669,7 +796,13 @@ const RemindersCalendar: React.FC = () => {
               <button
                 type="button"
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-                onClick={() => navigate(`/Property Hub/Reminders/${popoverEvent.sourceId}`)}
+                onClick={() => {
+                  const id = popoverEvent.sourceId;
+                  void (async () => {
+                    await closeReminderPopover();
+                    navigate(`/Property Hub/Reminders/${id}`);
+                  })();
+                }}
               >
                 Open full page
               </button>

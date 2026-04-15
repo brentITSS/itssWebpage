@@ -38,6 +38,13 @@ export interface CreateReminderRequest {
   isCompleted: boolean;
 }
 
+export interface OverdueRemindersQuery {
+  propertyGroupId?: number;
+  propertyId?: number;
+  tenancyId?: number;
+  tenantId?: number;
+}
+
 export interface UpdateReminderRequest {
   /** Use null to clear a link (required for full replacement on the API). */
   tenantId?: number | null;
@@ -58,6 +65,16 @@ export const reminderService = {
 
   getReminder: async (id: number): Promise<ReminderResponseDto> => {
     return await apiClient<ReminderResponseDto>(`/reminders/${id}`);
+  },
+
+  getOverdueReminders: async (query?: OverdueRemindersQuery): Promise<ReminderResponseDto[]> => {
+    const params = new URLSearchParams();
+    if (query?.propertyGroupId) params.set('propertyGroupId', String(query.propertyGroupId));
+    if (query?.propertyId) params.set('propertyId', String(query.propertyId));
+    if (query?.tenancyId) params.set('tenancyId', String(query.tenancyId));
+    if (query?.tenantId) params.set('tenantId', String(query.tenantId));
+    const qs = params.toString();
+    return await apiClient<ReminderResponseDto[]>(`/reminders/overdue${qs ? `?${qs}` : ''}`);
   },
 
   createReminder: async (request: CreateReminderRequest): Promise<ReminderResponseDto> => {
