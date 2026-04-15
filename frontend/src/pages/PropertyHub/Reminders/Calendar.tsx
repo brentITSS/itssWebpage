@@ -160,6 +160,14 @@ const CalendarReminderChip: React.FC<{
 const RemindersCalendar: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  /** When present in the URL, "back" from calendar should return to property overview (workstream users). */
+  const returnPropertyIdFromUrl = useMemo(() => {
+    const raw = searchParams.get('propertyId');
+    if (!raw) return null;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [searchParams]);
+
   const [month, setMonth] = useState<Date>(startOfMonth(new Date()));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -446,14 +454,24 @@ const RemindersCalendar: React.FC = () => {
           <button
             type="button"
             className="rounded-md border border-gray-300 px-4 py-2 text-sm"
-            onClick={() => navigate('/Property Hub/Reminders')}
+            onClick={() =>
+              returnPropertyIdFromUrl
+                ? navigate(`/Property Hub/Property/${returnPropertyIdFromUrl}`)
+                : navigate('/Property Hub/Reminders')
+            }
           >
-            List view
+            {returnPropertyIdFromUrl ? 'Property overview' : 'List view'}
           </button>
           <button
             type="button"
             className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-            onClick={() => navigate('/Property Hub/Reminders/New')}
+            onClick={() =>
+              navigate(
+                returnPropertyIdFromUrl
+                  ? `/Property Hub/Reminders/New?propertyId=${returnPropertyIdFromUrl}`
+                  : '/Property Hub/Reminders/New'
+              )
+            }
           >
             New reminder
           </button>
