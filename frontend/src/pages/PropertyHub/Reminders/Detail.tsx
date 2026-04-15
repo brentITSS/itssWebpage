@@ -9,6 +9,20 @@ const ReminderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isEdit = searchParams.get('edit') === 'true';
+  const returnPropertyId = (() => {
+    const raw = searchParams.get('propertyId');
+    if (!raw) return null;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const navigateBackFromDetail = () => {
+    if (returnPropertyId != null) {
+      navigate(`/Property Hub/Property/${returnPropertyId}`);
+      return;
+    }
+    navigate('/Property Hub/Reminders');
+  };
 
   const [reminder, setReminder] = useState<ReminderResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +61,8 @@ const ReminderDetail: React.FC = () => {
       <div className="text-center py-8 text-red-600">
         {error || 'Not found'}
         <div className="mt-4">
-          <button type="button" onClick={() => navigate('/Property Hub/Reminders')} className="text-blue-600">
-            Back to list
+          <button type="button" onClick={navigateBackFromDetail} className="text-blue-600">
+            {returnPropertyId != null ? 'Property overview' : 'Back to list'}
           </button>
         </div>
       </div>
@@ -62,7 +76,11 @@ const ReminderDetail: React.FC = () => {
         <div className="space-x-2">
           <button
             type="button"
-            onClick={() => navigate(`/Property Hub/Reminders/${reminder.reminderId}?edit=true`)}
+            onClick={() => {
+              const q = new URLSearchParams({ edit: 'true' });
+              if (returnPropertyId != null) q.set('propertyId', String(returnPropertyId));
+              navigate(`/Property Hub/Reminders/${reminder.reminderId}?${q.toString()}`);
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Edit
@@ -82,10 +100,10 @@ const ReminderDetail: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/Property Hub/Reminders')}
+            onClick={navigateBackFromDetail}
             className="px-4 py-2 border border-gray-300 rounded-md"
           >
-            Back
+            {returnPropertyId != null ? 'Property overview' : 'Back'}
           </button>
         </div>
       </div>

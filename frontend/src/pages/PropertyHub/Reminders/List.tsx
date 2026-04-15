@@ -101,6 +101,23 @@ const RemindersList: React.FC = () => {
   const doneList = useMemo(() => scopedForList.filter((r) => r.isCompleted), [scopedForList]);
   const openCount = scoped ? countOpenRemindersForProperty(scopedPropertyId, reminders) : 0;
 
+  const reminderReturnPropertyId = useMemo(() => {
+    if (scoped && Number.isFinite(scopedPropertyId)) return scopedPropertyId;
+    if (filterPropertyId !== '' && typeof filterPropertyId === 'number') return filterPropertyId;
+    return null;
+  }, [scoped, scopedPropertyId, filterPropertyId]);
+
+  const reminderDetailPath = (reminderId: number) =>
+    reminderReturnPropertyId != null
+      ? `/Property Hub/Reminders/${reminderId}?propertyId=${reminderReturnPropertyId}`
+      : `/Property Hub/Reminders/${reminderId}`;
+
+  const reminderEditPath = (reminderId: number) => {
+    const q = new URLSearchParams({ edit: 'true' });
+    if (reminderReturnPropertyId != null) q.set('propertyId', String(reminderReturnPropertyId));
+    return `/Property Hub/Reminders/${reminderId}?${q.toString()}`;
+  };
+
   if (loading) {
     return <div className="py-8 text-center">Loading...</div>;
   }
@@ -122,7 +139,7 @@ const RemindersList: React.FC = () => {
   }) => (
     <div
       className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-      onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
+      onClick={() => navigate(reminderDetailPath(r.reminderId))}
     >
       {showCheckbox && (
         <div className="pt-0.5">
@@ -170,8 +187,8 @@ const RemindersList: React.FC = () => {
         </p>
         <div className="mt-3">
           <EntityActionButtons
-            onView={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
-            onEdit={() => navigate(`/Property Hub/Reminders/${r.reminderId}?edit=true`)}
+            onView={() => navigate(reminderDetailPath(r.reminderId))}
+            onEdit={() => navigate(reminderEditPath(r.reminderId))}
             onDelete={() => handleDelete(r.reminderId)}
           />
         </div>
@@ -340,7 +357,7 @@ const RemindersList: React.FC = () => {
                 <tr
                   key={r.reminderId}
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
+                  onClick={() => navigate(reminderDetailPath(r.reminderId))}
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {r.reminderDate ? formatDateUk(r.reminderDate) : '—'}
@@ -368,8 +385,8 @@ const RemindersList: React.FC = () => {
                   <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
                     <EntityActionButtons
                       compact
-                      onView={() => navigate(`/Property Hub/Reminders/${r.reminderId}`)}
-                      onEdit={() => navigate(`/Property Hub/Reminders/${r.reminderId}?edit=true`)}
+                      onView={() => navigate(reminderDetailPath(r.reminderId))}
+                      onEdit={() => navigate(reminderEditPath(r.reminderId))}
                       onDelete={() => handleDelete(r.reminderId)}
                     />
                   </td>

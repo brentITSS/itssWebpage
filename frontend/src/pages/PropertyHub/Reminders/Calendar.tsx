@@ -131,27 +131,32 @@ const CalendarReminderChip: React.FC<{
       >
         {event.title}
       </button>
+      {/* Wrapper keeps hover while moving from chip into the panel; inner is scrollable and receives pointer events. */}
       <div
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-[100] mt-1 max-h-48 w-[min(272px,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white p-2.5 text-left text-xs text-slate-700 opacity-0 shadow-xl ring-1 ring-black/5 transition-opacity duration-150 ease-out [word-break:break-word] invisible group-hover:visible group-hover:opacity-100"
+        className="invisible absolute left-0 top-full z-[100] w-[min(272px,calc(100vw-2rem))] pt-1 opacity-0 transition-opacity duration-150 ease-out group-hover:visible group-hover:opacity-100"
       >
-        <p className="font-semibold leading-snug text-slate-900">{event.title}</p>
-        <p className="mt-0.5 text-[11px] text-slate-500">{formatDateUk(event.start)}</p>
-        <p className="mt-1 text-[11px] font-medium text-slate-600">
-          {event.isCompleted ? 'Completed' : 'Open'}
-          {event.propertyName ? ` · ${event.propertyName}` : ''}
-        </p>
-        {(event.tenancySummary || event.tenantName) && (
-          <p className="mt-1 text-[11px] text-slate-500">
-            {[event.tenancySummary, event.tenantName].filter(Boolean).join(' · ')}
+        <div
+          role="tooltip"
+          className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2.5 text-left text-xs text-slate-700 shadow-xl ring-1 ring-black/5 [word-break:break-word]"
+        >
+          <p className="font-semibold leading-snug text-slate-900">{event.title}</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">{formatDateUk(event.start)}</p>
+          <p className="mt-1 text-[11px] font-medium text-slate-600">
+            {event.isCompleted ? 'Completed' : 'Open'}
+            {event.propertyName ? ` · ${event.propertyName}` : ''}
           </p>
-        )}
-        {descPreview && (
-          <p className="mt-1.5 border-t border-slate-100 pt-1.5 text-[11px] leading-relaxed text-slate-600 whitespace-pre-wrap">
-            {descPreview}
-          </p>
-        )}
-        <p className="mt-1.5 text-[10px] text-slate-400">Click for full details and export</p>
+          {(event.tenancySummary || event.tenantName) && (
+            <p className="mt-1 text-[11px] text-slate-500">
+              {[event.tenancySummary, event.tenantName].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          {descPreview && (
+            <p className="mt-1.5 border-t border-slate-100 pt-1.5 text-[11px] leading-relaxed text-slate-600 whitespace-pre-wrap">
+              {descPreview}
+            </p>
+          )}
+          <p className="mt-1.5 text-[10px] text-slate-400">Click for full details and export</p>
+        </div>
       </div>
     </div>
   );
@@ -818,7 +823,9 @@ const RemindersCalendar: React.FC = () => {
                   const id = popoverEvent.sourceId;
                   void (async () => {
                     await closeReminderPopover();
-                    navigate(`/Property Hub/Reminders/${id}`);
+                    const qs =
+                      returnPropertyIdFromUrl != null ? `?propertyId=${returnPropertyIdFromUrl}` : '';
+                    navigate(`/Property Hub/Reminders/${id}${qs}`);
                   })();
                 }}
               >
