@@ -157,20 +157,30 @@ const PropertyDashboard: React.FC = () => {
     </div>
   );
 
-  const Section: React.FC<{ title: string; viewAllTo: string; children: React.ReactNode }> = ({
-    title,
-    viewAllTo,
-    children,
-  }) => (
+  const Section: React.FC<{
+    title: string;
+    viewAllTo: string;
+    children: React.ReactNode;
+    /** Optional link (e.g. reminders calendar with overdue strip). */
+    secondaryLinkTo?: string;
+    secondaryLinkLabel?: string;
+  }> = ({ title, viewAllTo, children, secondaryLinkTo, secondaryLinkLabel }) => (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <Link
-          to={viewAllTo}
-          className="text-sm font-medium text-blue-600 hover:text-blue-800"
-        >
-          View all
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {secondaryLinkTo && secondaryLinkLabel && (
+            <Link
+              to={secondaryLinkTo}
+              className="text-sm font-medium text-amber-800 hover:text-amber-950"
+            >
+              {secondaryLinkLabel}
+            </Link>
+          )}
+          <Link to={viewAllTo} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+            View all
+          </Link>
+        </div>
       </div>
       {children}
     </section>
@@ -234,7 +244,12 @@ const PropertyDashboard: React.FC = () => {
           )}
         </Section>
 
-        <Section title="Open reminders" viewAllTo={`/Property Hub/Reminders?${q}`}>
+        <Section
+          title="Open reminders"
+          viewAllTo={`/Property Hub/Reminders?${q}`}
+          secondaryLinkTo={`/Property Hub/Reminders/Calendar?${q}`}
+          secondaryLinkLabel="Calendar & overdue"
+        >
           {recentReminders.length === 0 ? (
             <p className="text-sm text-slate-500">No open reminders.</p>
           ) : (
