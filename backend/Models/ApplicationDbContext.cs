@@ -55,6 +55,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<MaintenanceType> MaintenanceTypes { get; set; }
     public DbSet<MaintenanceStatus> MaintenanceStatuses { get; set; }
     public DbSet<Maintenance> Maintenances { get; set; }
+    public DbSet<CalendarAppointment> CalendarAppointments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -191,5 +192,27 @@ public class ApplicationDbContext : DbContext
             .WithMany(s => s.Maintenances)
             .HasForeignKey(m => m.MaintenanceStatusId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CalendarAppointment>(entity =>
+        {
+            entity.ToTable("tblCalendarAppointment");
+            entity.HasKey(x => x.CalendarAppointmentId);
+            entity.Property(x => x.CalendarAppointmentId).HasColumnName("calendarAppointmentID");
+            entity.Property(x => x.SourceType).HasColumnName("sourceType").HasMaxLength(50).IsRequired();
+            entity.Property(x => x.SourceId).HasColumnName("sourceID").IsRequired();
+            entity.Property(x => x.AppointmentDate).HasColumnName("appointmentDate").IsRequired();
+            entity.Property(x => x.IsAllDay).HasColumnName("isAllDay");
+            entity.Property(x => x.TitleOverride).HasColumnName("titleOverride").HasMaxLength(255);
+            entity.Property(x => x.Notes).HasColumnName("notes").HasColumnType("nvarchar(max)");
+            entity.Property(x => x.IsActive).HasColumnName("active");
+            entity.Property(x => x.CreatedDate).HasColumnName("createdDate");
+            entity.Property(x => x.ModifiedDate).HasColumnName("modifiedDate");
+
+            entity.HasIndex(x => new { x.SourceType, x.SourceId })
+                .IsUnique()
+                .HasDatabaseName("UX_tblCalendarAppointment_source");
+            entity.HasIndex(x => x.AppointmentDate)
+                .HasDatabaseName("IX_tblCalendarAppointment_appointmentDate");
+        });
     }
 }

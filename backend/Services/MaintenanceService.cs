@@ -8,11 +8,17 @@ public class MaintenanceService : IMaintenanceService
 {
     private readonly IMaintenanceRepository _maintenanceRepository;
     private readonly IPropertyRepository _propertyRepository;
+    private readonly ICalendarAppointmentRepository _calendarAppointmentRepository;
+    private const string SourceType = "maintenance";
 
-    public MaintenanceService(IMaintenanceRepository maintenanceRepository, IPropertyRepository propertyRepository)
+    public MaintenanceService(
+        IMaintenanceRepository maintenanceRepository,
+        IPropertyRepository propertyRepository,
+        ICalendarAppointmentRepository calendarAppointmentRepository)
     {
         _maintenanceRepository = maintenanceRepository;
         _propertyRepository = propertyRepository;
+        _calendarAppointmentRepository = calendarAppointmentRepository;
     }
 
     private static bool CanAccessMaintenance(Maintenance m, List<int> userGroupIds, bool isGlobalAdmin, bool isPropertyHubAdmin)
@@ -125,10 +131,12 @@ public class MaintenanceService : IMaintenanceService
         var all = await _maintenanceRepository.GetAllAsync();
         var userGroupIds = await _propertyRepository.GetUserPropertyGroupIdsAsync(userId);
 
-        return all
+        var rows = all
             .Where(m => CanAccessMaintenance(m, userGroupIds, isGlobalAdmin, isPropertyHubAdmin))
             .Select(MapToDto)
             .ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<MaintenanceResponseDto?> GetMaintenanceByIdForUserAsync(int id, int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
@@ -140,7 +148,9 @@ public class MaintenanceService : IMaintenanceService
         if (!CanAccessMaintenance(m, userGroupIds, isGlobalAdmin, isPropertyHubAdmin))
             return null;
 
-        return MapToDto(m);
+        var dto = MapToDto(m);
+        await AttachCalendarLinksAsync(new List<MaintenanceResponseDto> { dto });
+        return dto;
     }
 
     public async Task<MaintenanceResponseDto> CreateMaintenanceAsync(CreateMaintenanceRequest request)
@@ -161,8 +171,14 @@ public class MaintenanceService : IMaintenanceService
         };
 
         entity = await _maintenanceRepository.CreateAsync(entity);
+        await SyncCalendarAppointmentAsync(
+            entity.MaintenanceId,
+            request.AddToCalendar,
+            request.CalendarDate ?? request.WorkDate);
         var loaded = await _maintenanceRepository.GetByIdAsync(entity.MaintenanceId);
-        return MapToDto(loaded!);
+        var dto = MapToDto(loaded!);
+        await AttachCalendarLinksAsync(new List<MaintenanceResponseDto> { dto });
+        return dto;
     }
 
     public async Task<MaintenanceResponseDto?> UpdateMaintenanceAsync(int id, UpdateMaintenanceRequest request)
@@ -185,13 +201,68 @@ public class MaintenanceService : IMaintenanceService
         if (request.WorkDate.HasValue) entity.WorkDate = request.WorkDate;
 
         await _maintenanceRepository.UpdateAsync(entity);
+        if (request.AddToCalendar.HasValue)
+        {
+            await SyncCalendarAppointmentAsync(
+                entity.MaintenanceId,
+                request.AddToCalendar.Value,
+                request.CalendarDate ?? request.WorkDate ?? entity.WorkDate);
+        }
         var loaded = await _maintenanceRepository.GetByIdAsync(id);
-        return MapToDto(loaded!);
+        var dto = MapToDto(loaded!);
+        await AttachCalendarLinksAsync(new List<MaintenanceResponseDto> { dto });
+        return dto;
     }
 
     public async Task<bool> DeleteMaintenanceAsync(int id)
     {
-        return await _maintenanceRepository.DeleteAsync(id);
+        var deleted = await _maintenanceRepository.DeleteAsync(id);
+        if (deleted)
+        {
+            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, id);
+        }
+        return deleted;
+    }
+
+    private async Task AttachCalendarLinksAsync(List<MaintenanceResponseDto> rows)
+    {
+        if (rows.Count == 0) return;
+
+        var appointmentMap = await _calendarAppointmentRepository.GetBySourceIdsAsync(
+            SourceType,
+            rows.Select(x => x.MaintenanceId));
+
+        foreach (var row in rows)
+        {
+            if (appointmentMap.TryGetValue(row.MaintenanceId, out var appointment) && appointment.IsActive)
+            {
+                row.HasCalendarAppointment = true;
+                row.CalendarDate = appointment.AppointmentDate;
+            }
+            else
+            {
+                row.HasCalendarAppointment = false;
+                row.CalendarDate = null;
+            }
+        }
+    }
+
+    private async Task SyncCalendarAppointmentAsync(int maintenanceId, bool addToCalendar, DateTime? calendarDate)
+    {
+        if (!addToCalendar)
+        {
+            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, maintenanceId);
+            return;
+        }
+
+        if (!calendarDate.HasValue)
+            throw new InvalidOperationException("Calendar date is required when adding this maintenance item to calendar.");
+
+        await _calendarAppointmentRepository.UpsertAsync(
+            SourceType,
+            maintenanceId,
+            calendarDate.Value.Date,
+            isAllDay: true);
     }
 
     private async Task EnsurePropertyScopeIsValidAsync(int? propertyId, int propertyGroupId)

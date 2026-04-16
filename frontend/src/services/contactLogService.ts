@@ -5,6 +5,8 @@ export interface ContactLogResponseDto {
   contactLogId: number;
   propertyId: number;
   propertyName: string;
+  propertyGroupId?: number;
+  propertyGroupName?: string;
   tenantId?: number;
   tenantName?: string;
   contactLogTypeId: number;
@@ -13,6 +15,8 @@ export interface ContactLogResponseDto {
   notes: string;
   contactDate: string;
   createdDate: string;
+  hasCalendarAppointment: boolean;
+  calendarDate?: string;
   attachments: AttachmentDto[];
   tags: TagDto[];
 }
@@ -24,6 +28,8 @@ export interface CreateContactLogRequest {
   subject: string;
   notes: string;
   contactDate: string;
+  addToCalendar?: boolean;
+  calendarDate?: string;
 }
 
 export interface UpdateContactLogRequest {
@@ -33,6 +39,8 @@ export interface UpdateContactLogRequest {
   subject?: string;
   notes?: string;
   contactDate?: string;
+  addToCalendar?: boolean;
+  calendarDate?: string;
 }
 
 export interface ContactLogTypeDto {

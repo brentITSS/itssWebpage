@@ -12,11 +12,19 @@ namespace backend.Controllers;
 public class CalendarController : ControllerBase
 {
     private readonly IReminderService _reminderService;
+    private readonly IMaintenanceService _maintenanceService;
+    private readonly IContactLogService _contactLogService;
     private readonly IAuthService _authService;
 
-    public CalendarController(IReminderService reminderService, IAuthService authService)
+    public CalendarController(
+        IReminderService reminderService,
+        IMaintenanceService maintenanceService,
+        IContactLogService contactLogService,
+        IAuthService authService)
     {
         _reminderService = reminderService;
+        _maintenanceService = maintenanceService;
+        _contactLogService = contactLogService;
         _authService = authService;
     }
 
@@ -58,7 +66,7 @@ public class CalendarController : ControllerBase
             .ThenBy(r => r.CreatedDate)
             .ToList();
 
-        var events = filtered.Select(r => new CalendarEventDto
+        var reminderEvents = filtered.Select(r => new CalendarEventDto
         {
             EventType = "reminder",
             SourceId = r.ReminderId,
@@ -78,6 +86,73 @@ public class CalendarController : ControllerBase
             TenantId = r.TenantId,
             TenantName = r.TenantName
         }).ToList();
+
+        var maintenanceRows = await _maintenanceService.GetAllMaintenancesForUserAsync(
+            currentUserId.Value,
+            currentUser.IsGlobalAdmin,
+            isPropertyHubAdmin);
+        var maintenanceEvents = maintenanceRows
+            .Where(x => x.HasCalendarAppointment && x.CalendarDate.HasValue)
+            .Where(x => !propertyGroupId.HasValue || x.PropertyGroupId == propertyGroupId.Value)
+            .Where(x => !propertyId.HasValue || x.PropertyId == propertyId.Value)
+            .Where(x => !from.HasValue || x.CalendarDate!.Value.Date >= from.Value.Date)
+            .Where(x => !to.HasValue || x.CalendarDate!.Value.Date <= to.Value.Date)
+            .Select(x => new CalendarEventDto
+            {
+                EventType = "maintenance",
+                SourceId = x.MaintenanceId,
+                Title = string.IsNullOrWhiteSpace(x.Summary) ? $"Maintenance #{x.MaintenanceId}" : x.Summary!,
+                Start = x.CalendarDate!.Value.Date,
+                End = x.CalendarDate!.Value.Date.AddDays(1),
+                IsAllDay = true,
+                Description = BuildMaintenanceDescription(x),
+                IsCompleted = IsMaintenanceCompleted(x),
+                Color = IsMaintenanceCompleted(x) ? "#94a3b8" : "#0ea5e9",
+                PropertyGroupId = x.PropertyGroupId,
+                PropertyGroupName = x.PropertyGroupName,
+                PropertyId = x.PropertyId,
+                PropertyName = x.PropertyName
+            })
+            .Where(x => includeCompleted || !x.IsCompleted)
+            .ToList();
+
+        var contactRows = await _contactLogService.GetAllContactLogsForUserAsync(
+            currentUserId.Value,
+            currentUser.IsGlobalAdmin,
+            isPropertyHubAdmin);
+        var contactEvents = contactRows
+            .Where(x => x.HasCalendarAppointment && x.CalendarDate.HasValue)
+            .Where(x => !propertyGroupId.HasValue || x.PropertyGroupId == propertyGroupId.Value)
+            .Where(x => !propertyId.HasValue || x.PropertyId == propertyId.Value)
+            .Where(x => !tenantId.HasValue || x.TenantId == tenantId.Value)
+            .Where(x => !from.HasValue || x.CalendarDate!.Value.Date >= from.Value.Date)
+            .Where(x => !to.HasValue || x.CalendarDate!.Value.Date <= to.Value.Date)
+            .Select(x => new CalendarEventDto
+            {
+                EventType = "contactLog",
+                SourceId = x.ContactLogId,
+                Title = string.IsNullOrWhiteSpace(x.Subject) ? "Contact log" : x.Subject,
+                Start = x.CalendarDate!.Value.Date,
+                End = x.CalendarDate!.Value.Date.AddDays(1),
+                IsAllDay = true,
+                Description = BuildContactLogDescription(x),
+                IsCompleted = true,
+                Color = "#7c3aed",
+                PropertyGroupId = x.PropertyGroupId,
+                PropertyGroupName = x.PropertyGroupName,
+                PropertyId = x.PropertyId,
+                PropertyName = x.PropertyName,
+                TenantId = x.TenantId,
+                TenantName = x.TenantName
+            })
+            .ToList();
+
+        var events = reminderEvents
+            .Concat(maintenanceEvents)
+            .Concat(contactEvents)
+            .OrderBy(x => x.Start)
+            .ThenBy(x => x.Title)
+            .ToList();
 
         return Ok(events);
     }
@@ -101,6 +176,54 @@ public class CalendarController : ControllerBase
             lines.Add($"Priority: {reminder.ReminderPriorityName}");
 
         return lines.Count == 0 ? "Reminder from Property Hub." : string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildMaintenanceDescription(MaintenanceResponseDto maintenance)
+    {
+        var lines = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(maintenance.DetailNotes))
+            lines.Add(maintenance.DetailNotes.Trim());
+        if (!string.IsNullOrWhiteSpace(maintenance.MaintenanceTypeName))
+            lines.Add($"Type: {maintenance.MaintenanceTypeName}");
+        if (!string.IsNullOrWhiteSpace(maintenance.MaintenanceStatusName))
+            lines.Add($"Status: {maintenance.MaintenanceStatusName}");
+        if (!string.IsNullOrWhiteSpace(maintenance.PropertyGroupName))
+            lines.Add($"Property group: {maintenance.PropertyGroupName}");
+        if (!string.IsNullOrWhiteSpace(maintenance.PropertyName))
+            lines.Add($"Property: {maintenance.PropertyName}");
+
+        return lines.Count == 0 ? "Maintenance item from Property Hub." : string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildContactLogDescription(ContactLogResponseDto contactLog)
+    {
+        var lines = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(contactLog.Notes))
+            lines.Add(contactLog.Notes.Trim());
+        if (!string.IsNullOrWhiteSpace(contactLog.ContactLogTypeName))
+            lines.Add($"Type: {contactLog.ContactLogTypeName}");
+        if (!string.IsNullOrWhiteSpace(contactLog.PropertyGroupName))
+            lines.Add($"Property group: {contactLog.PropertyGroupName}");
+        if (!string.IsNullOrWhiteSpace(contactLog.PropertyName))
+            lines.Add($"Property: {contactLog.PropertyName}");
+        if (!string.IsNullOrWhiteSpace(contactLog.TenantName))
+            lines.Add($"Tenant: {contactLog.TenantName}");
+
+        return lines.Count == 0 ? "Contact log from Property Hub." : string.Join(Environment.NewLine, lines);
+    }
+
+    private static bool IsMaintenanceCompleted(MaintenanceResponseDto maintenance)
+    {
+        var status = maintenance.MaintenanceStatusName?.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(status)) return false;
+
+        return status.Contains("complete")
+            || status.Contains("closed")
+            || status.Contains("resolved")
+            || status.Contains("cancel")
+            || status.Contains("done");
     }
 
     private bool HasPropertyHubAccess(UserDto user)

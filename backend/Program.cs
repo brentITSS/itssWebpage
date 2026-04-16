@@ -130,6 +130,7 @@ builder.Services.AddScoped<IJournalLogRepository, JournalLogRepository>();
 builder.Services.AddScoped<IContactLogRepository, ContactLogRepository>();
 builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
+builder.Services.AddScoped<ICalendarAppointmentRepository, CalendarAppointmentRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 

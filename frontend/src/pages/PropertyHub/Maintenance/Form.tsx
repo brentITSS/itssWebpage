@@ -31,6 +31,8 @@ const MaintenanceForm: React.FC = () => {
     summary: '',
     detailNotes: '',
     workDate: undefined,
+    addToCalendar: false,
+    calendarDate: undefined,
   });
 
   const loadData = useCallback(async () => {
@@ -58,6 +60,8 @@ const MaintenanceForm: React.FC = () => {
           summary: r.summary || '',
           detailNotes: r.detailNotes || '',
           workDate: r.workDate ? new Date(r.workDate).toISOString().split('T')[0] : undefined,
+          addToCalendar: !!r.hasCalendarAppointment,
+          calendarDate: r.calendarDate ? new Date(r.calendarDate).toISOString().split('T')[0] : undefined,
         });
       } else {
         const ctxId = contextPropertyIdParam ? parseInt(contextPropertyIdParam, 10) : NaN;
@@ -104,6 +108,8 @@ const MaintenanceForm: React.FC = () => {
           summary: formData.summary,
           detailNotes: formData.detailNotes,
           workDate: formData.workDate || undefined,
+          addToCalendar: !!formData.addToCalendar,
+          calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.workDate || undefined) : undefined,
         };
         await maintenanceService.updateMaintenanceRecord(recordId, upd);
         navigate(`/Property Hub/Maintenance/${recordId}`);
@@ -111,6 +117,8 @@ const MaintenanceForm: React.FC = () => {
         const created = await maintenanceService.createMaintenanceRecord({
           ...formData,
           workDate: formData.workDate || undefined,
+          addToCalendar: !!formData.addToCalendar,
+          calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.workDate || undefined) : undefined,
         });
         navigate(`/Property Hub/Maintenance/${created.maintenanceId}`);
       }
@@ -251,6 +259,39 @@ const MaintenanceForm: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, workDate: e.target.value || undefined })}
               className="w-full rounded-md border border-gray-300 px-3 py-2"
             />
+          </div>
+          <div className="md:col-span-2 rounded-md border border-slate-200 bg-slate-50 p-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!formData.addToCalendar}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    addToCalendar: e.target.checked,
+                    calendarDate: e.target.checked ? prev.calendarDate || prev.workDate : undefined,
+                  }))
+                }
+              />
+              Add to calendar
+            </label>
+            {!!formData.addToCalendar && (
+              <div className="mt-3">
+                <label className="mb-1 block text-sm font-medium text-gray-700">Calendar date</label>
+                <input
+                  type="date"
+                  value={formData.calendarDate || ''}
+                  onChange={(e) => setFormData({ ...formData, calendarDate: e.target.value || undefined })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 md:max-w-xs"
+                  required
+                />
+                {recordId && (
+                  <p className="mt-2 text-xs text-slate-600">
+                    This maintenance item has a linked calendar appointment; saving updates that appointment.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-end gap-2 pb-1 md:col-span-2">
             <button

@@ -64,6 +64,8 @@ public class MaintenanceResponseDto
     public string? DetailNotes { get; set; }
     public DateTime? WorkDate { get; set; }
     public DateTime? CreatedDate { get; set; }
+    public bool HasCalendarAppointment { get; set; }
+    public DateTime? CalendarDate { get; set; }
 }
 
 public class CreateMaintenanceRequest
@@ -75,6 +77,8 @@ public class CreateMaintenanceRequest
     public string? Summary { get; set; }
     public string? DetailNotes { get; set; }
     public DateTime? WorkDate { get; set; }
+    public bool AddToCalendar { get; set; }
+    public DateTime? CalendarDate { get; set; }
 }
 
 public class UpdateMaintenanceRequest
@@ -86,4 +90,6 @@ public class UpdateMaintenanceRequest
     public string? Summary { get; set; }
     public string? DetailNotes { get; set; }
     public DateTime? WorkDate { get; set; }
+    public bool? AddToCalendar { get; set; }
+    public DateTime? CalendarDate { get; set; }
 }

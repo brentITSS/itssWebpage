@@ -155,7 +155,7 @@ const CalendarReminderChip: React.FC<{
               {descPreview}
             </p>
           )}
-          <p className="mt-1.5 text-[10px] text-slate-400">Click for full details and export</p>
+          <p className="mt-1.5 text-[10px] text-slate-400">Click for full details</p>
         </div>
       </div>
     </div>
@@ -208,6 +208,13 @@ const RemindersCalendar: React.FC = () => {
     if (!popoverEvent) {
       setPopoverReminder(null);
       setPopoverError(null);
+      setPopoverLoading(false);
+      return;
+    }
+    if (popoverEvent.eventType !== 'reminder') {
+      setPopoverReminder(null);
+      setPopoverError(null);
+      setPopoverLoading(false);
       return;
     }
     let cancelled = false;
@@ -449,12 +456,37 @@ const RemindersCalendar: React.FC = () => {
       active ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
     ].join(' ');
 
+  const eventTypeLabel = (eventType: string): string => {
+    switch (eventType) {
+      case 'maintenance':
+        return 'Maintenance';
+      case 'contactLog':
+        return 'Contact log';
+      default:
+        return 'Reminder';
+    }
+  };
+
+  const eventFullPagePath = (event: CalendarEventDto): string => {
+    const contextQs =
+      returnPropertyIdFromUrl != null ? `?propertyId=${returnPropertyIdFromUrl}` : '';
+
+    switch (event.eventType) {
+      case 'maintenance':
+        return `/Property Hub/Maintenance/${event.sourceId}${contextQs}`;
+      case 'contactLog':
+        return `/Property Hub/Contact Logs/${event.sourceId}${contextQs}`;
+      default:
+        return `/Property Hub/Reminders/${event.sourceId}${contextQs}`;
+    }
+  };
+
   if (loading && groups.length === 0) return <div className="py-8 text-center">Loading...</div>;
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-gray-900">Reminders Calendar</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Property Calendar</h2>
         <div className="flex gap-2">
           <button
             type="button"
@@ -601,7 +633,7 @@ const RemindersCalendar: React.FC = () => {
           </label>
         </div>
         <div className="flex items-end justify-end text-sm text-gray-500">
-          {filteredEvents.length} reminder{filteredEvents.length === 1 ? '' : 's'} shown
+          {filteredEvents.length} event{filteredEvents.length === 1 ? '' : 's'} shown
         </div>
       </div>
 
@@ -769,9 +801,14 @@ const RemindersCalendar: React.FC = () => {
                     }}
                   >
                     <span className="font-medium text-slate-900">{event.title}</span>
-                    {event.isCompleted && (
-                      <span className="shrink-0 text-xs text-slate-500">Done</span>
-                    )}
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">
+                        {eventTypeLabel(event.eventType)}
+                      </span>
+                      {event.isCompleted && (
+                        <span className="text-xs text-slate-500">Done</span>
+                      )}
+                    </div>
                   </button>
                 </li>
               ))}
@@ -795,9 +832,12 @@ const RemindersCalendar: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
-              <h3 id="popover-reminder-title" className="text-lg font-semibold text-slate-900">
-                {popoverEvent.title}
-              </h3>
+              <div>
+                <h3 id="popover-reminder-title" className="text-lg font-semibold text-slate-900">
+                  {popoverEvent.title}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">{eventTypeLabel(popoverEvent.eventType)}</p>
+              </div>
               <button
                 type="button"
                 className="shrink-0 rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
@@ -808,31 +848,30 @@ const RemindersCalendar: React.FC = () => {
             </div>
 
             <div className="mb-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={icsBusy || !popoverReminder?.reminderDate}
-                className="rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => handleDownloadIcs(popoverEvent.sourceId)}
-              >
-                {icsBusy ? 'Downloading…' : 'Download .ics (Outlook, Google, etc.)'}
-              </button>
+              {popoverEvent.eventType === 'reminder' && (
+                <button
+                  type="button"
+                  disabled={icsBusy || !popoverReminder?.reminderDate}
+                  className="rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => handleDownloadIcs(popoverEvent.sourceId)}
+                >
+                  {icsBusy ? 'Downloading…' : 'Download .ics (Outlook, Google, etc.)'}
+                </button>
+              )}
               <button
                 type="button"
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
                 onClick={() => {
-                  const id = popoverEvent.sourceId;
                   void (async () => {
                     await closeReminderPopover();
-                    const qs =
-                      returnPropertyIdFromUrl != null ? `?propertyId=${returnPropertyIdFromUrl}` : '';
-                    navigate(`/Property Hub/Reminders/${id}${qs}`);
+                    navigate(eventFullPagePath(popoverEvent));
                   })();
                 }}
               >
                 Open full page
               </button>
             </div>
-            {!popoverReminder?.reminderDate && !popoverLoading && (
+            {popoverEvent.eventType === 'reminder' && !popoverReminder?.reminderDate && !popoverLoading && (
               <p className="mb-3 text-sm text-amber-800">
                 Set a reminder date on this reminder to enable calendar export.
               </p>
@@ -878,8 +917,39 @@ const RemindersCalendar: React.FC = () => {
               </dl>
             )}
 
+            {!popoverLoading && !popoverReminder && (
+              <dl className="space-y-2 text-sm text-slate-700">
+                <div className="flex gap-2">
+                  <dt className="w-28 shrink-0 font-medium text-slate-500">Date</dt>
+                  <dd>{formatDateUk(popoverEvent.start)}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-28 shrink-0 font-medium text-slate-500">Type</dt>
+                  <dd>{eventTypeLabel(popoverEvent.eventType)}</dd>
+                </div>
+                {popoverEvent.propertyName && (
+                  <div className="flex gap-2">
+                    <dt className="w-28 shrink-0 font-medium text-slate-500">Property</dt>
+                    <dd>{popoverEvent.propertyName}</dd>
+                  </div>
+                )}
+                {popoverEvent.tenancySummary && (
+                  <div className="flex gap-2">
+                    <dt className="w-28 shrink-0 font-medium text-slate-500">Tenancy</dt>
+                    <dd>{popoverEvent.tenancySummary}</dd>
+                  </div>
+                )}
+                {popoverEvent.tenantName && (
+                  <div className="flex gap-2">
+                    <dt className="w-28 shrink-0 font-medium text-slate-500">Tenant</dt>
+                    <dd>{popoverEvent.tenantName}</dd>
+                  </div>
+                )}
+              </dl>
+            )}
+
             {!popoverLoading && !popoverReminder && popoverEvent.description && (
-              <p className="whitespace-pre-wrap text-sm text-slate-600">{popoverEvent.description}</p>
+              <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{popoverEvent.description}</p>
             )}
           </div>
         </div>

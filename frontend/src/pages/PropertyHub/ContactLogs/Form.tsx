@@ -36,6 +36,8 @@ const ContactLogForm: React.FC = () => {
     subject: '',
     notes: '',
     contactDate: new Date().toISOString().split('T')[0],
+    addToCalendar: false,
+    calendarDate: undefined,
   });
 
   const loadData = useCallback(async () => {
@@ -69,6 +71,8 @@ const ContactLogForm: React.FC = () => {
           subject: logData.subject,
           notes: logData.notes,
           contactDate: new Date(logData.contactDate).toISOString().split('T')[0],
+          addToCalendar: !!logData.hasCalendarAppointment,
+          calendarDate: logData.calendarDate ? new Date(logData.calendarDate).toISOString().split('T')[0] : undefined,
         });
       }
     } catch (err: any) {
@@ -98,11 +102,17 @@ const ContactLogForm: React.FC = () => {
           subject: formData.subject,
           notes: formData.notes,
           contactDate: formData.contactDate,
+          addToCalendar: !!formData.addToCalendar,
+          calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.contactDate) : undefined,
         };
         await contactLogService.updateContactLog(currentLogId, updateRequest);
         savedLogId = currentLogId;
       } else {
-        const createdLog = await contactLogService.createContactLog(formData);
+        const createdLog = await contactLogService.createContactLog({
+          ...formData,
+          addToCalendar: !!formData.addToCalendar,
+          calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.contactDate) : undefined,
+        });
         savedLogId = createdLog.contactLogId;
         setCurrentLogId(savedLogId);
         // Load the created log to get attachments and tags
@@ -325,6 +335,40 @@ const ContactLogForm: React.FC = () => {
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
+        </div>
+
+        <div className="mt-6 rounded-md border border-slate-200 bg-slate-50 p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!formData.addToCalendar}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  addToCalendar: e.target.checked,
+                  calendarDate: e.target.checked ? prev.calendarDate || prev.contactDate : undefined,
+                }))
+              }
+            />
+            Add to calendar
+          </label>
+          {!!formData.addToCalendar && (
+            <div className="mt-3">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Calendar date</label>
+              <input
+                type="date"
+                value={formData.calendarDate || ''}
+                onChange={(e) => setFormData({ ...formData, calendarDate: e.target.value || undefined })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 md:max-w-xs"
+                required
+              />
+              {currentLogId && (
+                <p className="mt-2 text-xs text-slate-600">
+                  This contact log has a linked calendar appointment; saving updates that appointment.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Tags Section - Only show if log exists */}

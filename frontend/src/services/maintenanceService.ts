@@ -17,6 +17,8 @@ export interface MaintenanceResponseDto {
   detailNotes?: string;
   workDate?: string;
   createdDate?: string;
+  hasCalendarAppointment: boolean;
+  calendarDate?: string;
 }
 
 export interface CreateMaintenanceRequest {
@@ -27,6 +29,8 @@ export interface CreateMaintenanceRequest {
   summary?: string;
   detailNotes?: string;
   workDate?: string;
+  addToCalendar?: boolean;
+  calendarDate?: string;
 }
 
 export interface UpdateMaintenanceRequest {
@@ -37,6 +41,8 @@ export interface UpdateMaintenanceRequest {
   summary?: string;
   detailNotes?: string;
   workDate?: string;
+  addToCalendar?: boolean;
+  calendarDate?: string;
 }
 
 export const maintenanceService = {

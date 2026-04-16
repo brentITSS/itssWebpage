@@ -9,24 +9,30 @@ public class ContactLogService : IContactLogService
     private readonly IContactLogRepository _contactLogRepository;
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly IPropertyRepository _propertyRepository;
+    private readonly ICalendarAppointmentRepository _calendarAppointmentRepository;
     private readonly IWebHostEnvironment _environment;
+    private const string SourceType = "contactlog";
 
     public ContactLogService(
         IContactLogRepository contactLogRepository,
         IAuditLogRepository auditLogRepository,
         IPropertyRepository propertyRepository,
+        ICalendarAppointmentRepository calendarAppointmentRepository,
         IWebHostEnvironment environment)
     {
         _contactLogRepository = contactLogRepository;
         _auditLogRepository = auditLogRepository;
         _propertyRepository = propertyRepository;
+        _calendarAppointmentRepository = calendarAppointmentRepository;
         _environment = environment;
     }
 
     public async Task<List<ContactLogResponseDto>> GetAllContactLogsAsync()
     {
         var contactLogs = await _contactLogRepository.GetAllAsync();
-        return contactLogs.Select(MapToContactLogResponseDto).ToList();
+        var rows = contactLogs.Select(MapToContactLogResponseDto).ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<List<ContactLogResponseDto>> GetAllContactLogsForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
@@ -36,7 +42,9 @@ public class ContactLogService : IContactLogService
         // Global Admins and Property Hub Admins see all contact logs
         if (isGlobalAdmin || isPropertyHubAdmin)
         {
-            return allContactLogs.Select(MapToContactLogResponseDto).ToList();
+            var allRows = allContactLogs.Select(MapToContactLogResponseDto).ToList();
+            await AttachCalendarLinksAsync(allRows);
+            return allRows;
         }
 
         // Regular users: get their assigned property group IDs
@@ -45,7 +53,9 @@ public class ContactLogService : IContactLogService
         // If user has no specific assignments, show all (backward compatible)
         if (userPropertyGroupIds.Count == 0)
         {
-            return allContactLogs.Select(MapToContactLogResponseDto).ToList();
+            var allRows = allContactLogs.Select(MapToContactLogResponseDto).ToList();
+            await AttachCalendarLinksAsync(allRows);
+            return allRows;
         }
 
         // Get all properties in user's accessible property groups
@@ -56,10 +66,12 @@ public class ContactLogService : IContactLogService
             .ToList();
 
         // Filter contact logs to only those for accessible properties
-        return allContactLogs
+        var rows = allContactLogs
             .Where(cl => cl.PropertyId.HasValue && accessiblePropertyIds.Contains(cl.PropertyId.Value))
             .Select(MapToContactLogResponseDto)
             .ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<ContactLogResponseDto?> GetContactLogByIdAsync(int contactLogId)
@@ -67,19 +79,25 @@ public class ContactLogService : IContactLogService
         var contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);
         if (contactLog == null) return null;
 
-        return MapToContactLogResponseDto(contactLog);
+        var dto = MapToContactLogResponseDto(contactLog);
+        await AttachCalendarLinksAsync(new List<ContactLogResponseDto> { dto });
+        return dto;
     }
 
     public async Task<List<ContactLogResponseDto>> GetContactLogsByPropertyIdAsync(int propertyId)
     {
         var contactLogs = await _contactLogRepository.GetByPropertyIdAsync(propertyId);
-        return contactLogs.Select(MapToContactLogResponseDto).ToList();
+        var rows = contactLogs.Select(MapToContactLogResponseDto).ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<List<ContactLogResponseDto>> GetContactLogsByTenantIdAsync(int tenantId)
     {
         var contactLogs = await _contactLogRepository.GetByTenantIdAsync(tenantId);
-        return contactLogs.Select(MapToContactLogResponseDto).ToList();
+        var rows = contactLogs.Select(MapToContactLogResponseDto).ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<ContactLogResponseDto> CreateContactLogAsync(CreateContactLogRequest request, int createdByUserId)
@@ -95,6 +113,10 @@ public class ContactLogService : IContactLogService
         };
 
         contactLog = await _contactLogRepository.CreateAsync(contactLog);
+        await SyncCalendarAppointmentAsync(
+            contactLog.ContactLogId,
+            request.AddToCalendar,
+            request.CalendarDate ?? request.ContactDate);
         contactLog = await _contactLogRepository.GetByIdAsync(contactLog.ContactLogId);
 
         // Audit log
@@ -108,7 +130,9 @@ public class ContactLogService : IContactLogService
             CreatedDate = DateTime.UtcNow
         });
 
-        return MapToContactLogResponseDto(contactLog!);
+        var dto = MapToContactLogResponseDto(contactLog!);
+        await AttachCalendarLinksAsync(new List<ContactLogResponseDto> { dto });
+        return dto;
     }
 
     public async Task<ContactLogResponseDto?> UpdateContactLogAsync(int contactLogId, UpdateContactLogRequest request, int modifiedByUserId)
@@ -128,6 +152,13 @@ public class ContactLogService : IContactLogService
         if (request.ContactDate.HasValue) contactLog.ContactDate = request.ContactDate.Value;
 
         contactLog = await _contactLogRepository.UpdateAsync(contactLog);
+        if (request.AddToCalendar.HasValue)
+        {
+            await SyncCalendarAppointmentAsync(
+                contactLogId,
+                request.AddToCalendar.Value,
+                request.CalendarDate ?? request.ContactDate ?? contactLog.ContactDate);
+        }
         contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);
 
         // Audit log
@@ -143,7 +174,9 @@ public class ContactLogService : IContactLogService
             CreatedDate = DateTime.UtcNow
         });
 
-        return MapToContactLogResponseDto(contactLog);
+        var dto = MapToContactLogResponseDto(contactLog);
+        await AttachCalendarLinksAsync(new List<ContactLogResponseDto> { dto });
+        return dto;
     }
 
     public async Task<bool> DeleteContactLogAsync(int contactLogId, int deletedByUserId)
@@ -155,6 +188,7 @@ public class ContactLogService : IContactLogService
 
         if (result)
         {
+            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, contactLogId);
             await _auditLogRepository.CreateAsync(new AuditLog
             {
                 UserId = deletedByUserId,
@@ -279,6 +313,8 @@ public class ContactLogService : IContactLogService
             ContactLogId = contactLog.ContactLogId,
             PropertyId = contactLog.PropertyId ?? 0,
             PropertyName = contactLog.Property?.PropertyName ?? string.Empty,
+            PropertyGroupId = contactLog.Property?.PropertyGroupId,
+            PropertyGroupName = contactLog.Property?.PropertyGroup?.PropertyGroupName,
             TenantId = contactLog.TenantId,
             TenantName = contactLog.Tenant != null ? $"{contactLog.Tenant.FirstName} {contactLog.Tenant.LastName}".Trim() : null,
             ContactLogTypeId = contactLog.ContactLogTypeId,
@@ -306,5 +342,46 @@ public class ContactLogService : IContactLogService
                 CreatedDate = DateTime.UtcNow
             }).ToList()
         };
+    }
+
+    private async Task AttachCalendarLinksAsync(List<ContactLogResponseDto> rows)
+    {
+        if (rows.Count == 0) return;
+
+        var appointmentMap = await _calendarAppointmentRepository.GetBySourceIdsAsync(
+            SourceType,
+            rows.Select(x => x.ContactLogId));
+
+        foreach (var row in rows)
+        {
+            if (appointmentMap.TryGetValue(row.ContactLogId, out var appointment) && appointment.IsActive)
+            {
+                row.HasCalendarAppointment = true;
+                row.CalendarDate = appointment.AppointmentDate;
+            }
+            else
+            {
+                row.HasCalendarAppointment = false;
+                row.CalendarDate = null;
+            }
+        }
+    }
+
+    private async Task SyncCalendarAppointmentAsync(int contactLogId, bool addToCalendar, DateTime? calendarDate)
+    {
+        if (!addToCalendar)
+        {
+            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, contactLogId);
+            return;
+        }
+
+        if (!calendarDate.HasValue)
+            throw new InvalidOperationException("Calendar date is required when adding this contact log to calendar.");
+
+        await _calendarAppointmentRepository.UpsertAsync(
+            SourceType,
+            contactLogId,
+            calendarDate.Value.Date,
+            isAllDay: true);
     }
 }

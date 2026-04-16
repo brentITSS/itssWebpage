@@ -8,6 +8,8 @@ public class CreateContactLogRequest
     public string Subject { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
     public DateTime ContactDate { get; set; }
+    public bool AddToCalendar { get; set; }
+    public DateTime? CalendarDate { get; set; }
 }
 
 public class UpdateContactLogRequest
@@ -18,6 +20,8 @@ public class UpdateContactLogRequest
     public string? Subject { get; set; }
     public string? Notes { get; set; }
     public DateTime? ContactDate { get; set; }
+    public bool? AddToCalendar { get; set; }
+    public DateTime? CalendarDate { get; set; }
 }
 
 public class ContactLogResponseDto
@@ -25,6 +29,8 @@ public class ContactLogResponseDto
     public int ContactLogId { get; set; }
     public int PropertyId { get; set; }
     public string PropertyName { get; set; } = string.Empty;
+    public int? PropertyGroupId { get; set; }
+    public string? PropertyGroupName { get; set; }
     public int? TenantId { get; set; }
     public string? TenantName { get; set; }
     public int ContactLogTypeId { get; set; }
@@ -33,6 +39,8 @@ public class ContactLogResponseDto
     public string Notes { get; set; } = string.Empty;
     public DateTime ContactDate { get; set; }
     public DateTime CreatedDate { get; set; }
+    public bool HasCalendarAppointment { get; set; }
+    public DateTime? CalendarDate { get; set; }
     public List<AttachmentDto> Attachments { get; set; } = new();
     public List<TagDto> Tags { get; set; } = new();
 }
