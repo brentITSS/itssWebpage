@@ -14,6 +14,24 @@ const MaintenanceForm: React.FC = () => {
   const isEdit = !!id || searchParams.get('edit') === 'true';
   const recordId = id ? parseInt(id, 10) : null;
   const contextPropertyIdParam = searchParams.get('propertyId');
+  const contextReturnPropertyId = (() => {
+    if (!contextPropertyIdParam) return null;
+    const n = parseInt(contextPropertyIdParam, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const exitFormNavigate = () => {
+    if (contextReturnPropertyId != null) {
+      navigate(`/Property Hub/Property/${contextReturnPropertyId}`);
+      return;
+    }
+    navigate('/Property Hub/Maintenance');
+  };
+
+  const detailPathAfterSave = (savedId: number) =>
+    contextReturnPropertyId != null
+      ? `/Property Hub/Maintenance/${savedId}?propertyId=${contextReturnPropertyId}`
+      : `/Property Hub/Maintenance/${savedId}`;
 
   const [groups, setGroups] = useState<PropertyGroupResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
@@ -112,7 +130,7 @@ const MaintenanceForm: React.FC = () => {
           calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.workDate || undefined) : undefined,
         };
         await maintenanceService.updateMaintenanceRecord(recordId, upd);
-        navigate(`/Property Hub/Maintenance/${recordId}`);
+        navigate(detailPathAfterSave(recordId));
       } else {
         const created = await maintenanceService.createMaintenanceRecord({
           ...formData,
@@ -120,7 +138,7 @@ const MaintenanceForm: React.FC = () => {
           addToCalendar: !!formData.addToCalendar,
           calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.workDate || undefined) : undefined,
         });
-        navigate(`/Property Hub/Maintenance/${created.maintenanceId}`);
+        navigate(detailPathAfterSave(created.maintenanceId));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to save');
@@ -139,10 +157,10 @@ const MaintenanceForm: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900">{recordId ? 'Edit maintenance' : 'New maintenance'}</h2>
         <button
           type="button"
-          onClick={() => navigate('/Property Hub/Maintenance')}
+          onClick={exitFormNavigate}
           className="text-gray-600 hover:text-gray-900"
         >
-          Back to list
+          {contextReturnPropertyId != null ? 'Property overview' : 'Back to list'}
         </button>
       </div>
 
@@ -303,7 +321,7 @@ const MaintenanceForm: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/Property Hub/Maintenance')}
+              onClick={exitFormNavigate}
               className="rounded-md border border-gray-300 px-4 py-2"
             >
               Cancel

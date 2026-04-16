@@ -9,6 +9,20 @@ const MaintenanceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isEdit = searchParams.get('edit') === 'true';
+  const returnPropertyId = (() => {
+    const raw = searchParams.get('propertyId');
+    if (!raw) return null;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const navigateBack = () => {
+    if (returnPropertyId != null) {
+      navigate(`/Property Hub/Property/${returnPropertyId}`);
+      return;
+    }
+    navigate('/Property Hub/Maintenance');
+  };
 
   const [row, setRow] = useState<MaintenanceResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +61,8 @@ const MaintenanceDetail: React.FC = () => {
       <div className="text-center py-8 text-red-600">
         {error || 'Not found'}
         <div className="mt-4">
-          <button type="button" onClick={() => navigate('/Property Hub/Maintenance')} className="text-blue-600">
-            Back to list
+          <button type="button" onClick={navigateBack} className="text-blue-600">
+            {returnPropertyId != null ? 'Property overview' : 'Back to list'}
           </button>
         </div>
       </div>
@@ -62,17 +76,21 @@ const MaintenanceDetail: React.FC = () => {
         <div className="space-x-2">
           <button
             type="button"
-            onClick={() => navigate(`/Property Hub/Maintenance/${row.maintenanceId}?edit=true`)}
+            onClick={() => {
+              const q = new URLSearchParams({ edit: 'true' });
+              if (returnPropertyId != null) q.set('propertyId', String(returnPropertyId));
+              navigate(`/Property Hub/Maintenance/${row.maintenanceId}?${q.toString()}`);
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Edit
           </button>
           <button
             type="button"
-            onClick={() => navigate('/Property Hub/Maintenance')}
+            onClick={navigateBack}
             className="px-4 py-2 border border-gray-300 rounded-md"
           >
-            Back
+            {returnPropertyId != null ? 'Property overview' : 'Back'}
           </button>
         </div>
       </div>

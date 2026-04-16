@@ -12,6 +12,20 @@ const JournalLogDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isEdit = searchParams.get('edit') === 'true';
+  const returnPropertyId = (() => {
+    const raw = searchParams.get('propertyId');
+    if (!raw) return null;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const navigateBack = () => {
+    if (returnPropertyId != null) {
+      navigate(`/Property Hub/Property/${returnPropertyId}`);
+      return;
+    }
+    navigate('/Property Hub/Journal Logs');
+  };
 
   const [journalLog, setJournalLog] = useState<JournalLogResponseDto | null>(null);
   const [tags, setTags] = useState<TagDto[]>([]);
@@ -122,10 +136,10 @@ const JournalLogDetail: React.FC = () => {
       <div className="text-center py-8">
         <p className="text-gray-500">Journal log not found</p>
         <button
-          onClick={() => navigate('/Property Hub/Journal Logs')}
+          onClick={navigateBack}
           className="mt-4 text-blue-600 hover:text-blue-800"
         >
-          Back to Journal Logs
+          {returnPropertyId != null ? 'Property overview' : 'Back to Journal Logs'}
         </button>
       </div>
     );
@@ -136,16 +150,20 @@ const JournalLogDetail: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <button
-            onClick={() => navigate('/Property Hub/Journal Logs')}
+            onClick={navigateBack}
             className="text-gray-600 hover:text-gray-900 mb-2"
           >
-            ← Back to Journal Logs
+            ← {returnPropertyId != null ? 'Property overview' : 'Back to Journal Logs'}
           </button>
           <h2 className="text-2xl font-bold text-gray-900">Journal Log Details</h2>
         </div>
         <div className="space-x-2">
           <button
-            onClick={() => navigate(`/Property Hub/Journal Logs/${id}?edit=true`)}
+            onClick={() => {
+              const q = new URLSearchParams({ edit: 'true' });
+              if (returnPropertyId != null) q.set('propertyId', String(returnPropertyId));
+              navigate(`/Property Hub/Journal Logs/${id}?${q.toString()}`);
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Edit
@@ -155,7 +173,7 @@ const JournalLogDetail: React.FC = () => {
               if (!window.confirm('Are you sure you want to delete this journal log?')) return;
               try {
                 await journalService.deleteJournalLog(parseInt(id!));
-                navigate('/Property Hub/Journal Logs');
+                navigateBack();
               } catch (err: any) {
                 setError(err.message || 'Failed to delete journal log');
               }

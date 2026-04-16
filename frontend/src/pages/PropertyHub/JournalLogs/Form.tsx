@@ -14,6 +14,20 @@ const JournalLogForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isEdit = !!id || searchParams.get('edit') === 'true';
   const journalLogId = id ? parseInt(id) : null;
+  const contextPropertyIdParam = searchParams.get('propertyId');
+  const contextReturnPropertyId = (() => {
+    if (!contextPropertyIdParam) return null;
+    const n = parseInt(contextPropertyIdParam, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const exitFormNavigate = () => {
+    if (contextReturnPropertyId != null) {
+      navigate(`/Property Hub/Property/${contextReturnPropertyId}`);
+      return;
+    }
+    navigate('/Property Hub/Journal Logs');
+  };
 
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
@@ -38,6 +52,8 @@ const JournalLogForm: React.FC = () => {
     amount: 0,
     description: '',
     transactionDate: new Date().toISOString().split('T')[0],
+    addToCalendar: false,
+    calendarDate: undefined,
   });
 
   const loadData = useCallback(async () => {
@@ -73,14 +89,21 @@ const JournalLogForm: React.FC = () => {
           amount: logData.amount,
           description: logData.description || '',
           transactionDate: new Date(logData.transactionDate).toISOString().split('T')[0],
+          addToCalendar: !!logData.hasCalendarAppointment,
+          calendarDate: logData.calendarDate ? new Date(logData.calendarDate).toISOString().split('T')[0] : undefined,
         });
+      } else if (contextReturnPropertyId != null) {
+        setFormData((prev) => ({
+          ...prev,
+          propertyId: contextReturnPropertyId,
+        }));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [isEdit, journalLogId]);
+  }, [isEdit, journalLogId, contextReturnPropertyId]);
 
   useEffect(() => {
     loadData();
@@ -104,11 +127,17 @@ const JournalLogForm: React.FC = () => {
           amount: formData.amount,
           description: formData.description || undefined,
           transactionDate: formData.transactionDate,
+          addToCalendar: !!formData.addToCalendar,
+          calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.transactionDate) : undefined,
         };
         await journalService.updateJournalLog(currentLogId, updateRequest);
         savedLogId = currentLogId;
       } else {
-        const createdLog = await journalService.createJournalLog(formData);
+        const createdLog = await journalService.createJournalLog({
+          ...formData,
+          addToCalendar: !!formData.addToCalendar,
+          calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.transactionDate) : undefined,
+        });
         savedLogId = createdLog.journalLogId;
         setCurrentLogId(savedLogId);
         // Load the created log to get attachments and tags
@@ -382,6 +411,40 @@ const JournalLogForm: React.FC = () => {
           />
         </div>
 
+        <div className="mt-6 rounded-md border border-slate-200 bg-slate-50 p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!formData.addToCalendar}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  addToCalendar: e.target.checked,
+                  calendarDate: e.target.checked ? prev.calendarDate || prev.transactionDate : undefined,
+                }))
+              }
+            />
+            Add to calendar
+          </label>
+          {!!formData.addToCalendar && (
+            <div className="mt-3">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Calendar date</label>
+              <input
+                type="date"
+                value={formData.calendarDate || ''}
+                onChange={(e) => setFormData({ ...formData, calendarDate: e.target.value || undefined })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 md:max-w-xs"
+                required
+              />
+              {currentLogId && (
+                <p className="mt-2 text-xs text-slate-600">
+                  This journal log has a linked calendar appointment; saving updates that appointment.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Tags Section - Only show if log exists */}
         {currentLogId && (
           <div className="mt-6 pt-6 border-t border-gray-200">
@@ -456,10 +519,10 @@ const JournalLogForm: React.FC = () => {
         <div className="mt-6 flex justify-end space-x-4">
           <button
             type="button"
-            onClick={() => navigate('/Property Hub/Journal Logs')}
+            onClick={exitFormNavigate}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
           >
-            {currentLogId ? 'Done' : 'Cancel'}
+            {contextReturnPropertyId != null ? 'Property overview' : currentLogId ? 'Done' : 'Cancel'}
           </button>
           <button
             type="submit"

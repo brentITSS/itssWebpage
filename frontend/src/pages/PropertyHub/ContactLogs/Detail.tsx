@@ -12,6 +12,20 @@ const ContactLogDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isEdit = searchParams.get('edit') === 'true';
+  const returnPropertyId = (() => {
+    const raw = searchParams.get('propertyId');
+    if (!raw) return null;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const navigateBack = () => {
+    if (returnPropertyId != null) {
+      navigate(`/Property Hub/Property/${returnPropertyId}`);
+      return;
+    }
+    navigate('/Property Hub/Contact Logs');
+  };
 
   const [contactLog, setContactLog] = useState<ContactLogResponseDto | null>(null);
   const [tags, setTags] = useState<TagDto[]>([]);
@@ -115,10 +129,10 @@ const ContactLogDetail: React.FC = () => {
       <div className="text-center py-8">
         <p className="text-gray-500">Contact log not found</p>
         <button
-          onClick={() => navigate('/Property Hub/Contact Logs')}
+          onClick={navigateBack}
           className="mt-4 text-blue-600 hover:text-blue-800"
         >
-          Back to Contact Logs
+          {returnPropertyId != null ? 'Property overview' : 'Back to Contact Logs'}
         </button>
       </div>
     );
@@ -129,16 +143,20 @@ const ContactLogDetail: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <button
-            onClick={() => navigate('/Property Hub/Contact Logs')}
+            onClick={navigateBack}
             className="text-gray-600 hover:text-gray-900 mb-2"
           >
-            ← Back to Contact Logs
+            ← {returnPropertyId != null ? 'Property overview' : 'Back to Contact Logs'}
           </button>
           <h2 className="text-2xl font-bold text-gray-900">Contact Log Details</h2>
         </div>
         <div className="space-x-2">
           <button
-            onClick={() => navigate(`/Property Hub/Contact Logs/${id}?edit=true`)}
+            onClick={() => {
+              const q = new URLSearchParams({ edit: 'true' });
+              if (returnPropertyId != null) q.set('propertyId', String(returnPropertyId));
+              navigate(`/Property Hub/Contact Logs/${id}?${q.toString()}`);
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Edit
@@ -148,7 +166,7 @@ const ContactLogDetail: React.FC = () => {
               if (!window.confirm('Are you sure you want to delete this contact log?')) return;
               try {
                 await contactLogService.deleteContactLog(parseInt(id!));
-                navigate('/Property Hub/Contact Logs');
+                navigateBack();
               } catch (err: any) {
                 setError(err.message || 'Failed to delete contact log');
               }

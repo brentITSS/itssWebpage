@@ -14,6 +14,20 @@ const ContactLogForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isEdit = !!id || searchParams.get('edit') === 'true';
   const contactLogId = id ? parseInt(id) : null;
+  const contextPropertyIdParam = searchParams.get('propertyId');
+  const contextReturnPropertyId = (() => {
+    if (!contextPropertyIdParam) return null;
+    const n = parseInt(contextPropertyIdParam, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const exitFormNavigate = () => {
+    if (contextReturnPropertyId != null) {
+      navigate(`/Property Hub/Property/${contextReturnPropertyId}`);
+      return;
+    }
+    navigate('/Property Hub/Contact Logs');
+  };
 
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
@@ -74,13 +88,18 @@ const ContactLogForm: React.FC = () => {
           addToCalendar: !!logData.hasCalendarAppointment,
           calendarDate: logData.calendarDate ? new Date(logData.calendarDate).toISOString().split('T')[0] : undefined,
         });
+      } else if (contextReturnPropertyId != null) {
+        setFormData((prev) => ({
+          ...prev,
+          propertyId: contextReturnPropertyId,
+        }));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [isEdit, contactLogId]);
+  }, [isEdit, contactLogId, contextReturnPropertyId]);
 
   useEffect(() => {
     loadData();
@@ -445,10 +464,10 @@ const ContactLogForm: React.FC = () => {
         <div className="mt-6 flex justify-end space-x-4">
           <button
             type="button"
-            onClick={() => navigate('/Property Hub/Contact Logs')}
+            onClick={exitFormNavigate}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
           >
-            {currentLogId ? 'Done' : 'Cancel'}
+            {contextReturnPropertyId != null ? 'Property overview' : currentLogId ? 'Done' : 'Cancel'}
           </button>
           <button
             type="submit"

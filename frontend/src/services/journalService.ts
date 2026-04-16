@@ -5,6 +5,8 @@ export interface JournalLogResponseDto {
   journalLogId: number;
   propertyId: number;
   propertyName: string;
+  propertyGroupId?: number;
+  propertyGroupName?: string;
   tenancyId?: number;
   tenantId?: number;
   tenantName?: string;
@@ -16,6 +18,8 @@ export interface JournalLogResponseDto {
   description?: string;
   transactionDate: string;
   createdDate: string;
+  hasCalendarAppointment: boolean;
+  calendarDate?: string;
   attachments: AttachmentDto[];
 }
 
@@ -28,6 +32,8 @@ export interface CreateJournalLogRequest {
   amount: number;
   description?: string;
   transactionDate: string;
+  addToCalendar?: boolean;
+  calendarDate?: string;
 }
 
 export interface UpdateJournalLogRequest {
@@ -39,6 +45,8 @@ export interface UpdateJournalLogRequest {
   amount?: number;
   description?: string;
   transactionDate?: string;
+  addToCalendar?: boolean;
+  calendarDate?: string;
 }
 
 export interface JournalTypeDto {

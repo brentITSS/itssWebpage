@@ -462,6 +462,8 @@ const RemindersCalendar: React.FC = () => {
         return 'Maintenance';
       case 'contactLog':
         return 'Contact log';
+      case 'journalLog':
+        return 'Journal log';
       default:
         return 'Reminder';
     }
@@ -476,6 +478,8 @@ const RemindersCalendar: React.FC = () => {
         return `/Property Hub/Maintenance/${event.sourceId}${contextQs}`;
       case 'contactLog':
         return `/Property Hub/Contact Logs/${event.sourceId}${contextQs}`;
+      case 'journalLog':
+        return `/Property Hub/Journal Logs/${event.sourceId}${contextQs}`;
       default:
         return `/Property Hub/Reminders/${event.sourceId}${contextQs}`;
     }

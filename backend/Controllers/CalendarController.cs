@@ -14,17 +14,20 @@ public class CalendarController : ControllerBase
     private readonly IReminderService _reminderService;
     private readonly IMaintenanceService _maintenanceService;
     private readonly IContactLogService _contactLogService;
+    private readonly IJournalLogService _journalLogService;
     private readonly IAuthService _authService;
 
     public CalendarController(
         IReminderService reminderService,
         IMaintenanceService maintenanceService,
         IContactLogService contactLogService,
+        IJournalLogService journalLogService,
         IAuthService authService)
     {
         _reminderService = reminderService;
         _maintenanceService = maintenanceService;
         _contactLogService = contactLogService;
+        _journalLogService = journalLogService;
         _authService = authService;
     }
 
@@ -147,9 +150,47 @@ public class CalendarController : ControllerBase
             })
             .ToList();
 
+        var journalRows = await _journalLogService.GetAllJournalLogsForUserAsync(
+            currentUserId.Value,
+            currentUser.IsGlobalAdmin,
+            isPropertyHubAdmin);
+        var journalEvents = journalRows
+            .Where(x => x.HasCalendarAppointment && x.CalendarDate.HasValue)
+            .Where(x => !propertyGroupId.HasValue || x.PropertyGroupId == propertyGroupId.Value)
+            .Where(x => !propertyId.HasValue || x.PropertyId == propertyId.Value)
+            .Where(x => !tenancyId.HasValue || x.TenancyId == tenancyId.Value)
+            .Where(x => !tenantId.HasValue || x.TenantId == tenantId.Value)
+            .Where(x => !from.HasValue || x.CalendarDate!.Value.Date >= from.Value.Date)
+            .Where(x => !to.HasValue || x.CalendarDate!.Value.Date <= to.Value.Date)
+            .Select(x => new CalendarEventDto
+            {
+                EventType = "journalLog",
+                SourceId = x.JournalLogId,
+                Title = string.IsNullOrWhiteSpace(x.Description)
+                    ? $"{x.JournalTypeName} journal"
+                    : x.Description!.Length > 90
+                        ? $"{x.Description.Substring(0, 90)}…"
+                        : x.Description,
+                Start = x.CalendarDate!.Value.Date,
+                End = x.CalendarDate!.Value.Date.AddDays(1),
+                IsAllDay = true,
+                Description = BuildJournalLogDescription(x),
+                IsCompleted = true,
+                Color = "#0f766e",
+                PropertyGroupId = x.PropertyGroupId,
+                PropertyGroupName = x.PropertyGroupName,
+                PropertyId = x.PropertyId,
+                PropertyName = x.PropertyName,
+                TenancyId = x.TenancyId,
+                TenantId = x.TenantId,
+                TenantName = x.TenantName
+            })
+            .ToList();
+
         var events = reminderEvents
             .Concat(maintenanceEvents)
             .Concat(contactEvents)
+            .Concat(journalEvents)
             .OrderBy(x => x.Start)
             .ThenBy(x => x.Title)
             .ToList();
@@ -212,6 +253,27 @@ public class CalendarController : ControllerBase
             lines.Add($"Tenant: {contactLog.TenantName}");
 
         return lines.Count == 0 ? "Contact log from Property Hub." : string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildJournalLogDescription(JournalLogResponseDto journalLog)
+    {
+        var lines = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(journalLog.Description))
+            lines.Add(journalLog.Description.Trim());
+        if (!string.IsNullOrWhiteSpace(journalLog.JournalTypeName))
+            lines.Add($"Journal type: {journalLog.JournalTypeName}");
+        if (!string.IsNullOrWhiteSpace(journalLog.JournalSubTypeName))
+            lines.Add($"Journal subtype: {journalLog.JournalSubTypeName}");
+        lines.Add($"Amount: {journalLog.Amount:0.00}");
+        if (!string.IsNullOrWhiteSpace(journalLog.PropertyGroupName))
+            lines.Add($"Property group: {journalLog.PropertyGroupName}");
+        if (!string.IsNullOrWhiteSpace(journalLog.PropertyName))
+            lines.Add($"Property: {journalLog.PropertyName}");
+        if (!string.IsNullOrWhiteSpace(journalLog.TenantName))
+            lines.Add($"Tenant: {journalLog.TenantName}");
+
+        return lines.Count == 0 ? "Journal log from Property Hub." : string.Join(Environment.NewLine, lines);
     }
 
     private static bool IsMaintenanceCompleted(MaintenanceResponseDto maintenance)

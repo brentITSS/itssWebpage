@@ -210,7 +210,12 @@ const PropertyDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Section title="Recent maintenance" viewAllTo={`/Property Hub/Maintenance?${q}`}>
+        <Section
+          title="Recent maintenance"
+          viewAllTo={`/Property Hub/Maintenance?${q}`}
+          secondaryLinkTo={`/Property Hub/Reminders/Calendar?${q}`}
+          secondaryLinkLabel="Calendar"
+        >
           {recentMaintenance.length === 0 ? (
             <p className="text-sm text-slate-500">No maintenance records yet.</p>
           ) : (
@@ -300,7 +305,12 @@ const PropertyDashboard: React.FC = () => {
           )}
         </Section>
 
-        <Section title="Recent contact logs" viewAllTo={`/Property Hub/Contact Logs?${q}`}>
+        <Section
+          title="Recent contact logs"
+          viewAllTo={`/Property Hub/Contact Logs?${q}`}
+          secondaryLinkTo={`/Property Hub/Reminders/Calendar?${q}`}
+          secondaryLinkLabel="Calendar"
+        >
           {recentContactLogs.length === 0 ? (
             <p className="text-sm text-slate-500">No contact logs for this property.</p>
           ) : (

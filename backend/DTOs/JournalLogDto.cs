@@ -10,6 +10,8 @@ public class CreateJournalLogRequest
     public decimal Amount { get; set; }
     public string? Description { get; set; }
     public DateTime TransactionDate { get; set; }
+    public bool AddToCalendar { get; set; }
+    public DateTime? CalendarDate { get; set; }
 }
 
 public class UpdateJournalLogRequest
@@ -22,6 +24,8 @@ public class UpdateJournalLogRequest
     public decimal? Amount { get; set; }
     public string? Description { get; set; }
     public DateTime? TransactionDate { get; set; }
+    public bool? AddToCalendar { get; set; }
+    public DateTime? CalendarDate { get; set; }
 }
 
 public class JournalLogResponseDto
@@ -29,6 +33,8 @@ public class JournalLogResponseDto
     public int JournalLogId { get; set; }
     public int PropertyId { get; set; }
     public string PropertyName { get; set; } = string.Empty;
+    public int? PropertyGroupId { get; set; }
+    public string? PropertyGroupName { get; set; }
     public int? TenancyId { get; set; }
     public int? TenantId { get; set; }
     public string? TenantName { get; set; }
@@ -40,6 +46,8 @@ public class JournalLogResponseDto
     public string? Description { get; set; }
     public DateTime TransactionDate { get; set; }
     public DateTime CreatedDate { get; set; }
+    public bool HasCalendarAppointment { get; set; }
+    public DateTime? CalendarDate { get; set; }
     public List<AttachmentDto> Attachments { get; set; } = new();
 }
 

@@ -81,6 +81,22 @@ const MaintenanceList: React.FC = () => {
     () => (scoped ? countMaintenanceForProperty(scopedPropertyId, rows) : 0),
     [scoped, scopedPropertyId, rows]
   );
+  const returnPropertyId = useMemo(() => {
+    if (scoped && Number.isFinite(scopedPropertyId)) return scopedPropertyId;
+    if (filterPropertyId !== '' && typeof filterPropertyId === 'number') return filterPropertyId;
+    return null;
+  }, [scoped, scopedPropertyId, filterPropertyId]);
+
+  const maintenanceDetailPath = (maintenanceId: number) =>
+    returnPropertyId != null
+      ? `/Property Hub/Maintenance/${maintenanceId}?propertyId=${returnPropertyId}`
+      : `/Property Hub/Maintenance/${maintenanceId}`;
+
+  const maintenanceEditPath = (maintenanceId: number) => {
+    const q = new URLSearchParams({ edit: 'true' });
+    if (returnPropertyId != null) q.set('propertyId', String(returnPropertyId));
+    return `/Property Hub/Maintenance/${maintenanceId}?${q.toString()}`;
+  };
 
   if (loading) {
     return <div className="py-8 text-center">Loading...</div>;
@@ -167,7 +183,7 @@ const MaintenanceList: React.FC = () => {
               <div
                 key={r.maintenanceId}
                 className="flex cursor-pointer flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-                onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
+                onClick={() => navigate(maintenanceDetailPath(r.maintenanceId))}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -195,8 +211,8 @@ const MaintenanceList: React.FC = () => {
                 </div>
                 <div className="flex shrink-0">
                   <EntityActionButtons
-                    onView={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
-                    onEdit={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}?edit=true`)}
+                    onView={() => navigate(maintenanceDetailPath(r.maintenanceId))}
+                    onEdit={() => navigate(maintenanceEditPath(r.maintenanceId))}
                     onDelete={() => handleDelete(r.maintenanceId)}
                   />
                 </div>
@@ -302,7 +318,7 @@ const MaintenanceList: React.FC = () => {
                 <tr
                   key={r.maintenanceId}
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
+                  onClick={() => navigate(maintenanceDetailPath(r.maintenanceId))}
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {r.workDate ? formatDateUk(r.workDate) : '—'}
@@ -319,8 +335,8 @@ const MaintenanceList: React.FC = () => {
                   <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
                     <EntityActionButtons
                       compact
-                      onView={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}`)}
-                      onEdit={() => navigate(`/Property Hub/Maintenance/${r.maintenanceId}?edit=true`)}
+                      onView={() => navigate(maintenanceDetailPath(r.maintenanceId))}
+                      onEdit={() => navigate(maintenanceEditPath(r.maintenanceId))}
                       onDelete={() => handleDelete(r.maintenanceId)}
                     />
                   </td>

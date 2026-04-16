@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalService, JournalLogResponseDto } from '../../../services/journalService';
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
@@ -22,6 +22,21 @@ const JournalLogsList: React.FC = () => {
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const returnPropertyId = useMemo(() => {
+    if (filterPropertyId !== '' && typeof filterPropertyId === 'number') return filterPropertyId;
+    return null;
+  }, [filterPropertyId]);
+
+  const journalDetailPath = (journalLogId: number) =>
+    returnPropertyId != null
+      ? `/Property Hub/Journal Logs/${journalLogId}?propertyId=${returnPropertyId}`
+      : `/Property Hub/Journal Logs/${journalLogId}`;
+
+  const journalEditPath = (journalLogId: number) => {
+    const q = new URLSearchParams({ edit: 'true' });
+    if (returnPropertyId != null) q.set('propertyId', String(returnPropertyId));
+    return `/Property Hub/Journal Logs/${journalLogId}?${q.toString()}`;
+  };
 
   useEffect(() => {
     loadData();
@@ -100,7 +115,13 @@ const JournalLogsList: React.FC = () => {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Journal Logs</h2>
         <button
-          onClick={() => navigate('/Property Hub/Journal Logs/New')}
+          onClick={() =>
+            navigate(
+              returnPropertyId != null
+                ? `/Property Hub/Journal Logs/New?propertyId=${returnPropertyId}`
+                : '/Property Hub/Journal Logs/New'
+            )
+          }
           className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 sm:w-auto"
         >
           New Journal Log
@@ -218,7 +239,7 @@ const JournalLogsList: React.FC = () => {
                 <tr
                   key={log.journalLogId}
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}`)}
+                  onClick={() => navigate(journalDetailPath(log.journalLogId))}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDateUk(log.transactionDate)}
@@ -238,8 +259,8 @@ const JournalLogsList: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <EntityActionButtons
                       compact
-                      onView={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}`)}
-                      onEdit={() => navigate(`/Property Hub/Journal Logs/${log.journalLogId}?edit=true`)}
+                      onView={() => navigate(journalDetailPath(log.journalLogId))}
+                      onEdit={() => navigate(journalEditPath(log.journalLogId))}
                       onDelete={() => handleDelete(log.journalLogId)}
                     />
                   </td>

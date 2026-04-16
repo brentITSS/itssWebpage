@@ -9,24 +9,30 @@ public class JournalLogService : IJournalLogService
     private readonly IJournalLogRepository _journalLogRepository;
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly IPropertyRepository _propertyRepository;
+    private readonly ICalendarAppointmentRepository _calendarAppointmentRepository;
     private readonly IWebHostEnvironment _environment;
+    private const string SourceType = "journallog";
 
     public JournalLogService(
         IJournalLogRepository journalLogRepository,
         IAuditLogRepository auditLogRepository,
         IPropertyRepository propertyRepository,
+        ICalendarAppointmentRepository calendarAppointmentRepository,
         IWebHostEnvironment environment)
     {
         _journalLogRepository = journalLogRepository;
         _auditLogRepository = auditLogRepository;
         _propertyRepository = propertyRepository;
+        _calendarAppointmentRepository = calendarAppointmentRepository;
         _environment = environment;
     }
 
     public async Task<List<JournalLogResponseDto>> GetAllJournalLogsAsync()
     {
         var journalLogs = await _journalLogRepository.GetAllAsync();
-        return journalLogs.Select(MapToJournalLogResponseDto).ToList();
+        var rows = journalLogs.Select(MapToJournalLogResponseDto).ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<List<JournalLogResponseDto>> GetAllJournalLogsForUserAsync(int userId, bool isGlobalAdmin, bool isPropertyHubAdmin)
@@ -36,7 +42,9 @@ public class JournalLogService : IJournalLogService
         // Global Admins and Property Hub Admins see all journal logs
         if (isGlobalAdmin || isPropertyHubAdmin)
         {
-            return allJournalLogs.Select(MapToJournalLogResponseDto).ToList();
+            var allRows = allJournalLogs.Select(MapToJournalLogResponseDto).ToList();
+            await AttachCalendarLinksAsync(allRows);
+            return allRows;
         }
 
         // Regular users: get their assigned property group IDs
@@ -45,7 +53,9 @@ public class JournalLogService : IJournalLogService
         // If user has no specific assignments, show all (backward compatible)
         if (userPropertyGroupIds.Count == 0)
         {
-            return allJournalLogs.Select(MapToJournalLogResponseDto).ToList();
+            var allRows = allJournalLogs.Select(MapToJournalLogResponseDto).ToList();
+            await AttachCalendarLinksAsync(allRows);
+            return allRows;
         }
 
         // Get all properties in user's accessible property groups
@@ -56,10 +66,12 @@ public class JournalLogService : IJournalLogService
             .ToList();
 
         // Filter journal logs to only those for accessible properties
-        return allJournalLogs
+        var rows = allJournalLogs
             .Where(jl => jl.PropertyId.HasValue && accessiblePropertyIds.Contains(jl.PropertyId.Value))
             .Select(MapToJournalLogResponseDto)
             .ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<JournalLogResponseDto?> GetJournalLogByIdAsync(int journalLogId)
@@ -67,13 +79,17 @@ public class JournalLogService : IJournalLogService
         var journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
         if (journalLog == null) return null;
 
-        return MapToJournalLogResponseDto(journalLog);
+        var dto = MapToJournalLogResponseDto(journalLog);
+        await AttachCalendarLinksAsync(new List<JournalLogResponseDto> { dto });
+        return dto;
     }
 
     public async Task<List<JournalLogResponseDto>> GetJournalLogsByPropertyIdAsync(int propertyId)
     {
         var journalLogs = await _journalLogRepository.GetByPropertyIdAsync(propertyId);
-        return journalLogs.Select(MapToJournalLogResponseDto).ToList();
+        var rows = journalLogs.Select(MapToJournalLogResponseDto).ToList();
+        await AttachCalendarLinksAsync(rows);
+        return rows;
     }
 
     public async Task<JournalLogResponseDto> CreateJournalLogAsync(CreateJournalLogRequest request, int createdByUserId)
@@ -92,6 +108,10 @@ public class JournalLogService : IJournalLogService
         };
 
         journalLog = await _journalLogRepository.CreateAsync(journalLog);
+        await SyncCalendarAppointmentAsync(
+            journalLog.JournalLogId,
+            request.AddToCalendar,
+            request.CalendarDate ?? request.TransactionDate);
         journalLog = await _journalLogRepository.GetByIdAsync(journalLog.JournalLogId);
 
         // Audit log
@@ -105,7 +125,9 @@ public class JournalLogService : IJournalLogService
             CreatedDate = DateTime.UtcNow
         });
 
-        return MapToJournalLogResponseDto(journalLog!);
+        var dto = MapToJournalLogResponseDto(journalLog!);
+        await AttachCalendarLinksAsync(new List<JournalLogResponseDto> { dto });
+        return dto;
     }
 
     public async Task<JournalLogResponseDto?> UpdateJournalLogAsync(int journalLogId, UpdateJournalLogRequest request, int modifiedByUserId)
@@ -126,6 +148,13 @@ public class JournalLogService : IJournalLogService
         if (request.Description != null) journalLog.Description = request.Description;
 
         journalLog = await _journalLogRepository.UpdateAsync(journalLog);
+        if (request.AddToCalendar.HasValue)
+        {
+            await SyncCalendarAppointmentAsync(
+                journalLogId,
+                request.AddToCalendar.Value,
+                request.CalendarDate ?? request.TransactionDate ?? journalLog.TransactionDate);
+        }
         journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
 
         // Audit log
@@ -141,7 +170,9 @@ public class JournalLogService : IJournalLogService
             CreatedDate = DateTime.UtcNow
         });
 
-        return MapToJournalLogResponseDto(journalLog);
+        var dto = MapToJournalLogResponseDto(journalLog);
+        await AttachCalendarLinksAsync(new List<JournalLogResponseDto> { dto });
+        return dto;
     }
 
     public async Task<bool> DeleteJournalLogAsync(int journalLogId, int deletedByUserId)
@@ -153,6 +184,7 @@ public class JournalLogService : IJournalLogService
 
         if (result)
         {
+            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, journalLogId);
             await _auditLogRepository.CreateAsync(new AuditLog
             {
                 UserId = deletedByUserId,
@@ -344,6 +376,8 @@ public class JournalLogService : IJournalLogService
             JournalLogId = journalLog.JournalLogId,
             PropertyId = journalLog.PropertyId ?? 0,
             PropertyName = journalLog.Property?.PropertyName ?? string.Empty,
+            PropertyGroupId = journalLog.Property?.PropertyGroupId,
+            PropertyGroupName = journalLog.Property?.PropertyGroup?.PropertyGroupName,
             TenancyId = journalLog.TenancyId,
             TenantId = journalLog.TenantId,
             TenantName = journalLog.Tenant != null ? $"{journalLog.Tenant.FirstName} {journalLog.Tenant.LastName}".Trim() : null,
@@ -364,5 +398,46 @@ public class JournalLogService : IJournalLogService
                 CreatedDate = a.DateAttached ?? DateTime.UtcNow
             }).ToList()
         };
+    }
+
+    private async Task AttachCalendarLinksAsync(List<JournalLogResponseDto> rows)
+    {
+        if (rows.Count == 0) return;
+
+        var appointmentMap = await _calendarAppointmentRepository.GetBySourceIdsAsync(
+            SourceType,
+            rows.Select(x => x.JournalLogId));
+
+        foreach (var row in rows)
+        {
+            if (appointmentMap.TryGetValue(row.JournalLogId, out var appointment) && appointment.IsActive)
+            {
+                row.HasCalendarAppointment = true;
+                row.CalendarDate = appointment.AppointmentDate;
+            }
+            else
+            {
+                row.HasCalendarAppointment = false;
+                row.CalendarDate = null;
+            }
+        }
+    }
+
+    private async Task SyncCalendarAppointmentAsync(int journalLogId, bool addToCalendar, DateTime? calendarDate)
+    {
+        if (!addToCalendar)
+        {
+            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, journalLogId);
+            return;
+        }
+
+        if (!calendarDate.HasValue)
+            throw new InvalidOperationException("Calendar date is required when adding this journal log to calendar.");
+
+        await _calendarAppointmentRepository.UpsertAsync(
+            SourceType,
+            journalLogId,
+            calendarDate.Value.Date,
+            isAllDay: true);
     }
 }

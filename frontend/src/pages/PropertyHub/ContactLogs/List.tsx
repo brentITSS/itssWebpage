@@ -107,6 +107,22 @@ const ContactLogsList: React.FC = () => {
     () => (scoped ? countContactLogsForProperty(scopedPropertyId, contactLogs) : 0),
     [scoped, scopedPropertyId, contactLogs]
   );
+  const returnPropertyId = useMemo(() => {
+    if (scoped && Number.isFinite(scopedPropertyId)) return scopedPropertyId;
+    if (filterPropertyId !== '' && typeof filterPropertyId === 'number') return filterPropertyId;
+    return null;
+  }, [scoped, scopedPropertyId, filterPropertyId]);
+
+  const contactLogDetailPath = (contactLogId: number) =>
+    returnPropertyId != null
+      ? `/Property Hub/Contact Logs/${contactLogId}?propertyId=${returnPropertyId}`
+      : `/Property Hub/Contact Logs/${contactLogId}`;
+
+  const contactLogEditPath = (contactLogId: number) => {
+    const q = new URLSearchParams({ edit: 'true' });
+    if (returnPropertyId != null) q.set('propertyId', String(returnPropertyId));
+    return `/Property Hub/Contact Logs/${contactLogId}?${q.toString()}`;
+  };
 
   if (loading) {
     return <div className="py-8 text-center">Loading...</div>;
@@ -134,7 +150,13 @@ const ContactLogsList: React.FC = () => {
           actions={
             <button
               type="button"
-              onClick={() => navigate('/Property Hub/Contact Logs/New')}
+              onClick={() =>
+                navigate(
+                  returnPropertyId != null
+                    ? `/Property Hub/Contact Logs/New?propertyId=${returnPropertyId}`
+                    : '/Property Hub/Contact Logs/New'
+                )
+              }
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
             >
               + New contact log
@@ -205,7 +227,7 @@ const ContactLogsList: React.FC = () => {
               <div
                 key={log.contactLogId}
                 className="flex cursor-pointer flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-                onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
+                onClick={() => navigate(contactLogDetailPath(log.contactLogId))}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -222,8 +244,8 @@ const ContactLogsList: React.FC = () => {
                 </div>
                 <div className="flex shrink-0">
                   <EntityActionButtons
-                    onView={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
-                    onEdit={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
+                    onView={() => navigate(contactLogDetailPath(log.contactLogId))}
+                    onEdit={() => navigate(contactLogEditPath(log.contactLogId))}
                     onDelete={() => handleDelete(log.contactLogId)}
                   />
                 </div>
@@ -241,7 +263,13 @@ const ContactLogsList: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900">Contact Logs</h2>
         <button
           type="button"
-          onClick={() => navigate('/Property Hub/Contact Logs/New')}
+          onClick={() =>
+            navigate(
+              returnPropertyId != null
+                ? `/Property Hub/Contact Logs/New?propertyId=${returnPropertyId}`
+                : '/Property Hub/Contact Logs/New'
+            )
+          }
           className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 sm:w-auto"
         >
           New Contact Log
@@ -360,7 +388,7 @@ const ContactLogsList: React.FC = () => {
                 <tr
                   key={log.contactLogId}
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
+                  onClick={() => navigate(contactLogDetailPath(log.contactLogId))}
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {formatDateUk(log.contactDate)}
@@ -375,8 +403,8 @@ const ContactLogsList: React.FC = () => {
                   <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
                     <EntityActionButtons
                       compact
-                      onView={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}`)}
-                      onEdit={() => navigate(`/Property Hub/Contact Logs/${log.contactLogId}?edit=true`)}
+                      onView={() => navigate(contactLogDetailPath(log.contactLogId))}
+                      onEdit={() => navigate(contactLogEditPath(log.contactLogId))}
                       onDelete={() => handleDelete(log.contactLogId)}
                     />
                   </td>
