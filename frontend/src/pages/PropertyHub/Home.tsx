@@ -140,10 +140,18 @@ const PropertyHubHome: React.FC = () => {
     );
   }
 
-  const SummaryCard: React.FC<{ label: string; value: number; accent: string }> = ({ label, value, accent }) => (
-    <div className={`rounded-lg border p-3 sm:p-4 ${accent}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide">{label}</p>
-      <p className="mt-1 text-2xl font-semibold sm:mt-2 sm:text-3xl">{value}</p>
+  const SummaryCard: React.FC<{ label: string; shortLabel: string; value: number; accent: string }> = ({
+    label,
+    shortLabel,
+    value,
+    accent,
+  }) => (
+    <div className={`rounded-lg border p-2 sm:p-4 ${accent}`}>
+      <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide sm:text-[11px]">
+        <span className="sm:hidden">{shortLabel}</span>
+        <span className="hidden sm:inline">{label}</span>
+      </p>
+      <p className="mt-0.5 text-xl font-semibold sm:mt-2 sm:text-3xl">{value}</p>
     </div>
   );
 
@@ -154,24 +162,26 @@ const PropertyHubHome: React.FC = () => {
         <p className="mt-1 text-xs text-slate-500 sm:text-sm">
           Select a property to open its dashboard (maintenance, reminders, tenants, contact logs).
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SummaryCard
-          label="Property groups"
-          value={propertyGroups.length}
-          accent="border-slate-200 bg-white text-slate-900"
-        />
-        <SummaryCard
-          label="Total properties"
-          value={properties.length}
-          accent="border-indigo-200 bg-indigo-50 text-indigo-900"
-        />
-        <SummaryCard
-          label="Unassigned"
-          value={unassignedProperties.length}
-          accent="border-amber-200 bg-amber-50 text-amber-900"
-        />
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-4 md:gap-4">
+          <SummaryCard
+            label="Property groups"
+            shortLabel="Groups"
+            value={propertyGroups.length}
+            accent="border-slate-200 bg-white text-slate-900"
+          />
+          <SummaryCard
+            label="Total properties"
+            shortLabel="Total"
+            value={properties.length}
+            accent="border-indigo-200 bg-indigo-50 text-indigo-900"
+          />
+          <SummaryCard
+            label="Unassigned"
+            shortLabel="Unassigned"
+            value={unassignedProperties.length}
+            accent="border-amber-200 bg-amber-50 text-amber-900"
+          />
+        </div>
       </div>
 
       {error && (
