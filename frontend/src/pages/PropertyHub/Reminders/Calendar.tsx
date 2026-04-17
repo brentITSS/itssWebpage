@@ -63,6 +63,7 @@ const monthTitle = (value: Date): string =>
   value.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
 type QuickFilter = 'all' | 'today' | 'overdue' | 'thisWeek';
+type EventTypeFilter = 'reminder' | 'maintenance' | 'contactLog' | 'journalLog';
 
 const buildEventDescriptionFromReminder = (r: ReminderResponseDto): string => {
   const lines: string[] = [];
@@ -106,6 +107,13 @@ const CalendarReminderChip: React.FC<{
   })();
 
   const nativeTitle = [
+    event.eventType === 'journalLog'
+      ? 'Journal log'
+      : event.eventType === 'contactLog'
+        ? 'Contact log'
+        : event.eventType === 'maintenance'
+          ? 'Maintenance'
+          : 'Reminder',
     event.title,
     formatDateUk(event.start),
     event.isCompleted ? 'Completed' : 'Open',
@@ -129,6 +137,15 @@ const CalendarReminderChip: React.FC<{
         }}
         title={nativeTitle}
       >
+        <span className="mr-1 inline-flex rounded bg-black/20 px-1 text-[10px] font-semibold">
+          {event.eventType === 'journalLog'
+            ? 'J'
+            : event.eventType === 'contactLog'
+              ? 'C'
+              : event.eventType === 'maintenance'
+                ? 'M'
+                : 'R'}
+        </span>
         {event.title}
       </button>
       {/* Wrapper keeps hover while moving from chip into the panel; inner is scrollable and receives pointer events. */}
@@ -190,6 +207,12 @@ const RemindersCalendar: React.FC = () => {
   const [includeCompleted, setIncludeCompleted] = useState(true);
 
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [enabledEventTypes, setEnabledEventTypes] = useState<Record<EventTypeFilter, boolean>>({
+    reminder: true,
+    maintenance: true,
+    contactLog: true,
+    journalLog: true,
+  });
 
   const [popoverEvent, setPopoverEvent] = useState<CalendarEventDto | null>(null);
   const [popoverReminder, setPopoverReminder] = useState<ReminderResponseDto | null>(null);
@@ -379,18 +402,22 @@ const RemindersCalendar: React.FC = () => {
   };
 
   const filteredEvents = useMemo(() => {
+    const byType = events.filter((e) => {
+      const key = e.eventType as EventTypeFilter;
+      return key in enabledEventTypes ? enabledEventTypes[key] : true;
+    });
     const today = startOfToday();
     switch (quickFilter) {
       case 'today':
-        return events.filter((e) => sameYmd(eventDay(e), today));
+        return byType.filter((e) => sameYmd(eventDay(e), today));
       case 'overdue':
-        return events.filter((e) => !e.isCompleted && eventDay(e) < today);
+        return byType.filter((e) => !e.isCompleted && eventDay(e) < today);
       case 'thisWeek':
-        return events;
+        return byType;
       default:
-        return events;
+        return byType;
     }
-  }, [events, quickFilter]);
+  }, [events, quickFilter, enabledEventTypes]);
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const eventsByDay = useMemo(() => {
@@ -551,6 +578,43 @@ const RemindersCalendar: React.FC = () => {
         {(quickFilter === 'today' || quickFilter === 'overdue') && (
           <span className="text-xs text-slate-500">Applied to the visible month.</span>
         )}
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3">
+        <span className="text-xs font-semibold uppercase text-slate-500">Event types</span>
+        {(
+          [
+            { key: 'reminder', label: 'Reminder', color: '#b45309' },
+            { key: 'maintenance', label: 'Maintenance', color: '#0ea5e9' },
+            { key: 'contactLog', label: 'Contact log', color: '#7c3aed' },
+            { key: 'journalLog', label: 'Journal log', color: '#0f766e' },
+          ] as Array<{ key: EventTypeFilter; label: string; color: string }>
+        ).map((entry) => (
+          <button
+            key={entry.key}
+            type="button"
+            onClick={() =>
+              setEnabledEventTypes((prev) => ({
+                ...prev,
+                [entry.key]: !prev[entry.key],
+              }))
+            }
+            className={[
+              'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition',
+              enabledEventTypes[entry.key]
+                ? 'border-slate-900 bg-slate-900 text-white'
+                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+            ].join(' ')}
+            aria-pressed={enabledEventTypes[entry.key]}
+          >
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: entry.color }}
+              aria-hidden
+            />
+            {entry.label}
+          </button>
+        ))}
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 rounded-lg bg-white p-4 shadow md:grid-cols-6">
