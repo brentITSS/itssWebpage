@@ -98,33 +98,33 @@ const PropertyHubHome: React.FC = () => {
       <button
         type="button"
         onClick={() => navigate(`/Property Hub/Property/${property.propertyId}`)}
-        className={`w-full rounded-xl border p-5 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+        className={`w-full rounded-xl border p-3 sm:p-5 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
           muted
             ? 'border-slate-200 bg-slate-50 hover:border-slate-300'
             : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md'
         }`}
       >
-        <h3 className="text-lg font-semibold text-slate-900">{property.propertyName}</h3>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-2">
-            <IconUsers className="shrink-0 text-blue-600" />
+        <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{property.propertyName}</h3>
+        <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-4 sm:gap-3">
+          <div className="flex items-center gap-1.5 rounded-lg bg-blue-50/80 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
+            <IconUsers className="hidden shrink-0 text-blue-600 sm:block" />
             <div>
-              <p className="text-lg font-semibold text-blue-900">{tenants}</p>
-              <p className="text-xs font-medium text-blue-800/80">Active tenants</p>
+              <p className="text-base font-semibold leading-tight text-blue-900 sm:text-lg">{tenants}</p>
+              <p className="text-[10px] font-medium leading-tight text-blue-800/80 sm:text-xs">Tenants</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-2">
-            <IconReminder className="shrink-0 text-blue-600" />
+          <div className="flex items-center gap-1.5 rounded-lg bg-blue-50/80 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
+            <IconReminder className="hidden shrink-0 text-blue-600 sm:block" />
             <div>
-              <p className="text-lg font-semibold text-blue-900">{openRem}</p>
-              <p className="text-xs font-medium text-blue-800/80">Open reminders</p>
+              <p className="text-base font-semibold leading-tight text-blue-900 sm:text-lg">{openRem}</p>
+              <p className="text-[10px] font-medium leading-tight text-blue-800/80 sm:text-xs">Reminders</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-2">
-            <IconWrench className="shrink-0 text-blue-600" />
+          <div className="flex items-center gap-1.5 rounded-lg bg-blue-50/80 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
+            <IconWrench className="hidden shrink-0 text-blue-600 sm:block" />
             <div>
-              <p className="text-lg font-semibold text-blue-900">{maint}</p>
-              <p className="text-xs font-medium text-blue-800/80">Maintenance</p>
+              <p className="text-base font-semibold leading-tight text-blue-900 sm:text-lg">{maint}</p>
+              <p className="text-[10px] font-medium leading-tight text-blue-800/80 sm:text-xs">Maintenance</p>
             </div>
           </div>
         </div>
@@ -141,17 +141,17 @@ const PropertyHubHome: React.FC = () => {
   }
 
   const SummaryCard: React.FC<{ label: string; value: number; accent: string }> = ({ label, value, accent }) => (
-    <div className={`rounded-lg border p-4 ${accent}`}>
+    <div className={`rounded-lg border p-3 sm:p-4 ${accent}`}>
       <p className="text-[11px] font-semibold uppercase tracking-wide">{label}</p>
-      <p className="mt-2 text-3xl font-semibold">{value}</p>
+      <p className="mt-1 text-2xl font-semibold sm:mt-2 sm:text-3xl">{value}</p>
     </div>
   );
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Property overview</h1>
-        <p className="mt-1 text-sm text-slate-500">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">Property overview</h1>
+        <p className="mt-1 text-xs text-slate-500 sm:text-sm">
           Select a property to open its dashboard (maintenance, reminders, tenants, contact logs).
         </p>
       </div>
@@ -193,10 +193,10 @@ const PropertyHubHome: React.FC = () => {
               key={group.propertyGroupId}
               className="overflow-hidden rounded-lg border border-slate-200 bg-white"
             >
-              <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">{group.propertyGroupName}</h2>
-                  {group.description && <p className="mt-1 text-sm text-slate-500">{group.description}</p>}
+                  <h2 className="text-base font-semibold text-slate-900 sm:text-lg">{group.propertyGroupName}</h2>
+                  {group.description && <p className="mt-1 text-xs text-slate-500 sm:text-sm">{group.description}</p>}
                 </div>
                 <div className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                   {groupProperties.length} {groupProperties.length === 1 ? 'property' : 'properties'}
@@ -204,7 +204,7 @@ const PropertyHubHome: React.FC = () => {
               </div>
 
               {groupProperties.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 p-3 sm:gap-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3">
                   {groupProperties.map((property) => (
                     <PropertyCard key={property.propertyId} property={property} />
                   ))}
@@ -219,11 +219,11 @@ const PropertyHubHome: React.FC = () => {
 
       {unassignedProperties.length > 0 && (
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Unassigned properties</h2>
-            <p className="mt-1 text-sm text-slate-500">These properties are not in a property group.</p>
+          <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Unassigned properties</h2>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">These properties are not in a property group.</p>
           </div>
-          <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 p-3 sm:gap-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3">
             {unassignedProperties.map((property) => (
               <PropertyCard key={property.propertyId} property={property} muted />
             ))}
