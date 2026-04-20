@@ -64,6 +64,11 @@ const monthTitle = (value: Date): string =>
 
 type QuickFilter = 'all' | 'today' | 'overdue' | 'thisWeek';
 type EventTypeFilter = 'reminder' | 'maintenance' | 'contactLog' | 'journalLog';
+const parsePositiveIntParam = (raw: string | null): number | '' => {
+  if (!raw) return '';
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : '';
+};
 
 const buildEventDescriptionFromReminder = (r: ReminderResponseDto): string => {
   const lines: string[] = [];
@@ -201,7 +206,7 @@ const RemindersCalendar: React.FC = () => {
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
 
   const [propertyGroupId, setPropertyGroupId] = useState<number | ''>('');
-  const [propertyId, setPropertyId] = useState<number | ''>('');
+  const [propertyId, setPropertyId] = useState<number | ''>(() => parsePositiveIntParam(searchParams.get('propertyId')));
   const [tenancyId, setTenancyId] = useState<number | ''>('');
   const [tenantId, setTenantId] = useState<number | ''>('');
   const [includeCompleted, setIncludeCompleted] = useState(true);
@@ -335,11 +340,8 @@ const RemindersCalendar: React.FC = () => {
   }, [propertyGroupId, propertyId, tenancyId, tenantId]);
 
   useEffect(() => {
-    const propertyIdParam = searchParams.get('propertyId');
-    if (!propertyIdParam) return;
-    const parsed = parseInt(propertyIdParam, 10);
-    if (!Number.isFinite(parsed)) return;
-    setPropertyId(parsed);
+    const parsed = parsePositiveIntParam(searchParams.get('propertyId'));
+    setPropertyId((prev) => (prev === parsed ? prev : parsed));
   }, [searchParams]);
 
   useEffect(() => {

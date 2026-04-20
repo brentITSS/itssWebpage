@@ -262,7 +262,10 @@ const RemindersList: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate('/Property Hub/Reminders/Calendar')}
+            onClick={() => {
+              const q = reminderReturnPropertyId != null ? `?propertyId=${reminderReturnPropertyId}` : '';
+              navigate(`/Property Hub/Reminders/Calendar${q}`);
+            }}
             className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
           >
             Calendar view
