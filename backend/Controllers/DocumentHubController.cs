@@ -146,6 +146,46 @@ public class DocumentHubController : ControllerBase
         return Ok(MapSummarisationTemplate(entity));
     }
 
+    [HttpPut("summarisation-templates/{templateId:int}")]
+    public async Task<ActionResult<DocumentSummarisationTemplateDto>> UpdateSummarisationTemplate(int templateId, [FromBody] UpdateDocumentSummarisationTemplateRequest request)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!_authService.HasPropertyHubAdminAccess(currentUser)) return Forbid("Access denied: Property Hub Admin permission required.");
+
+        var entity = await _context.DocumentSummarisationTemplates.FirstOrDefaultAsync(x => x.DocumentSummarisationTemplateId == templateId);
+        if (entity == null)
+        {
+            return NotFound(new { message = "Summarisation template not found." });
+        }
+
+        if (request.SummarisationName != null)
+        {
+            entity.SummarisationName = request.SummarisationName.Trim();
+        }
+
+        if (request.SummarisationDescription != null)
+        {
+            entity.SummarisationDescription = request.SummarisationDescription.Trim();
+        }
+
+        if (request.SummarisationPrompt != null)
+        {
+            entity.SummarisationPrompt = request.SummarisationPrompt.Trim();
+        }
+
+        if (request.IsActive.HasValue)
+        {
+            entity.IsActive = request.IsActive.Value;
+        }
+
+        entity.UpdatedByUserId = GetCurrentUserId();
+        entity.UpdatedDate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return Ok(MapSummarisationTemplate(entity));
+    }
+
     [HttpGet("extraction-templates")]
     public async Task<ActionResult<List<DocumentExtractionTemplateDto>>> GetExtractionTemplates()
     {

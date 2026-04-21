@@ -40,6 +40,8 @@ const DocumentHub: React.FC = () => {
   );
   const [summarisationTestFile, setSummarisationTestFile] = useState<File | null>(null);
   const [summarisationPreview, setSummarisationPreview] = useState<DocumentSummarisationPreviewResponse | null>(null);
+  const [summarisationFeedback, setSummarisationFeedback] = useState<string | null>(null);
+  const [editingSummarisationTemplateId, setEditingSummarisationTemplateId] = useState<number | null>(null);
 
   const [extractionTemplateName, setExtractionTemplateName] = useState('');
   const [extractionTemplateDescription, setExtractionTemplateDescription] = useState('');
@@ -162,17 +164,27 @@ const DocumentHub: React.FC = () => {
 
     setLoading(true);
     setFeedback(null);
+    setSummarisationFeedback(null);
     try {
-      await documentHubService.createSummarisationTemplate({
-        summarisationName: summarisationName.trim(),
-        summarisationDescription: summarisationDescription.trim() || undefined,
-        summarisationPrompt: summarisationPrompt.trim(),
-      });
+      if (editingSummarisationTemplateId) {
+        await documentHubService.updateSummarisationTemplate(editingSummarisationTemplateId, {
+          summarisationName: summarisationName.trim(),
+          summarisationDescription: summarisationDescription.trim() || undefined,
+          summarisationPrompt: summarisationPrompt.trim(),
+        });
+      } else {
+        await documentHubService.createSummarisationTemplate({
+          summarisationName: summarisationName.trim(),
+          summarisationDescription: summarisationDescription.trim() || undefined,
+          summarisationPrompt: summarisationPrompt.trim(),
+        });
+      }
 
       setSummarisationName('');
       setSummarisationDescription('');
       setSummarisationTestFile(null);
-      setFeedback('Summarisation template saved.');
+      setEditingSummarisationTemplateId(null);
+      setFeedback(editingSummarisationTemplateId ? 'Summarisation template updated.' : 'Summarisation template saved.');
       await loadData();
     } catch (error) {
       setFeedback(getFriendlyError(error));
@@ -240,26 +252,43 @@ const DocumentHub: React.FC = () => {
 
   const handleRunSummarisationPreview = async () => {
     if (!summarisationTestFile) {
-      setFeedback('Upload a PDF to test summarisation.');
+      setSummarisationFeedback('Upload a PDF to test summarisation.');
       return;
     }
 
     if (!summarisationPrompt.trim()) {
-      setFeedback('Summarisation prompt is required.');
+      setSummarisationFeedback('Summarisation prompt is required.');
       return;
     }
 
     setLoading(true);
     setFeedback(null);
+    setSummarisationFeedback(null);
     try {
       const preview = await documentHubService.previewSummarisation(summarisationTestFile, summarisationPrompt.trim());
       setSummarisationPreview(preview);
-      setFeedback('Summarisation preview generated.');
+      setSummarisationFeedback(`Preview generated for ${preview.fileName}.`);
     } catch (error) {
-      setFeedback(getFriendlyError(error));
+      setSummarisationFeedback(getFriendlyError(error));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditSummarisationTemplate = (template: DocumentSummarisationTemplateDto) => {
+    setEditingSummarisationTemplateId(template.documentSummarisationTemplateId);
+    setSummarisationName(template.summarisationName);
+    setSummarisationDescription(template.summarisationDescription ?? '');
+    setSummarisationPrompt(template.summarisationPrompt);
+    setSummarisationFeedback(`Editing template "${template.summarisationName}".`);
+  };
+
+  const handleCancelEditSummarisation = () => {
+    setEditingSummarisationTemplateId(null);
+    setSummarisationName('');
+    setSummarisationDescription('');
+    setSummarisationPrompt('Summarise this document using headings, key decisions, and next actions.');
+    setSummarisationFeedback('Edit cancelled.');
   };
 
   const handlePrepareExtractionPreview = async () => {
@@ -519,16 +548,38 @@ const DocumentHub: React.FC = () => {
             disabled={loading}
             className="mt-4 inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
           >
-            {loading ? 'Saving...' : 'Save Summarisation Template'}
+            {loading ? 'Saving...' : editingSummarisationTemplateId ? 'Update Summarisation Template' : 'Save Summarisation Template'}
           </button>
+          {editingSummarisationTemplateId && (
+            <button
+              type="button"
+              onClick={handleCancelEditSummarisation}
+              disabled={loading}
+              className="mt-4 ml-2 inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+            >
+              Cancel Edit
+            </button>
+          )}
+          {summarisationFeedback && (
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">{summarisationFeedback}</div>
+          )}
           <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
             <p className="font-semibold text-slate-700">Saved Summarisation Templates</p>
             {summarisationTemplates.length === 0 ? (
               <p className="mt-1">No templates saved yet.</p>
             ) : (
-              <ul className="mt-2 space-y-1">
+              <ul className="mt-2 space-y-2">
                 {summarisationTemplates.slice(0, 5).map((item) => (
-                  <li key={item.documentSummarisationTemplateId}>{item.summarisationName}</li>
+                  <li key={item.documentSummarisationTemplateId} className="flex items-center justify-between rounded border border-slate-200 bg-white px-2 py-1">
+                    <span>{item.summarisationName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleEditSummarisationTemplate(item)}
+                      className="rounded border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-400"
+                    >
+                      Edit
+                    </button>
+                  </li>
                 ))}
               </ul>
             )}

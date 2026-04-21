@@ -55,6 +55,14 @@ public class CreateDocumentSummarisationTemplateRequest
     public string SummarisationPrompt { get; set; } = string.Empty;
 }
 
+public class UpdateDocumentSummarisationTemplateRequest
+{
+    public string? SummarisationName { get; set; }
+    public string? SummarisationDescription { get; set; }
+    public string? SummarisationPrompt { get; set; }
+    public bool? IsActive { get; set; }
+}
+
 public class DocumentExtractionFieldDto
 {
     public int DocumentExtractionFieldId { get; set; }

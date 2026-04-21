@@ -49,6 +49,13 @@ export interface CreateDocumentSummarisationTemplateRequest {
   summarisationPrompt: string;
 }
 
+export interface UpdateDocumentSummarisationTemplateRequest {
+  summarisationName?: string;
+  summarisationDescription?: string;
+  summarisationPrompt?: string;
+  isActive?: boolean;
+}
+
 export interface DocumentExtractionFieldDto {
   documentExtractionFieldId: number;
   documentExtractionTemplateId: number;
@@ -138,6 +145,16 @@ export const documentHubService = {
   ): Promise<DocumentSummarisationTemplateDto> => {
     return await apiClient<DocumentSummarisationTemplateDto>('/document-hub/summarisation-templates', {
       method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateSummarisationTemplate: async (
+    templateId: number,
+    request: UpdateDocumentSummarisationTemplateRequest
+  ): Promise<DocumentSummarisationTemplateDto> => {
+    return await apiClient<DocumentSummarisationTemplateDto>(`/document-hub/summarisation-templates/${templateId}`, {
+      method: 'PUT',
       body: JSON.stringify(request),
     });
   },
