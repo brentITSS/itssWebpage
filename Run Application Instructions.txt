@@ -1,0 +1,37 @@
+Run Application Instructions (Production API Workflow)
+======================================================
+
+This project currently runs frontend locally while using the production API.
+
+Prerequisites
+-------------
+1) Install Node.js 18+ and npm.
+2) Open terminal in repo root: `C:\Learning\ITSS\MainWebpage`
+
+One-Time Setup
+--------------
+1) Install frontend dependencies:
+   cd frontend
+   npm install
+
+2) Create `frontend\.env` with:
+   REACT_APP_API_URL=https://itsson-api.azurewebsites.net/api
+
+Run the App
+-----------
+1) Start frontend:
+   cd frontend
+   npm start
+
+2) Open:
+   http://localhost:3000
+
+Stop
+----
+Press Ctrl + C in the frontend terminal.
+
+Notes
+-----
+- Frontend runs locally on `localhost:3000`.
+- API calls go to production API (`https://itsson-api.azurewebsites.net/api`).
+- If a new backend endpoint is not deployed yet, frontend actions using that endpoint will return 404/Not Found until backend deployment is completed.

@@ -39,6 +39,15 @@ const PropertyHubAdmin: React.FC = () => {
     </svg>
   );
 
+  const DocumentHubIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
+      <path d="M7 3h7l5 5v13H7z" />
+      <path d="M14 3v5h5" />
+      <path d="M10 13h6M10 17h6" />
+      <path d="M4 7v13h11" />
+    </svg>
+  );
+
   const UsersIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClass}>
       <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
@@ -163,6 +172,10 @@ const PropertyHubAdmin: React.FC = () => {
             <NavLink to="/Property Hub/Admin/Lookups" className={navItemClass} title="Lookups">
               <LookupsIcon />
               <span className={collapsed ? 'xl:hidden' : ''}>Lookups</span>
+            </NavLink>
+            <NavLink to="/Property Hub/Admin/Document Hub" className={navItemClass} title="Document Hub">
+              <DocumentHubIcon />
+              <span className={collapsed ? 'xl:hidden' : ''}>Document Hub</span>
             </NavLink>
             {canAccessUserManagement ? (
               <NavLink to="/Admin/Users" className={navItemClass} title="User Management">

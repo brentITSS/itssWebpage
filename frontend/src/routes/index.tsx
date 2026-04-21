@@ -23,6 +23,7 @@ import PropertyGroups from '../pages/PropertyHub/Admin/PropertyGroups';
 import Properties from '../pages/PropertyHub/Admin/Properties';
 import Tenancies from '../pages/PropertyHub/Admin/Tenancies';
 import Lookups from '../pages/PropertyHub/Admin/Lookups';
+import DocumentHub from '../pages/PropertyHub/Admin/DocumentHub';
 import JournalLogsList from '../pages/PropertyHub/JournalLogs/List';
 import JournalLogForm from '../pages/PropertyHub/JournalLogs/Form';
 import JournalLogDetail from '../pages/PropertyHub/JournalLogs/Detail';
@@ -208,6 +209,7 @@ const AppRoutes: React.FC = () => {
           <Route path="Properties" element={<Properties />} />
           <Route path="Tenancies" element={<Tenancies />} />
           <Route path="Lookups" element={<Lookups />} />
+          <Route path="Document Hub" element={<DocumentHub />} />
         </Route>
 
         <Route path="Journal Logs" element={<JournalLogsList />} />

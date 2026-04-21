@@ -57,6 +57,14 @@ public class ApplicationDbContext : DbContext
     public DbSet<Maintenance> Maintenances { get; set; }
     public DbSet<CalendarAppointment> CalendarAppointments { get; set; }
 
+    // Document Hub
+    public DbSet<DocumentLabelSet> DocumentLabelSets { get; set; }
+    public DbSet<DocumentClassificationLabel> DocumentClassificationLabels { get; set; }
+    public DbSet<DocumentSummarisationTemplate> DocumentSummarisationTemplates { get; set; }
+    public DbSet<DocumentExtractionTemplate> DocumentExtractionTemplates { get; set; }
+    public DbSet<DocumentExtractionField> DocumentExtractionFields { get; set; }
+    public DbSet<DocumentCorrectionFeedback> DocumentCorrectionFeedback { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

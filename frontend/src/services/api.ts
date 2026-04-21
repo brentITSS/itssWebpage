@@ -1,6 +1,7 @@
-// API base URL - configured via REACT_APP_API_URL environment variable  
-// Production: https://itsson-api.azurewebsites.net/api (must include /api)
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+// API base URL - configured via REACT_APP_API_URL environment variable.
+const configuredApiUrl = (process.env.REACT_APP_API_URL || '').trim();
+const API_BASE_URL =
+  configuredApiUrl || 'https://itsson-api.azurewebsites.net/api';
 
 // Get JWT token from localStorage
 const getToken = (): string | null => {
@@ -13,11 +14,15 @@ const apiClient = async <T>(
   options: RequestInit = {}
 ): Promise<T> => {
   const token = getToken();
+  const isFormData = options.body instanceof FormData;
   
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
+
+  if (!isFormData && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
