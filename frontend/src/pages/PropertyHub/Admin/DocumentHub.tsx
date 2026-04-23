@@ -13,7 +13,7 @@ import {
   documentHubService,
 } from '../../../services/documentHubService';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 type HubTab = 'classification' | 'summarisation' | 'extraction';
 
@@ -75,6 +75,7 @@ const DocumentHub: React.FC = () => {
   const [trainerHighlights, setTrainerHighlights] = useState<PersistentHighlight[]>([]);
   const [pdfPageCount, setPdfPageCount] = useState(0);
   const [pdfScale, setPdfScale] = useState(1.55);
+  const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
   const [selectionLoading, setSelectionLoading] = useState(false);
   const pdfSelectionContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -334,6 +335,7 @@ const DocumentHub: React.FC = () => {
       setTrainerHighlights([]);
       setPdfPageCount(0);
       setPdfScale(1.55);
+      setPdfLoadError(null);
       setShowExtractionTrainer(true);
       setFeedback('Extraction preview ready. Highlight text directly on the PDF to build fields.');
     } catch (error) {
@@ -835,10 +837,17 @@ const DocumentHub: React.FC = () => {
                   {extractionTestFile ? (
                     <Document
                       file={extractionTestFile}
-                      onLoadSuccess={({ numPages }) => setPdfPageCount(numPages)}
+                      onLoadSuccess={({ numPages }) => {
+                        setPdfPageCount(numPages);
+                        setPdfLoadError(null);
+                      }}
+                      onLoadError={(error) => {
+                        setPdfLoadError(error?.message || 'Failed to load PDF file.');
+                        setPdfPageCount(0);
+                      }}
                       className="flex flex-col items-center gap-3"
                     >
-                      {Array.from({ length: pdfPageCount || 1 }, (_, pageIndex) => (
+                      {Array.from({ length: pdfPageCount }, (_, pageIndex) => (
                         <div key={`page-${pageIndex + 1}`} className="shadow-sm">
                           <Page
                             pageNumber={pageIndex + 1}
@@ -852,6 +861,12 @@ const DocumentHub: React.FC = () => {
                   ) : (
                     <div className="rounded border border-dashed border-slate-300 bg-white p-4 text-xs text-slate-500">
                       PDF preview is unavailable for this file.
+                    </div>
+                  )}
+
+                  {pdfLoadError && (
+                    <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">
+                      {pdfLoadError}
                     </div>
                   )}
 
