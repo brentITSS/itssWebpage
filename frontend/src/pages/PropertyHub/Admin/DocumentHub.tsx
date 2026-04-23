@@ -34,6 +34,7 @@ type PersistentHighlight = {
 
 const HIGHLIGHT_COLORS = ['#fde68a', '#bfdbfe', '#fecdd3', '#bbf7d0', '#ddd6fe', '#fdba74'];
 type MobileTrainerView = 'pdf' | 'fields';
+type DragPoint = { x: number; y: number };
 
 const tabClass = (active: boolean) =>
   [
@@ -79,6 +80,8 @@ const DocumentHub: React.FC = () => {
   const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
   const [selectionLoading, setSelectionLoading] = useState(false);
   const [mobileTrainerView, setMobileTrainerView] = useState<MobileTrainerView>('pdf');
+  const [dragSelectionStart, setDragSelectionStart] = useState<DragPoint | null>(null);
+  const [dragSelectionCurrent, setDragSelectionCurrent] = useState<DragPoint | null>(null);
   const pdfSelectionContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [labelSets, setLabelSets] = useState<DocumentLabelSetDto[]>([]);
@@ -383,44 +386,25 @@ const DocumentHub: React.FC = () => {
     });
   };
 
-  const captureSelectedText = async () => {
-    const selection = window.getSelection();
-    const selected = selection?.toString().trim() || '';
+  const runSelectionCapture = async (
+    selected: string,
+    rects: Array<{ left: number; top: number; width: number; height: number }>
+  ) => {
     if (!selected) {
-      setFeedback('Highlight text in the PDF preview first.');
+      setFeedback('Select an area containing PDF text first.');
       return;
     }
 
-    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-    const container = pdfSelectionContainerRef.current;
-    if (!range || !container || !container.contains(range.commonAncestorContainer)) {
-      setFeedback('Selection must be inside the PDF preview area.');
-      return;
-    }
+    setTrainerHighlights((prev) => [
+      ...prev,
+      {
+        id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        color: HIGHLIGHT_COLORS[prev.length % HIGHLIGHT_COLORS.length],
+        selectedText: selected,
+        rects,
+      },
+    ]);
 
-    const containerRect = container.getBoundingClientRect();
-    const rects = Array.from(range.getClientRects())
-      .filter((rect) => rect.width > 1 && rect.height > 1)
-      .map((rect) => ({
-        left: rect.left - containerRect.left + container.scrollLeft,
-        top: rect.top - containerRect.top + container.scrollTop,
-        width: rect.width,
-        height: rect.height,
-      }));
-
-    if (rects.length > 0) {
-      setTrainerHighlights((prev) => [
-        ...prev,
-        {
-          id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          color: HIGHLIGHT_COLORS[prev.length % HIGHLIGHT_COLORS.length],
-          selectedText: selected,
-          rects,
-        },
-      ]);
-    }
-
-    selection?.removeAllRanges();
     setSelectionLoading(true);
     try {
       const aiFields = await documentHubService.suggestExtractionFromSelection({
@@ -442,6 +426,154 @@ const DocumentHub: React.FC = () => {
       setSelectionLoading(false);
     }
   };
+
+  const captureSelectedText = async () => {
+    const selection = window.getSelection();
+    const selected = selection?.toString().trim() || '';
+    if (!selected) {
+      setFeedback('Drag over the PDF to select text.');
+      return;
+    }
+
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    const container = pdfSelectionContainerRef.current;
+    if (!range || !container || !container.contains(range.commonAncestorContainer)) {
+      setFeedback('Selection must be inside the PDF preview area.');
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const rects = Array.from(range.getClientRects())
+      .filter((rect) => rect.width > 1 && rect.height > 1)
+      .map((rect) => ({
+        left: rect.left - containerRect.left + container.scrollLeft,
+        top: rect.top - containerRect.top + container.scrollTop,
+        width: rect.width,
+        height: rect.height,
+      }));
+
+    selection?.removeAllRanges();
+    if (rects.length === 0) {
+      setFeedback('Could not read the selected area. Try dragging a larger region.');
+      return;
+    }
+
+    await runSelectionCapture(selected, rects);
+  };
+
+  const getPointInSelectionContainer = (event: React.MouseEvent<HTMLDivElement>): DragPoint | null => {
+    const container = pdfSelectionContainerRef.current;
+    if (!container) {
+      return null;
+    }
+
+    const bounds = container.getBoundingClientRect();
+    return {
+      x: event.clientX - bounds.left + container.scrollLeft,
+      y: event.clientY - bounds.top + container.scrollTop,
+    };
+  };
+
+  const getNormalizedRect = (start: DragPoint, end: DragPoint) => {
+    const left = Math.min(start.x, end.x);
+    const top = Math.min(start.y, end.y);
+    const width = Math.abs(start.x - end.x);
+    const height = Math.abs(start.y - end.y);
+    return { left, top, width, height };
+  };
+
+  const collectTextFromRect = (targetRect: { left: number; top: number; width: number; height: number }) => {
+    const container = pdfSelectionContainerRef.current;
+    if (!container) {
+      return '';
+    }
+
+    const containerBounds = container.getBoundingClientRect();
+    const spans = Array.from(container.querySelectorAll('.react-pdf__Page__textContent span'));
+    const collected: string[] = [];
+
+    for (const span of spans) {
+      const text = (span.textContent || '').trim();
+      if (!text) {
+        continue;
+      }
+
+      const spanRect = span.getBoundingClientRect();
+      const relativeRect = {
+        left: spanRect.left - containerBounds.left + container.scrollLeft,
+        top: spanRect.top - containerBounds.top + container.scrollTop,
+        width: spanRect.width,
+        height: spanRect.height,
+      };
+
+      const intersects =
+        relativeRect.left < targetRect.left + targetRect.width &&
+        relativeRect.left + relativeRect.width > targetRect.left &&
+        relativeRect.top < targetRect.top + targetRect.height &&
+        relativeRect.top + relativeRect.height > targetRect.top;
+
+      if (intersects) {
+        collected.push(text);
+      }
+    }
+
+    return collected.join(' ').replace(/\s+/g, ' ').trim();
+  };
+
+  const handleDragSelectionStart = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || selectionLoading) {
+      return;
+    }
+
+    const point = getPointInSelectionContainer(event);
+    if (!point) {
+      return;
+    }
+
+    setDragSelectionStart(point);
+    setDragSelectionCurrent(point);
+  };
+
+  const handleDragSelectionMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragSelectionStart) {
+      return;
+    }
+
+    const point = getPointInSelectionContainer(event);
+    if (!point) {
+      return;
+    }
+
+    setDragSelectionCurrent(point);
+  };
+
+  const handleDragSelectionEnd = async (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragSelectionStart) {
+      return;
+    }
+
+    const point = getPointInSelectionContainer(event);
+    const endPoint = point ?? dragSelectionCurrent ?? dragSelectionStart;
+    const normalized = getNormalizedRect(dragSelectionStart, endPoint);
+
+    setDragSelectionStart(null);
+    setDragSelectionCurrent(null);
+
+    if (normalized.width < 8 || normalized.height < 8) {
+      return;
+    }
+
+    const selected = collectTextFromRect(normalized);
+    if (!selected) {
+      setFeedback('No selectable PDF text found in that area. Try a larger drag box.');
+      return;
+    }
+
+    await runSelectionCapture(selected, [normalized]);
+  };
+
+  const dragPreviewRect =
+    dragSelectionStart && dragSelectionCurrent ? getNormalizedRect(dragSelectionStart, dragSelectionCurrent) : null;
 
   const updateStagedField = (id: string, patch: Partial<Pick<TrainerField, 'fieldName' | 'exampleValue'>>) => {
     setStagedExtractionFields((prev) => prev.map((field) => (field.id === id ? { ...field, ...patch } : field)));
@@ -859,7 +991,11 @@ const DocumentHub: React.FC = () => {
                 </div>
                 <div
                   ref={pdfSelectionContainerRef}
-                  className="relative min-h-0 flex-1 overflow-auto rounded border border-slate-300 bg-white p-2"
+                  className="relative min-h-0 flex-1 cursor-crosshair overflow-auto rounded border border-slate-300 bg-white p-2"
+                  onMouseDown={handleDragSelectionStart}
+                  onMouseMove={handleDragSelectionMove}
+                  onMouseUp={handleDragSelectionEnd}
+                  onMouseLeave={handleDragSelectionEnd}
                 >
                   {extractionTestFile ? (
                     <Document
@@ -895,6 +1031,18 @@ const DocumentHub: React.FC = () => {
                     <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">
                       {pdfLoadError}
                     </div>
+                  )}
+
+                  {dragPreviewRect && (
+                    <div
+                      className="pointer-events-none absolute rounded border-2 border-dashed border-indigo-500 bg-indigo-200/25"
+                      style={{
+                        left: dragPreviewRect.left,
+                        top: dragPreviewRect.top,
+                        width: dragPreviewRect.width,
+                        height: dragPreviewRect.height,
+                      }}
+                    />
                   )}
 
                   {trainerHighlights.map((highlight) =>
@@ -963,10 +1111,10 @@ const DocumentHub: React.FC = () => {
                   disabled={selectionLoading}
                   className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {selectionLoading ? 'Analysing selection...' : 'Capture Selected Text'}
+                  {selectionLoading ? 'Analysing selection...' : 'Capture Selected Text (fallback)'}
                 </button>
                 <p className="text-xs text-slate-500">
-                  Highlight text directly on the PDF, then click capture. AI will infer field name/value pairs and add them below.
+                  Drag a box over the PDF like a screenshot tool. AI will infer field name/value pairs and keep a colored highlight.
                 </p>
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
                   <p className="text-xs font-semibold text-slate-700">Field List (editable)</p>
