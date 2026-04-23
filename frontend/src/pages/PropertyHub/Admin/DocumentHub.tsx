@@ -48,6 +48,7 @@ const DocumentHub: React.FC = () => {
   const [extractionTemplateDescription, setExtractionTemplateDescription] = useState('');
   const [extractionTestFile, setExtractionTestFile] = useState<File | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreviewResponse | null>(null);
+  const [extractionPreviewPdfUrl, setExtractionPreviewPdfUrl] = useState<string | null>(null);
   const [showExtractionTrainer, setShowExtractionTrainer] = useState(false);
   const [trainerFieldName, setTrainerFieldName] = useState('');
   const [trainerSelectedValue, setTrainerSelectedValue] = useState('');
@@ -102,6 +103,20 @@ const DocumentHub: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!extractionTestFile) {
+      setExtractionPreviewPdfUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(extractionTestFile);
+    setExtractionPreviewPdfUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [extractionTestFile]);
 
   const handleSaveLabelSet = async () => {
     if (!labelSetName.trim()) {
@@ -709,7 +724,7 @@ const DocumentHub: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Entity Extraction Trainer</h3>
                 <p className="text-xs text-slate-500">
-                  Highlight values in extracted text, assign field names, then add to template.
+                  Review the original PDF layout, then select values from the extracted text panel to map fields.
                 </p>
               </div>
               <button
@@ -720,10 +735,30 @@ const DocumentHub: React.FC = () => {
                 Close
               </button>
             </div>
-            <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-              <div className="max-h-[60vh] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{extractionPreview.fileName}</p>
-                <pre className="whitespace-pre-wrap select-text">{extractionPreview.extractedText || extractionPreview.textPreview}</pre>
+            <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+              <div className="space-y-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Uploaded PDF Preview - {extractionPreview.fileName}
+                  </p>
+                  {extractionPreviewPdfUrl ? (
+                    <iframe
+                      src={extractionPreviewPdfUrl}
+                      title={`PDF preview for ${extractionPreview.fileName}`}
+                      className="h-[54vh] w-full rounded border border-slate-300 bg-white"
+                    />
+                  ) : (
+                    <div className="rounded border border-dashed border-slate-300 bg-white p-4 text-xs text-slate-500">
+                      PDF preview is unavailable for this file.
+                    </div>
+                  )}
+                </div>
+                <div className="max-h-[26vh] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Extracted Text (select values here)
+                  </p>
+                  <pre className="whitespace-pre-wrap select-text">{extractionPreview.extractedText || extractionPreview.textPreview}</pre>
+                </div>
               </div>
               <div className="space-y-3 rounded-lg border border-slate-200 p-3">
                 {suggestedExtractionFields.length > 0 && (
