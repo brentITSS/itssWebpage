@@ -15,11 +15,13 @@ public class DocumentHubController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IAuthService _authService;
+    private readonly IDocumentAiService _documentAiService;
 
-    public DocumentHubController(ApplicationDbContext context, IAuthService authService)
+    public DocumentHubController(ApplicationDbContext context, IAuthService authService, IDocumentAiService documentAiService)
     {
         _context = context;
         _authService = authService;
+        _documentAiService = documentAiService;
     }
 
     [HttpGet("label-sets")]
@@ -313,18 +315,11 @@ public class DocumentHubController : ControllerBase
         foreach (var file in files.Where(f => f.Length > 0))
         {
             var extractedText = await ExtractTextAsync(file);
-            var label = DocumentHubAiHelper.BuildTwoWordLabel(file.FileName, extractedText);
-            var description = DocumentHubAiHelper.BuildDescription(label, extractedText);
-            var prompt = DocumentHubAiHelper.BuildClassificationPrompt(label, description);
-
-            results.Add(new DocumentClassificationSuggestionDto
-            {
-                FileName = file.FileName,
-                SuggestedLabel = label,
-                SuggestedDescription = description,
-                SuggestedPrompt = prompt,
-                TextPreview = extractedText.Length > 400 ? extractedText[..400] + "..." : extractedText
-            });
+            var suggestion = await _documentAiService.BuildClassificationSuggestionAsync(
+                file.FileName,
+                extractedText,
+                HttpContext.RequestAborted);
+            results.Add(suggestion);
         }
 
         return Ok(results);
@@ -348,7 +343,7 @@ public class DocumentHubController : ControllerBase
         }
 
         var extractedText = await ExtractTextAsync(file);
-        var summary = DocumentHubAiHelper.BuildSummary(extractedText, prompt.Trim());
+        var summary = await _documentAiService.SummariseAsync(extractedText, prompt.Trim(), HttpContext.RequestAborted);
 
         return Ok(new DocumentSummarisationPreviewResponse
         {

@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<IDocumentAiService, OpenAiDocumentAiService>();
 
 // Swagger configuration
 builder.Services.AddSwaggerGen(c =>
