@@ -33,6 +33,7 @@ type PersistentHighlight = {
 };
 
 const HIGHLIGHT_COLORS = ['#fde68a', '#bfdbfe', '#fecdd3', '#bbf7d0', '#ddd6fe', '#fdba74'];
+type MobileTrainerView = 'pdf' | 'fields';
 
 const tabClass = (active: boolean) =>
   [
@@ -77,6 +78,7 @@ const DocumentHub: React.FC = () => {
   const [pdfScale, setPdfScale] = useState(1.55);
   const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
   const [selectionLoading, setSelectionLoading] = useState(false);
+  const [mobileTrainerView, setMobileTrainerView] = useState<MobileTrainerView>('pdf');
   const pdfSelectionContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [labelSets, setLabelSets] = useState<DocumentLabelSetDto[]>([]);
@@ -336,6 +338,7 @@ const DocumentHub: React.FC = () => {
       setPdfPageCount(0);
       setPdfScale(1.55);
       setPdfLoadError(null);
+      setMobileTrainerView('pdf');
       setShowExtractionTrainer(true);
       setFeedback('Extraction preview ready. Highlight text directly on the PDF to build fields.');
     } catch (error) {
@@ -789,9 +792,9 @@ const DocumentHub: React.FC = () => {
       )}
 
       {showExtractionTrainer && extractionPreview && (
-        <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-slate-900/45 backdrop-blur-sm px-4 py-6">
-          <div className="mx-auto max-w-6xl rounded-xl border border-slate-200 bg-white p-5">
-            <div className="mb-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm p-0 sm:p-3 lg:p-6">
+          <div className="mx-auto flex h-full w-full max-w-[96vw] flex-col rounded-none border border-slate-200 bg-white p-3 sm:rounded-xl sm:p-4 lg:p-5">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Entity Extraction Trainer</h3>
                 <p className="text-xs text-slate-500">
@@ -806,8 +809,32 @@ const DocumentHub: React.FC = () => {
                 Close
               </button>
             </div>
-            <div className="grid gap-4 lg:grid-cols-[2.25fr_1fr]">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-3 flex items-center gap-2 lg:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileTrainerView('pdf')}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                  mobileTrainerView === 'pdf'
+                    ? 'bg-slate-900 text-white'
+                    : 'border border-slate-300 bg-white text-slate-700'
+                }`}
+              >
+                PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileTrainerView('fields')}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                  mobileTrainerView === 'fields'
+                    ? 'bg-slate-900 text-white'
+                    : 'border border-slate-300 bg-white text-slate-700'
+                }`}
+              >
+                Fields
+              </button>
+            </div>
+            <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+              <div className={`${mobileTrainerView === 'pdf' ? 'flex' : 'hidden'} min-h-0 flex-col rounded-lg border border-slate-200 bg-slate-50 p-3 lg:flex`}>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Uploaded PDF - highlight directly on document
@@ -832,7 +859,7 @@ const DocumentHub: React.FC = () => {
                 </div>
                 <div
                   ref={pdfSelectionContainerRef}
-                  className="relative h-[78vh] overflow-auto rounded border border-slate-300 bg-white p-2"
+                  className="relative min-h-0 flex-1 overflow-auto rounded border border-slate-300 bg-white p-2"
                 >
                   {extractionTestFile ? (
                     <Document
@@ -889,11 +916,11 @@ const DocumentHub: React.FC = () => {
                   )}
                 </div>
               </div>
-              <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+              <div className={`${mobileTrainerView === 'fields' ? 'flex' : 'hidden'} min-h-0 flex-col space-y-3 rounded-lg border border-slate-200 p-3 lg:flex`}>
                 {suggestedExtractionFields.length > 0 && (
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-2">
                     <p className="text-xs font-semibold text-indigo-800">AI Suggested Fields</p>
-                    <div className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1">
+                    <div className="mt-2 max-h-[30vh] space-y-1 overflow-y-auto pr-1">
                       {suggestedExtractionFields.map((field, idx) => (
                         <div key={`${field.fieldName}-${idx}`} className="rounded border border-indigo-200 bg-white p-2 text-xs">
                           <input
@@ -934,14 +961,14 @@ const DocumentHub: React.FC = () => {
                   type="button"
                   onClick={captureSelectedText}
                   disabled={selectionLoading}
-                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {selectionLoading ? 'Analysing selection...' : 'Capture Selected Text'}
                 </button>
                 <p className="text-xs text-slate-500">
                   Highlight text directly on the PDF, then click capture. AI will infer field name/value pairs and add them below.
                 </p>
-                <div className="max-h-[52vh] space-y-2 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
                   <p className="text-xs font-semibold text-slate-700">Field List (editable)</p>
                   {stagedExtractionFields.length === 0 ? (
                     <p className="text-xs text-slate-500">No fields captured yet.</p>
