@@ -112,6 +112,12 @@ export interface DocumentExtractionPreviewResponse {
   fileName: string;
   extractedText: string;
   textPreview: string;
+  suggestedFields: DocumentExtractionSuggestedFieldDto[];
+}
+
+export interface DocumentExtractionSuggestedFieldDto {
+  fieldName: string;
+  exampleValue: string;
 }
 
 export const documentHubService = {

@@ -124,6 +124,72 @@ public class OpenAiDocumentAiService : IDocumentAiService
         }
     }
 
+    public async Task<List<DocumentExtractionSuggestedFieldDto>> SuggestExtractionFieldsAsync(
+        string extractedText,
+        CancellationToken cancellationToken = default)
+    {
+        var fallback = BuildHeuristicExtractionSuggestions(extractedText);
+        var apiKey = _configuration["OpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("OpenAI__ApiKey");
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(extractedText))
+        {
+            return fallback;
+        }
+
+        var model = _configuration["OpenAI:Model"] ?? Environment.GetEnvironmentVariable("OpenAI__Model") ?? "gpt-4o-mini";
+        var systemPrompt =
+            "You extract likely structured fields from business documents. " +
+            "Return strict JSON: {\"fields\":[{\"fieldName\":\"...\",\"exampleValue\":\"...\"}]}. " +
+            "fieldName should be concise, lowercase, and human-readable.";
+        var userPrompt =
+            "Suggest up to 8 likely extraction fields from this document text.\n" +
+            "Only include fields with clear example values in the source.\n" +
+            $"Document text:\n{TrimForModel(extractedText, 12000)}";
+
+        try
+        {
+            var content = await CreateChatCompletionAsync(apiKey, model, systemPrompt, userPrompt, 500, cancellationToken, expectJson: true);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return fallback;
+            }
+
+            using var doc = JsonDocument.Parse(content);
+            if (!doc.RootElement.TryGetProperty("fields", out var fieldsEl) || fieldsEl.ValueKind != JsonValueKind.Array)
+            {
+                return fallback;
+            }
+
+            var fields = new List<DocumentExtractionSuggestedFieldDto>();
+            foreach (var item in fieldsEl.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var name = item.TryGetProperty("fieldName", out var nameEl) ? nameEl.GetString() : null;
+                var value = item.TryGetProperty("exampleValue", out var valueEl) ? valueEl.GetString() : null;
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                fields.Add(new DocumentExtractionSuggestedFieldDto
+                {
+                    FieldName = name.Trim(),
+                    ExampleValue = value.Trim()
+                });
+            }
+
+            return fields.Count == 0 ? fallback : fields.Take(8).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "OpenAI extraction field suggestion failed, using heuristic fallback.");
+            return fallback;
+        }
+    }
+
     private async Task<string?> CreateChatCompletionAsync(
         string apiKey,
         string model,
@@ -183,5 +249,45 @@ public class OpenAiDocumentAiService : IDocumentAiService
         }
 
         return text.Length <= maxChars ? text : text[..maxChars];
+    }
+
+    private static List<DocumentExtractionSuggestedFieldDto> BuildHeuristicExtractionSuggestions(string extractedText)
+    {
+        if (string.IsNullOrWhiteSpace(extractedText))
+        {
+            return new List<DocumentExtractionSuggestedFieldDto>();
+        }
+
+        var suggestions = new List<DocumentExtractionSuggestedFieldDto>();
+        var matches = System.Text.RegularExpressions.Regex.Matches(
+            extractedText,
+            @"(?im)^\s*([A-Za-z][A-Za-z0-9 \/\-\(\)]{2,40})\s*[:\-]\s*(.{1,120})$");
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var rawName = match.Groups[1].Value.Trim();
+            var rawValue = match.Groups[2].Value.Trim();
+            if (rawValue.Length < 2)
+            {
+                continue;
+            }
+
+            var fieldName = rawName
+                .ToLowerInvariant()
+                .Replace("/", " ")
+                .Replace("-", " ");
+
+            suggestions.Add(new DocumentExtractionSuggestedFieldDto
+            {
+                FieldName = fieldName,
+                ExampleValue = rawValue
+            });
+        }
+
+        return suggestions
+            .GroupBy(x => $"{x.FieldName}|{x.ExampleValue}", StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .Take(8)
+            .ToList();
     }
 }

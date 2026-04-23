@@ -9,4 +9,7 @@ public interface IDocumentAiService
         string fileName,
         string extractedText,
         CancellationToken cancellationToken = default);
+    Task<List<DocumentExtractionSuggestedFieldDto>> SuggestExtractionFieldsAsync(
+        string extractedText,
+        CancellationToken cancellationToken = default);
 }
