@@ -144,3 +144,9 @@ public class DocumentExtractionSuggestedFieldDto
     public string FieldName { get; set; } = string.Empty;
     public string ExampleValue { get; set; } = string.Empty;
 }
+
+public class SuggestExtractionFromSelectionRequest
+{
+    public string SelectedText { get; set; } = string.Empty;
+    public string? ExtractedText { get; set; }
+}

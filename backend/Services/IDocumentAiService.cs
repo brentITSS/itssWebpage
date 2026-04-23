@@ -12,4 +12,8 @@ public interface IDocumentAiService
     Task<List<DocumentExtractionSuggestedFieldDto>> SuggestExtractionFieldsAsync(
         string extractedText,
         CancellationToken cancellationToken = default);
+    Task<List<DocumentExtractionSuggestedFieldDto>> SuggestFieldsFromSelectionAsync(
+        string selectedText,
+        string extractedText,
+        CancellationToken cancellationToken = default);
 }

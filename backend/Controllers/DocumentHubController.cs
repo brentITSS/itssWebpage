@@ -378,6 +378,26 @@ public class DocumentHubController : ControllerBase
         });
     }
 
+    [HttpPost("extraction/selection-suggest")]
+    public async Task<ActionResult<List<DocumentExtractionSuggestedFieldDto>>> SuggestSelectionExtraction([FromBody] SuggestExtractionFromSelectionRequest request)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser)) return Forbid("Access denied: Property Hub access required.");
+
+        if (string.IsNullOrWhiteSpace(request.SelectedText))
+        {
+            return BadRequest(new { message = "SelectedText is required." });
+        }
+
+        var suggestions = await _documentAiService.SuggestFieldsFromSelectionAsync(
+            request.SelectedText.Trim(),
+            request.ExtractedText?.Trim() ?? string.Empty,
+            HttpContext.RequestAborted);
+
+        return Ok(suggestions);
+    }
+
     private async Task<UserDto?> GetCurrentUserAsync()
     {
         var userId = GetCurrentUserId();

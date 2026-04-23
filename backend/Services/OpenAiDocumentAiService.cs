@@ -190,6 +190,82 @@ public class OpenAiDocumentAiService : IDocumentAiService
         }
     }
 
+    public async Task<List<DocumentExtractionSuggestedFieldDto>> SuggestFieldsFromSelectionAsync(
+        string selectedText,
+        string extractedText,
+        CancellationToken cancellationToken = default)
+    {
+        var fallback = BuildSelectionFallbackSuggestions(selectedText);
+        if (string.IsNullOrWhiteSpace(selectedText))
+        {
+            return fallback;
+        }
+
+        var apiKey = _configuration["OpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("OpenAI__ApiKey");
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return fallback;
+        }
+
+        var model = _configuration["OpenAI:Model"] ?? Environment.GetEnvironmentVariable("OpenAI__Model") ?? "gpt-4o-mini";
+        var systemPrompt =
+            "You are an extraction-trainer assistant. " +
+            "Infer one or more field/value pairs from a selected phrase in a PDF. " +
+            "Return strict JSON: {\"fields\":[{\"fieldName\":\"...\",\"exampleValue\":\"...\"}]}.";
+        var userPrompt =
+            "Given selected text and document context, infer the best extraction field names and values.\n" +
+            "Rules:\n" +
+            "- use practical field names in snake_case\n" +
+            "- if a date range is selected, return start and end fields when obvious\n" +
+            "- only return values present in selected text\n\n" +
+            $"Selected text:\n{selectedText}\n\n" +
+            $"Document context:\n{TrimForModel(extractedText, 6000)}";
+
+        try
+        {
+            var content = await CreateChatCompletionAsync(apiKey, model, systemPrompt, userPrompt, 320, cancellationToken, expectJson: true);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return fallback;
+            }
+
+            using var doc = JsonDocument.Parse(content);
+            if (!doc.RootElement.TryGetProperty("fields", out var fieldsEl) || fieldsEl.ValueKind != JsonValueKind.Array)
+            {
+                return fallback;
+            }
+
+            var fields = new List<DocumentExtractionSuggestedFieldDto>();
+            foreach (var item in fieldsEl.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var name = item.TryGetProperty("fieldName", out var nameEl) ? nameEl.GetString() : null;
+                var value = item.TryGetProperty("exampleValue", out var valueEl) ? valueEl.GetString() : null;
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                fields.Add(new DocumentExtractionSuggestedFieldDto
+                {
+                    FieldName = name.Trim(),
+                    ExampleValue = value.Trim()
+                });
+            }
+
+            return fields.Count == 0 ? fallback : fields.Take(4).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "OpenAI selected-text extraction failed, using fallback.");
+            return fallback;
+        }
+    }
+
     private async Task<string?> CreateChatCompletionAsync(
         string apiKey,
         string model,
@@ -288,6 +364,82 @@ public class OpenAiDocumentAiService : IDocumentAiService
             .GroupBy(x => $"{x.FieldName}|{x.ExampleValue}", StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
             .Take(8)
+            .ToList();
+    }
+
+    private static List<DocumentExtractionSuggestedFieldDto> BuildSelectionFallbackSuggestions(string selectedText)
+    {
+        if (string.IsNullOrWhiteSpace(selectedText))
+        {
+            return new List<DocumentExtractionSuggestedFieldDto>();
+        }
+
+        var normalized = selectedText.Trim();
+        var suggestions = new List<DocumentExtractionSuggestedFieldDto>();
+
+        var dateMatches = System.Text.RegularExpressions.Regex.Matches(
+            normalized,
+            @"\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b");
+
+        if (dateMatches.Count >= 2)
+        {
+            suggestions.Add(new DocumentExtractionSuggestedFieldDto
+            {
+                FieldName = "range_start_date",
+                ExampleValue = dateMatches[0].Value
+            });
+            suggestions.Add(new DocumentExtractionSuggestedFieldDto
+            {
+                FieldName = "range_end_date",
+                ExampleValue = dateMatches[1].Value
+            });
+        }
+
+        if (normalized.Contains(" to ", StringComparison.OrdinalIgnoreCase) && dateMatches.Count >= 2)
+        {
+            suggestions.Add(new DocumentExtractionSuggestedFieldDto
+            {
+                FieldName = "range_date",
+                ExampleValue = $"{dateMatches[0].Value} to {dateMatches[1].Value}"
+            });
+        }
+
+        var keyValueMatch = System.Text.RegularExpressions.Regex.Match(normalized, @"^\s*(.+?)\s*[:\-]\s*(.+)\s*$");
+        if (keyValueMatch.Success)
+        {
+            var key = keyValueMatch.Groups[1].Value
+                .Trim()
+                .ToLowerInvariant()
+                .Replace(" ", "_");
+            var value = keyValueMatch.Groups[2].Value.Trim();
+
+            if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(value))
+            {
+                suggestions.Add(new DocumentExtractionSuggestedFieldDto
+                {
+                    FieldName = key,
+                    ExampleValue = value
+                });
+            }
+        }
+
+        if (suggestions.Count == 0)
+        {
+            var words = normalized
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Take(4)
+                .Select(x => x.ToLowerInvariant());
+            suggestions.Add(new DocumentExtractionSuggestedFieldDto
+            {
+                FieldName = string.Join("_", words),
+                ExampleValue = normalized
+            });
+        }
+
+        return suggestions
+            .GroupBy(x => $"{x.FieldName}|{x.ExampleValue}", StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .Take(4)
             .ToList();
     }
 }

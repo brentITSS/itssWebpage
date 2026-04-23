@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 import {
   DocumentClassificationSuggestionDto,
-  DocumentExtractionFieldDto,
   DocumentExtractionPreviewResponse,
   DocumentExtractionSuggestedFieldDto,
   DocumentExtractionTemplateDto,
@@ -11,7 +13,26 @@ import {
   documentHubService,
 } from '../../../services/documentHubService';
 
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
 type HubTab = 'classification' | 'summarisation' | 'extraction';
+
+type TrainerField = {
+  id: string;
+  fieldName: string;
+  exampleValue: string;
+  boundingBoxJson?: string;
+  pageNumber?: number;
+};
+
+type PersistentHighlight = {
+  id: string;
+  color: string;
+  selectedText: string;
+  rects: Array<{ left: number; top: number; width: number; height: number }>;
+};
+
+const HIGHLIGHT_COLORS = ['#fde68a', '#bfdbfe', '#fecdd3', '#bbf7d0', '#ddd6fe', '#fdba74'];
 
 const tabClass = (active: boolean) =>
   [
@@ -48,14 +69,14 @@ const DocumentHub: React.FC = () => {
   const [extractionTemplateDescription, setExtractionTemplateDescription] = useState('');
   const [extractionTestFile, setExtractionTestFile] = useState<File | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreviewResponse | null>(null);
-  const [extractionPreviewPdfUrl, setExtractionPreviewPdfUrl] = useState<string | null>(null);
   const [showExtractionTrainer, setShowExtractionTrainer] = useState(false);
-  const [trainerFieldName, setTrainerFieldName] = useState('');
-  const [trainerSelectedValue, setTrainerSelectedValue] = useState('');
-  const [stagedExtractionFields, setStagedExtractionFields] = useState<
-    Array<Pick<DocumentExtractionFieldDto, 'fieldName' | 'exampleValue'>>
-  >([]);
+  const [stagedExtractionFields, setStagedExtractionFields] = useState<TrainerField[]>([]);
   const [suggestedExtractionFields, setSuggestedExtractionFields] = useState<DocumentExtractionSuggestedFieldDto[]>([]);
+  const [trainerHighlights, setTrainerHighlights] = useState<PersistentHighlight[]>([]);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
+  const [pdfScale, setPdfScale] = useState(1.55);
+  const [selectionLoading, setSelectionLoading] = useState(false);
+  const pdfSelectionContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [labelSets, setLabelSets] = useState<DocumentLabelSetDto[]>([]);
   const [summarisationTemplates, setSummarisationTemplates] = useState<DocumentSummarisationTemplateDto[]>([]);
@@ -103,20 +124,6 @@ const DocumentHub: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    if (!extractionTestFile) {
-      setExtractionPreviewPdfUrl(null);
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(extractionTestFile);
-    setExtractionPreviewPdfUrl(objectUrl);
-
-    return () => {
-      URL.revokeObjectURL(objectUrl);
-    };
-  }, [extractionTestFile]);
 
   const handleSaveLabelSet = async () => {
     if (!labelSetName.trim()) {
@@ -227,7 +234,9 @@ const DocumentHub: React.FC = () => {
       for (const field of stagedExtractionFields) {
         await documentHubService.createExtractionField(template.documentExtractionTemplateId, {
           fieldName: field.fieldName.trim(),
-          exampleValue: field.exampleValue?.trim() || undefined,
+          exampleValue: field.exampleValue.trim() || undefined,
+          boundingBoxJson: field.boundingBoxJson,
+          pageNumber: field.pageNumber,
         });
       }
 
@@ -237,9 +246,10 @@ const DocumentHub: React.FC = () => {
       setExtractionPreview(null);
       setStagedExtractionFields([]);
       setSuggestedExtractionFields([]);
+      setTrainerHighlights([]);
+      setPdfPageCount(0);
+      setPdfScale(1.55);
       setShowExtractionTrainer(false);
-      setTrainerFieldName('');
-      setTrainerSelectedValue('');
       setFeedback('Extraction template saved.');
       await loadData();
     } catch (error) {
@@ -321,8 +331,11 @@ const DocumentHub: React.FC = () => {
       const preview = await documentHubService.previewExtraction(extractionTestFile);
       setExtractionPreview(preview);
       setSuggestedExtractionFields(preview.suggestedFields ?? []);
+      setTrainerHighlights([]);
+      setPdfPageCount(0);
+      setPdfScale(1.55);
       setShowExtractionTrainer(true);
-      setFeedback('Extraction preview ready. Select values and add fields.');
+      setFeedback('Extraction preview ready. Highlight text directly on the PDF to build fields.');
     } catch (error) {
       setFeedback(getFriendlyError(error));
     } finally {
@@ -330,55 +343,111 @@ const DocumentHub: React.FC = () => {
     }
   };
 
-  const captureSelectedText = () => {
-    const selected = window.getSelection()?.toString().trim() || '';
+  const appendTrainerFields = (
+    fields: DocumentExtractionSuggestedFieldDto[],
+    metadata?: Pick<TrainerField, 'boundingBoxJson' | 'pageNumber'>
+  ) => {
+    setStagedExtractionFields((prev) => {
+      const merged = [...prev];
+      for (const field of fields) {
+        const fieldName = field.fieldName.trim();
+        const exampleValue = field.exampleValue.trim();
+        if (!fieldName || !exampleValue) {
+          continue;
+        }
+
+        const alreadyExists = merged.some(
+          (item) =>
+            item.fieldName.trim().toLowerCase() === fieldName.toLowerCase() &&
+            item.exampleValue.trim().toLowerCase() === exampleValue.toLowerCase()
+        );
+        if (alreadyExists) {
+          continue;
+        }
+
+        merged.push({
+          id: `field-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          fieldName,
+          exampleValue,
+          boundingBoxJson: metadata?.boundingBoxJson,
+          pageNumber: metadata?.pageNumber,
+        });
+      }
+
+      return merged;
+    });
+  };
+
+  const captureSelectedText = async () => {
+    const selection = window.getSelection();
+    const selected = selection?.toString().trim() || '';
     if (!selected) {
-      setFeedback('Highlight text in the extraction modal first.');
+      setFeedback('Highlight text in the PDF preview first.');
       return;
     }
-    setTrainerSelectedValue(selected);
-    if (!trainerFieldName) {
-      const autoName = selected
-        .split(':')[0]
-        .replace(/[^a-zA-Z0-9 ]/g, '')
-        .trim()
-        .toLowerCase()
-        .slice(0, 40);
-      setTrainerFieldName(autoName || 'extracted field');
+
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    const container = pdfSelectionContainerRef.current;
+    if (!range || !container || !container.contains(range.commonAncestorContainer)) {
+      setFeedback('Selection must be inside the PDF preview area.');
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const rects = Array.from(range.getClientRects())
+      .filter((rect) => rect.width > 1 && rect.height > 1)
+      .map((rect) => ({
+        left: rect.left - containerRect.left + container.scrollLeft,
+        top: rect.top - containerRect.top + container.scrollTop,
+        width: rect.width,
+        height: rect.height,
+      }));
+
+    if (rects.length > 0) {
+      setTrainerHighlights((prev) => [
+        ...prev,
+        {
+          id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          color: HIGHLIGHT_COLORS[prev.length % HIGHLIGHT_COLORS.length],
+          selectedText: selected,
+          rects,
+        },
+      ]);
+    }
+
+    selection?.removeAllRanges();
+    setSelectionLoading(true);
+    try {
+      const aiFields = await documentHubService.suggestExtractionFromSelection({
+        selectedText: selected,
+        extractedText: extractionPreview?.extractedText ?? '',
+      });
+      const metadata = { boundingBoxJson: JSON.stringify(rects) };
+      if (aiFields.length > 0) {
+        appendTrainerFields(aiFields, metadata);
+      } else {
+        appendTrainerFields([{ fieldName: 'extracted_field', exampleValue: selected }], metadata);
+      }
+    } catch (error) {
+      setFeedback(getFriendlyError(error));
+      appendTrainerFields([{ fieldName: 'extracted_field', exampleValue: selected }], {
+        boundingBoxJson: JSON.stringify(rects),
+      });
+    } finally {
+      setSelectionLoading(false);
     }
   };
 
-  const addStagedField = () => {
-    if (!trainerFieldName.trim() || !trainerSelectedValue.trim()) {
-      setFeedback('Field name and selected value are required.');
-      return;
-    }
+  const updateStagedField = (id: string, patch: Partial<Pick<TrainerField, 'fieldName' | 'exampleValue'>>) => {
+    setStagedExtractionFields((prev) => prev.map((field) => (field.id === id ? { ...field, ...patch } : field)));
+  };
 
-    setStagedExtractionFields((prev) => [
-      ...prev,
-      { fieldName: trainerFieldName.trim(), exampleValue: trainerSelectedValue.trim() },
-    ]);
-    setTrainerFieldName('');
-    setTrainerSelectedValue('');
+  const removeStagedField = (id: string) => {
+    setStagedExtractionFields((prev) => prev.filter((field) => field.id !== id));
   };
 
   const addSuggestedField = (field: DocumentExtractionSuggestedFieldDto) => {
-    if (!field.fieldName.trim() || !field.exampleValue.trim()) {
-      return;
-    }
-
-    setStagedExtractionFields((prev) => {
-      const alreadyExists = prev.some(
-        (item) =>
-          item.fieldName.trim().toLowerCase() === field.fieldName.trim().toLowerCase() &&
-          (item.exampleValue ?? '').trim().toLowerCase() === field.exampleValue.trim().toLowerCase()
-      );
-      if (alreadyExists) {
-        return prev;
-      }
-
-      return [...prev, { fieldName: field.fieldName.trim(), exampleValue: field.exampleValue.trim() }];
-    });
+    appendTrainerFields([field]);
   };
 
   return (
@@ -680,8 +749,8 @@ const DocumentHub: React.FC = () => {
               {stagedExtractionFields.length === 0 ? (
                 <p className="text-sm text-slate-500">No fields captured yet. Use Open Extraction Trainer.</p>
               ) : (
-                stagedExtractionFields.map((field, index) => (
-                  <div key={`${field.fieldName}-${index}`} className="rounded-lg border border-slate-200 p-2 text-sm">
+                stagedExtractionFields.map((field) => (
+                  <div key={field.id} className="rounded-lg border border-slate-200 p-2 text-sm">
                     <p className="font-medium text-slate-800">{field.fieldName}</p>
                     <p className="text-slate-600">{field.exampleValue}</p>
                   </div>
@@ -724,7 +793,7 @@ const DocumentHub: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Entity Extraction Trainer</h3>
                 <p className="text-xs text-slate-500">
-                  Review the original PDF layout, then select values from the extracted text panel to map fields.
+                  Highlight text directly on the PDF preview and let AI generate editable field/value mappings.
                 </p>
               </div>
               <button
@@ -735,29 +804,74 @@ const DocumentHub: React.FC = () => {
                 Close
               </button>
             </div>
-            <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
-              <div className="space-y-3">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Uploaded PDF Preview - {extractionPreview.fileName}
+            <div className="grid gap-4 lg:grid-cols-[2.25fr_1fr]">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Uploaded PDF - highlight directly on document
                   </p>
-                  {extractionPreviewPdfUrl ? (
-                    <iframe
-                      src={extractionPreviewPdfUrl}
-                      title={`PDF preview for ${extractionPreview.fileName}`}
-                      className="h-[54vh] w-full rounded border border-slate-300 bg-white"
-                    />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPdfScale((prev) => Math.max(1, Number((prev - 0.15).toFixed(2))))}
+                      className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                    >
+                      Zoom -
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPdfScale((prev) => Math.min(2.6, Number((prev + 0.15).toFixed(2))))}
+                      className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                    >
+                      Zoom +
+                    </button>
+                    <span className="text-xs text-slate-500">{Math.round(pdfScale * 100)}%</span>
+                  </div>
+                </div>
+                <div
+                  ref={pdfSelectionContainerRef}
+                  className="relative h-[78vh] overflow-auto rounded border border-slate-300 bg-white p-2"
+                >
+                  {extractionTestFile ? (
+                    <Document
+                      file={extractionTestFile}
+                      onLoadSuccess={({ numPages }) => setPdfPageCount(numPages)}
+                      className="flex flex-col items-center gap-3"
+                    >
+                      {Array.from({ length: pdfPageCount || 1 }, (_, pageIndex) => (
+                        <div key={`page-${pageIndex + 1}`} className="shadow-sm">
+                          <Page
+                            pageNumber={pageIndex + 1}
+                            scale={pdfScale}
+                            renderAnnotationLayer
+                            renderTextLayer
+                          />
+                        </div>
+                      ))}
+                    </Document>
                   ) : (
                     <div className="rounded border border-dashed border-slate-300 bg-white p-4 text-xs text-slate-500">
                       PDF preview is unavailable for this file.
                     </div>
                   )}
-                </div>
-                <div className="max-h-[26vh] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Extracted Text (select values here)
-                  </p>
-                  <pre className="whitespace-pre-wrap select-text">{extractionPreview.extractedText || extractionPreview.textPreview}</pre>
+
+                  {trainerHighlights.map((highlight) =>
+                    highlight.rects.map((rect, idx) => (
+                      <div
+                        key={`${highlight.id}-${idx}`}
+                        className="pointer-events-none absolute rounded-sm border"
+                        style={{
+                          left: rect.left,
+                          top: rect.top,
+                          width: rect.width,
+                          height: rect.height,
+                          borderColor: highlight.color,
+                          backgroundColor: `${highlight.color}55`,
+                        }}
+                        title={highlight.selectedText}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
               <div className="space-y-3 rounded-lg border border-slate-200 p-3">
@@ -767,8 +881,28 @@ const DocumentHub: React.FC = () => {
                     <div className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1">
                       {suggestedExtractionFields.map((field, idx) => (
                         <div key={`${field.fieldName}-${idx}`} className="rounded border border-indigo-200 bg-white p-2 text-xs">
-                          <p className="font-medium text-slate-800">{field.fieldName}</p>
-                          <p className="mt-0.5 text-slate-600">{field.exampleValue}</p>
+                          <input
+                            value={field.fieldName}
+                            onChange={(event) =>
+                              setSuggestedExtractionFields((prev) =>
+                                prev.map((item, index) =>
+                                  index === idx ? { ...item, fieldName: event.target.value } : item
+                                )
+                              )
+                            }
+                            className="w-full rounded border border-slate-300 px-1.5 py-1 font-medium text-slate-800"
+                          />
+                          <textarea
+                            value={field.exampleValue}
+                            onChange={(event) =>
+                              setSuggestedExtractionFields((prev) =>
+                                prev.map((item, index) =>
+                                  index === idx ? { ...item, exampleValue: event.target.value } : item
+                                )
+                              )
+                            }
+                            className="mt-1 min-h-12 w-full rounded border border-slate-300 px-1.5 py-1 text-slate-600"
+                          />
                           <button
                             type="button"
                             onClick={() => addSuggestedField(field)}
@@ -784,33 +918,44 @@ const DocumentHub: React.FC = () => {
                 <button
                   type="button"
                   onClick={captureSelectedText}
-                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+                  disabled={selectionLoading}
+                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Capture Selected Text
+                  {selectionLoading ? 'Analysing selection...' : 'Capture Selected Text'}
                 </button>
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Field Name</span>
-                  <input
-                    value={trainerFieldName}
-                    onChange={(event) => setTrainerFieldName(event.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Example Value</span>
-                  <textarea
-                    value={trainerSelectedValue}
-                    onChange={(event) => setTrainerSelectedValue(event.target.value)}
-                    className="mt-1 min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={addStagedField}
-                  className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
-                >
-                  Add Field
-                </button>
+                <p className="text-xs text-slate-500">
+                  Highlight text directly on the PDF, then click capture. AI will infer field name/value pairs and add them below.
+                </p>
+                <div className="max-h-[52vh] space-y-2 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
+                  <p className="text-xs font-semibold text-slate-700">Field List (editable)</p>
+                  {stagedExtractionFields.length === 0 ? (
+                    <p className="text-xs text-slate-500">No fields captured yet.</p>
+                  ) : (
+                    stagedExtractionFields.map((field) => (
+                      <div key={field.id} className="rounded border border-slate-200 bg-white p-2">
+                        <label className="block text-[11px] font-medium text-slate-600">Field Name</label>
+                        <input
+                          value={field.fieldName}
+                          onChange={(event) => updateStagedField(field.id, { fieldName: event.target.value })}
+                          className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                        />
+                        <label className="mt-2 block text-[11px] font-medium text-slate-600">Example Value</label>
+                        <textarea
+                          value={field.exampleValue}
+                          onChange={(event) => updateStagedField(field.id, { exampleValue: event.target.value })}
+                          className="mt-1 min-h-14 w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStagedField(field.id)}
+                          className="mt-1 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>

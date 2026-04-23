@@ -120,6 +120,11 @@ export interface DocumentExtractionSuggestedFieldDto {
   exampleValue: string;
 }
 
+export interface SuggestExtractionFromSelectionRequest {
+  selectedText: string;
+  extractedText?: string;
+}
+
 export const documentHubService = {
   getLabelSets: async (): Promise<DocumentLabelSetDto[]> => {
     return await apiClient<DocumentLabelSetDto[]>('/document-hub/label-sets');
@@ -216,6 +221,15 @@ export const documentHubService = {
     return await apiClient<DocumentExtractionPreviewResponse>('/document-hub/extraction/preview', {
       method: 'POST',
       body: formData,
+    });
+  },
+
+  suggestExtractionFromSelection: async (
+    request: SuggestExtractionFromSelectionRequest
+  ): Promise<DocumentExtractionSuggestedFieldDto[]> => {
+    return await apiClient<DocumentExtractionSuggestedFieldDto[]>('/document-hub/extraction/selection-suggest', {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
   },
 };
