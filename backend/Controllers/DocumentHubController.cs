@@ -367,12 +367,14 @@ public class DocumentHubController : ControllerBase
         }
 
         var extractedText = await ExtractTextAsync(file);
+        var suggestedFields = await _documentAiService.SuggestExtractionFieldsAsync(extractedText, HttpContext.RequestAborted);
 
         return Ok(new DocumentExtractionPreviewResponse
         {
             FileName = file.FileName,
             ExtractedText = extractedText,
-            TextPreview = extractedText.Length > 800 ? extractedText[..800] + "..." : extractedText
+            TextPreview = extractedText.Length > 800 ? extractedText[..800] + "..." : extractedText,
+            SuggestedFields = suggestedFields
         });
     }
 
