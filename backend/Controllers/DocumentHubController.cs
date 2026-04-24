@@ -417,15 +417,36 @@ public class DocumentHubController : ControllerBase
         if (currentUser == null) return Unauthorized();
         if (!_authService.HasPropertyHubAdminAccess(currentUser)) return Forbid("Access denied: Property Hub Admin permission required.");
 
-        var functionUrl = _configuration["EmailProcessor:FunctionUrl"] ?? Environment.GetEnvironmentVariable("EmailProcessor__FunctionUrl");
-        var functionKey = _configuration["EmailProcessor:FunctionKey"] ?? Environment.GetEnvironmentVariable("EmailProcessor__FunctionKey");
+        var functionUrl =
+            _configuration["EmailProcessor:FunctionUrl"] ??
+            Environment.GetEnvironmentVariable("EmailProcessor__FunctionUrl") ??
+            _configuration["EmailProcessor_FunctionUrl"] ??
+            Environment.GetEnvironmentVariable("EmailProcessor_FunctionUrl");
+        var functionKey =
+            _configuration["EmailProcessor:FunctionKey"] ??
+            Environment.GetEnvironmentVariable("EmailProcessor__FunctionKey") ??
+            _configuration["EmailProcessor_FunctionKey"] ??
+            Environment.GetEnvironmentVariable("EmailProcessor_FunctionKey");
+
+        functionUrl = functionUrl?.Trim();
+        functionKey = functionKey?.Trim();
 
         if (string.IsNullOrWhiteSpace(functionUrl) || string.IsNullOrWhiteSpace(functionKey))
         {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(functionUrl))
+            {
+                missing.Add("EmailProcessor__FunctionUrl");
+            }
+            if (string.IsNullOrWhiteSpace(functionKey))
+            {
+                missing.Add("EmailProcessor__FunctionKey");
+            }
+
             return StatusCode(500, new TriggerPropertyHubEmailProcessingResponse
             {
                 Status = "error",
-                Message = "Email processor function configuration is missing (EmailProcessor__FunctionUrl / EmailProcessor__FunctionKey)."
+                Message = $"Email processor function configuration is missing: {string.Join(", ", missing)}."
             });
         }
 
