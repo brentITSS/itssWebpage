@@ -125,6 +125,17 @@ export interface SuggestExtractionFromSelectionRequest {
   extractedText?: string;
 }
 
+export interface TriggerPropertyHubEmailProcessingRequest {
+  mailboxUser?: string;
+  maxEmails?: number;
+}
+
+export interface TriggerPropertyHubEmailProcessingResponse {
+  status: string;
+  message: string;
+  processingResult?: unknown;
+}
+
 export const documentHubService = {
   getLabelSets: async (): Promise<DocumentLabelSetDto[]> => {
     return await apiClient<DocumentLabelSetDto[]>('/document-hub/label-sets');
@@ -228,6 +239,15 @@ export const documentHubService = {
     request: SuggestExtractionFromSelectionRequest
   ): Promise<DocumentExtractionSuggestedFieldDto[]> => {
     return await apiClient<DocumentExtractionSuggestedFieldDto[]>('/document-hub/extraction/selection-suggest', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  triggerPropertyHubEmailProcessing: async (
+    request: TriggerPropertyHubEmailProcessingRequest
+  ): Promise<TriggerPropertyHubEmailProcessingResponse> => {
+    return await apiClient<TriggerPropertyHubEmailProcessingResponse>('/document-hub/email-processing/property-hub/trigger', {
       method: 'POST',
       body: JSON.stringify(request),
     });

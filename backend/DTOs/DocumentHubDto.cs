@@ -150,3 +150,16 @@ public class SuggestExtractionFromSelectionRequest
     public string SelectedText { get; set; } = string.Empty;
     public string? ExtractedText { get; set; }
 }
+
+public class TriggerPropertyHubEmailProcessingRequest
+{
+    public string? MailboxUser { get; set; }
+    public int? MaxEmails { get; set; }
+}
+
+public class TriggerPropertyHubEmailProcessingResponse
+{
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public object? ProcessingResult { get; set; }
+}

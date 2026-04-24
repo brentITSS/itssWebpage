@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using backend.DTOs;
 using backend.Models;
 using backend.Services;
@@ -16,12 +18,21 @@ public class DocumentHubController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IAuthService _authService;
     private readonly IDocumentAiService _documentAiService;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
 
-    public DocumentHubController(ApplicationDbContext context, IAuthService authService, IDocumentAiService documentAiService)
+    public DocumentHubController(
+        ApplicationDbContext context,
+        IAuthService authService,
+        IDocumentAiService documentAiService,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration)
     {
         _context = context;
         _authService = authService;
         _documentAiService = documentAiService;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
     }
 
     [HttpGet("label-sets")]
@@ -396,6 +407,74 @@ public class DocumentHubController : ControllerBase
             HttpContext.RequestAborted);
 
         return Ok(suggestions);
+    }
+
+    [HttpPost("email-processing/property-hub/trigger")]
+    public async Task<ActionResult<TriggerPropertyHubEmailProcessingResponse>> TriggerPropertyHubEmailProcessing(
+        [FromBody] TriggerPropertyHubEmailProcessingRequest request)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!_authService.HasPropertyHubAdminAccess(currentUser)) return Forbid("Access denied: Property Hub Admin permission required.");
+
+        var functionUrl = _configuration["EmailProcessor:FunctionUrl"] ?? Environment.GetEnvironmentVariable("EmailProcessor__FunctionUrl");
+        var functionKey = _configuration["EmailProcessor:FunctionKey"] ?? Environment.GetEnvironmentVariable("EmailProcessor__FunctionKey");
+
+        if (string.IsNullOrWhiteSpace(functionUrl) || string.IsNullOrWhiteSpace(functionKey))
+        {
+            return StatusCode(500, new TriggerPropertyHubEmailProcessingResponse
+            {
+                Status = "error",
+                Message = "Email processor function configuration is missing (EmailProcessor__FunctionUrl / EmailProcessor__FunctionKey)."
+            });
+        }
+
+        var endpoint = functionUrl.Contains("?", StringComparison.Ordinal)
+            ? $"{functionUrl}&code={Uri.EscapeDataString(functionKey)}"
+            : $"{functionUrl}?code={Uri.EscapeDataString(functionKey)}";
+
+        var payload = new TriggerPropertyHubEmailProcessingRequest
+        {
+            MailboxUser = string.IsNullOrWhiteSpace(request.MailboxUser) ? null : request.MailboxUser.Trim(),
+            MaxEmails = request.MaxEmails
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+        var client = _httpClientFactory.CreateClient();
+        using var response = await client.SendAsync(httpRequest, HttpContext.RequestAborted);
+        var rawContent = await response.Content.ReadAsStringAsync(HttpContext.RequestAborted);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return StatusCode((int)response.StatusCode, new TriggerPropertyHubEmailProcessingResponse
+            {
+                Status = "error",
+                Message = $"Email processor function returned {(int)response.StatusCode}.",
+                ProcessingResult = rawContent
+            });
+        }
+
+        object resultPayload;
+        try
+        {
+            resultPayload = JsonSerializer.Deserialize<object>(rawContent) ?? rawContent;
+        }
+        catch
+        {
+            resultPayload = rawContent;
+        }
+
+        return Ok(new TriggerPropertyHubEmailProcessingResponse
+        {
+            Status = "ok",
+            Message = "Email processing trigger completed.",
+            ProcessingResult = resultPayload
+        });
     }
 
     private async Task<UserDto?> GetCurrentUserAsync()

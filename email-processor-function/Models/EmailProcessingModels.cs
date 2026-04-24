@@ -13,7 +13,10 @@ public class ProcessPropertyHubEmailsResponse
     public string FolderPath { get; set; } = "Inbox/Property Hub";
     public int FolderTotalItemCount { get; set; }
     public int FolderUnreadItemCount { get; set; }
-    public int ReturnedCount { get; set; }
+    public int EligibleCount { get; set; }
+    public int ProcessedCount { get; set; }
+    public int SkippedCompletedCount { get; set; }
+    public int UnclassifiedCount { get; set; }
     public List<EmailMessagePreview> Messages { get; set; } = new();
 }
 
@@ -24,4 +27,25 @@ public class EmailMessagePreview
     public string? From { get; set; }
     public DateTimeOffset? ReceivedDateTime { get; set; }
     public bool HasAttachments { get; set; }
+    public List<string> Categories { get; set; } = new();
+    public string ProcessingStatus { get; set; } = "processed";
+    public string ClassificationLabel { get; set; } = "Unclassified";
+    public double ClassificationScore { get; set; }
+    public string ClassificationExplainability { get; set; } = string.Empty;
+    public List<AttachmentPreview> Attachments { get; set; } = new();
+}
+
+public class AttachmentPreview
+{
+    public string Name { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public string ExtractionStatus { get; set; } = "not_processed";
+}
+
+public class ClassificationTemplate
+{
+    public int DocumentClassificationLabelId { get; set; }
+    public string ClassificationLabel { get; set; } = string.Empty;
+    public string? ClassificationDescription { get; set; }
+    public string ClassificationPrompt { get; set; } = string.Empty;
 }

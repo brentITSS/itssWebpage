@@ -87,6 +87,9 @@ const DocumentHub: React.FC = () => {
   const [labelSets, setLabelSets] = useState<DocumentLabelSetDto[]>([]);
   const [summarisationTemplates, setSummarisationTemplates] = useState<DocumentSummarisationTemplateDto[]>([]);
   const [extractionTemplates, setExtractionTemplates] = useState<DocumentExtractionTemplateDto[]>([]);
+  const [processingMailboxUser, setProcessingMailboxUser] = useState('');
+  const [processingMaxEmails, setProcessingMaxEmails] = useState(20);
+  const [emailProcessingResult, setEmailProcessingResult] = useState<Record<string, unknown> | string | null>(null);
 
   const getFriendlyError = useCallback((error: unknown): string => {
     const raw = error instanceof Error ? error.message : 'Unexpected error.';
@@ -587,18 +590,72 @@ const DocumentHub: React.FC = () => {
     appendTrainerFields([field]);
   };
 
+  const handleTriggerEmailProcessing = async () => {
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const response = await documentHubService.triggerPropertyHubEmailProcessing({
+        mailboxUser: processingMailboxUser.trim() || undefined,
+        maxEmails: Number.isFinite(processingMaxEmails) ? processingMaxEmails : undefined,
+      });
+      const result = response.processingResult;
+      setEmailProcessingResult(
+        typeof result === 'string' || (typeof result === 'object' && result !== null)
+          ? (result as Record<string, unknown> | string)
+          : null
+      );
+      setFeedback(response.message || 'Email processing completed.');
+    } catch (error) {
+      setFeedback(getFriendlyError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <section className="space-y-6">
+    <div className="space-y-6">
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Document Hub</h2>
         <p className="mt-1 text-sm text-slate-500">
           Configure global document classification, text summarisation, and entity extraction workflows.
         </p>
-        <p className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-          {setupHint}
-        </p>
+        <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">{setupHint}</div>
         {feedback && (
           <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">{feedback}</p>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Email Trigger (Inbox/Property Hub)</p>
+        <div className="mt-2 grid gap-2 md:grid-cols-[1fr_130px_auto]">
+          <input
+            value={processingMailboxUser}
+            onChange={(event) => setProcessingMailboxUser(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="Mailbox user override (optional)"
+          />
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={processingMaxEmails}
+            onChange={(event) => setProcessingMaxEmails(Number(event.target.value || 20))}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="Max emails"
+          />
+          <button
+            type="button"
+            onClick={handleTriggerEmailProcessing}
+            disabled={loading}
+            className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
+          >
+            {loading ? 'Processing...' : 'Process Property Hub Emails'}
+          </button>
+        </div>
+        {emailProcessingResult !== null && (
+          <pre className="mt-2 max-h-48 overflow-auto rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
+            {JSON.stringify(emailProcessingResult, null, 2)}
+          </pre>
         )}
       </div>
 
@@ -1151,7 +1208,7 @@ const DocumentHub: React.FC = () => {
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 };
 
