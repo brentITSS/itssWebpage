@@ -3,6 +3,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import {
+  DocumentClassificationTestResponse,
   DocumentClassificationSuggestionDto,
   DocumentExtractionPreviewResponse,
   DocumentExtractionSuggestedFieldDto,
@@ -56,6 +57,9 @@ const DocumentHub: React.FC = () => {
   );
   const [classificationFiles, setClassificationFiles] = useState<File[]>([]);
   const [classificationSuggestions, setClassificationSuggestions] = useState<DocumentClassificationSuggestionDto[]>([]);
+  const [classificationTestFile, setClassificationTestFile] = useState<File | null>(null);
+  const [classificationTestResult, setClassificationTestResult] = useState<DocumentClassificationTestResponse | null>(null);
+  const [classificationTestFeedback, setClassificationTestFeedback] = useState<string | null>(null);
   const [editingLabelSetId, setEditingLabelSetId] = useState<number | null>(null);
 
   const [summarisationName, setSummarisationName] = useState('');
@@ -390,6 +394,26 @@ const DocumentHub: React.FC = () => {
       setFeedback(`Generated ${suggestions.length} label suggestions.`);
     } catch (error) {
       setFeedback(getFriendlyError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRunClassificationTest = async () => {
+    if (!classificationTestFile) {
+      setClassificationTestFeedback('Upload a document file to test classification.');
+      return;
+    }
+
+    setLoading(true);
+    setFeedback(null);
+    setClassificationTestFeedback(null);
+    try {
+      const result = await documentHubService.testClassification(classificationTestFile);
+      setClassificationTestResult(result);
+      setClassificationTestFeedback(`Classification test complete for ${result.fileName}.`);
+    } catch (error) {
+      setClassificationTestFeedback(getFriendlyError(error));
     } finally {
       setLoading(false);
     }
@@ -1007,6 +1031,52 @@ const DocumentHub: React.FC = () => {
                 ))}
               </div>
             )}
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+              <p className="font-semibold text-slate-800">Test Classification</p>
+              <p className="mt-1 text-slate-600">
+                Upload any supported document and run a classification test against active labels to preview match score and
+                explainability.
+              </p>
+              <label className="mt-3 block">
+                <span className="text-[11px] font-medium text-slate-600">Test Document Upload</span>
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.csv,.json,.xml,.log,.md"
+                  onChange={(event) => setClassificationTestFile(event.target.files?.[0] ?? null)}
+                  className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleRunClassificationTest}
+                disabled={loading}
+                className="mt-3 inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-400"
+              >
+                {loading ? 'Testing...' : 'Test Classification'}
+              </button>
+              {classificationTestFeedback && (
+                <div className="mt-3 rounded border border-slate-200 bg-white p-2 text-[11px] text-slate-700">
+                  {classificationTestFeedback}
+                </div>
+              )}
+              {classificationTestResult && (
+                <div className="mt-3 rounded border border-indigo-100 bg-indigo-50 p-3 text-[11px] text-indigo-900">
+                  <p>
+                    <span className="font-semibold">Result:</span> {classificationTestResult.classificationLabel}
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-semibold">Description:</span>{' '}
+                    {classificationTestResult.classificationDescription?.trim() || 'No matching label description available.'}
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-semibold">Score:</span> {classificationTestResult.classificationScore}
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-semibold">Explainability:</span> {classificationTestResult.classificationExplainability}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

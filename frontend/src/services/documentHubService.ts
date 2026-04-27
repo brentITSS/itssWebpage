@@ -136,6 +136,16 @@ export interface DocumentClassificationSuggestionDto {
   textPreview: string;
 }
 
+export interface DocumentClassificationTestResponse {
+  fileName: string;
+  classificationLabel: string;
+  classificationDescription?: string;
+  classificationScore: number;
+  classificationExplainability: string;
+  documentClassificationLabelId?: number;
+  textPreview: string;
+}
+
 export interface DocumentSummarisationPreviewResponse {
   fileName: string;
   promptUsed: string;
@@ -279,6 +289,16 @@ export const documentHubService = {
     files.forEach((file) => formData.append('files', file));
 
     return await apiClient<DocumentClassificationSuggestionDto[]>('/document-hub/classification/suggest', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  testClassification: async (file: File): Promise<DocumentClassificationTestResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return await apiClient<DocumentClassificationTestResponse>('/document-hub/classification/test', {
       method: 'POST',
       body: formData,
     });

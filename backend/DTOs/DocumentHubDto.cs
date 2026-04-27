@@ -162,6 +162,17 @@ public class DocumentClassificationSuggestionDto
     public string TextPreview { get; set; } = string.Empty;
 }
 
+public class DocumentClassificationTestResponse
+{
+    public string FileName { get; set; } = string.Empty;
+    public string ClassificationLabel { get; set; } = "Unclassified";
+    public string? ClassificationDescription { get; set; }
+    public double ClassificationScore { get; set; }
+    public string ClassificationExplainability { get; set; } = string.Empty;
+    public int? DocumentClassificationLabelId { get; set; }
+    public string TextPreview { get; set; } = string.Empty;
+}
+
 public class DocumentSummarisationPreviewResponse
 {
     public string FileName { get; set; } = string.Empty;

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using backend.DTOs;
 using backend.Models;
 using backend.Services;
@@ -551,6 +552,47 @@ public class DocumentHubController : ControllerBase
         return Ok(results);
     }
 
+    [HttpPost("classification/test")]
+    public async Task<ActionResult<DocumentClassificationTestResponse>> TestClassification([FromForm] IFormFile file)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser)) return Forbid("Access denied: Property Hub access required.");
+
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { message = "A document file is required." });
+        }
+
+        var templates = await _context.DocumentClassificationLabels
+            .AsNoTracking()
+            .Include(x => x.DocumentLabelSet)
+            .Where(x => x.IsActive && x.DocumentLabelSet != null && x.DocumentLabelSet.IsActive)
+            .Select(x => new ClassificationTemplate
+            {
+                DocumentClassificationLabelId = x.DocumentClassificationLabelId,
+                ClassificationLabel = x.ClassificationLabel,
+                ClassificationDescription = x.ClassificationDescription,
+                ClassificationPrompt = x.ClassificationPrompt
+            })
+            .ToListAsync();
+
+        var extractedText = await ExtractTextAsync(file);
+        var consolidatedContent = $"File name: {file.FileName}\n\nContent:\n{extractedText}";
+        var (label, score, explainability, bestTemplate) = ClassifyAgainstTemplates(consolidatedContent, templates);
+
+        return Ok(new DocumentClassificationTestResponse
+        {
+            FileName = file.FileName,
+            ClassificationLabel = label,
+            ClassificationDescription = bestTemplate?.ClassificationDescription,
+            ClassificationScore = score,
+            ClassificationExplainability = explainability,
+            DocumentClassificationLabelId = bestTemplate?.DocumentClassificationLabelId,
+            TextPreview = extractedText.Length > 800 ? extractedText[..800] + "..." : extractedText
+        });
+    }
+
     [HttpPost("summarisation/preview")]
     public async Task<ActionResult<DocumentSummarisationPreviewResponse>> PreviewSummarisation([FromForm] IFormFile file, [FromForm] string prompt)
     {
@@ -820,13 +862,91 @@ public class DocumentHubController : ControllerBase
     private static async Task<string> ExtractTextAsync(IFormFile file)
     {
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (extension != ".pdf")
+        if (extension == ".pdf")
         {
-            return string.Empty;
+            await using var stream = file.OpenReadStream();
+            var text = DocumentHubAiHelper.ExtractTextFromPdf(stream);
+            return DocumentHubAiHelper.NormalizeWhitespace(text);
         }
 
-        await using var stream = file.OpenReadStream();
-        var text = DocumentHubAiHelper.ExtractTextFromPdf(stream);
-        return DocumentHubAiHelper.NormalizeWhitespace(text);
+        if (extension is ".txt" or ".csv" or ".json" or ".xml" or ".log" or ".md")
+        {
+            using var reader = new StreamReader(file.OpenReadStream());
+            var raw = await reader.ReadToEndAsync();
+            return DocumentHubAiHelper.NormalizeWhitespace(raw);
+        }
+
+        return string.Empty;
+    }
+
+    private static (string Label, double Score, string Explainability, ClassificationTemplate? BestTemplate) ClassifyAgainstTemplates(
+        string content,
+        List<ClassificationTemplate> templates)
+    {
+        if (templates.Count == 0 || string.IsNullOrWhiteSpace(content))
+        {
+            return ("Unclassified", 0, "No active classification templates or no usable content was available.", null);
+        }
+
+        var contentTokens = Tokenize(content);
+        if (contentTokens.Count == 0)
+        {
+            return ("Unclassified", 0, "Content did not contain enough meaningful tokens for template matching.", null);
+        }
+
+        ClassificationTemplate? bestTemplate = null;
+        double bestScore = 0;
+        var bestOverlapTerms = new List<string>();
+
+        foreach (var template in templates)
+        {
+            var templateText = $"{template.ClassificationLabel} {template.ClassificationDescription} {template.ClassificationPrompt}";
+            var templateTokens = Tokenize(templateText);
+            if (templateTokens.Count == 0)
+            {
+                continue;
+            }
+
+            var overlapTerms = templateTokens.Intersect(contentTokens, StringComparer.OrdinalIgnoreCase).ToList();
+            var overlap = overlapTerms.Count;
+            var score = (double)overlap / Math.Max(1, templateTokens.Count);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestTemplate = template;
+                bestOverlapTerms = overlapTerms.Take(8).ToList();
+            }
+        }
+
+        if (bestTemplate == null || bestScore < 0.08)
+        {
+            var explanation = bestTemplate == null
+                ? "No template produced a meaningful lexical overlap with the document content."
+                : $"Best template overlap score {Math.Round(bestScore, 4)} is below threshold 0.08. " +
+                  $"Closest template was '{bestTemplate.ClassificationLabel}' with terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}.";
+            return ("Unclassified", Math.Round(bestScore, 4), explanation, null);
+        }
+
+        var explainability =
+            $"Matched template '{bestTemplate.ClassificationLabel}' with score {Math.Round(bestScore, 4)} " +
+            $"using overlap terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}. " +
+            "Score is computed as overlap terms divided by template token count.";
+
+        return (bestTemplate.ClassificationLabel, Math.Round(bestScore, 4), explainability, bestTemplate);
+    }
+
+    private static HashSet<string> Tokenize(string value)
+    {
+        return Regex.Matches(value.ToLowerInvariant(), "[a-z0-9]{3,}")
+            .Select(m => m.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private sealed class ClassificationTemplate
+    {
+        public int DocumentClassificationLabelId { get; set; }
+        public string ClassificationLabel { get; set; } = string.Empty;
+        public string? ClassificationDescription { get; set; }
+        public string ClassificationPrompt { get; set; } = string.Empty;
     }
 }
