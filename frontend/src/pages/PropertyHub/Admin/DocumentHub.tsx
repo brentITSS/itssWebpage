@@ -398,7 +398,9 @@ const DocumentHub: React.FC = () => {
   const handleEditLabelSet = (labelSet: DocumentLabelSetDto) => {
     setEditingLabelSetId(labelSet.documentLabelSetId);
     setLabelSetName(labelSet.labelSetName ?? '');
-    setLabelSetDescription(labelSet.labelSetDescription ?? '');
+    const fallbackDescription =
+      labelSet.labels.find((label) => (label.classificationDescription ?? '').trim().length > 0)?.classificationDescription ?? '';
+    setLabelSetDescription((labelSet.labelSetDescription ?? '').trim() || fallbackDescription);
     setClassificationPrompt(
       labelSet.labels[0]?.classificationPrompt?.trim() ||
         'Classify this document into the closest label based on both text and visual layout.'
