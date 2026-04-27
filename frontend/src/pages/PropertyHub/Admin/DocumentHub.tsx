@@ -396,24 +396,24 @@ const DocumentHub: React.FC = () => {
   };
 
   const handleEditLabelSet = (labelSet: DocumentLabelSetDto) => {
+    const mappedSuggestions = (labelSet.labels ?? []).map((label) => ({
+      fileName: label.seedDocumentName ?? 'Saved label',
+      suggestedLabel: label.classificationLabel ?? '',
+      suggestedDescription: label.classificationDescription ?? '',
+      suggestedPrompt: label.classificationPrompt ?? '',
+      textPreview: '',
+    }));
+    const fallbackDescriptionFromLabels =
+      mappedSuggestions.find((item) => item.suggestedDescription.trim().length > 0)?.suggestedDescription ?? '';
+
     setEditingLabelSetId(labelSet.documentLabelSetId);
     setLabelSetName(labelSet.labelSetName ?? '');
-    const fallbackDescription =
-      labelSet.labels.find((label) => (label.classificationDescription ?? '').trim().length > 0)?.classificationDescription ?? '';
-    setLabelSetDescription((labelSet.labelSetDescription ?? '').trim() || fallbackDescription);
+    setLabelSetDescription((labelSet.labelSetDescription ?? '').trim() || fallbackDescriptionFromLabels);
     setClassificationPrompt(
       labelSet.labels[0]?.classificationPrompt?.trim() ||
         'Classify this document into the closest label based on both text and visual layout.'
     );
-    setClassificationSuggestions(
-      (labelSet.labels ?? []).map((label) => ({
-        fileName: label.seedDocumentName ?? 'Saved label',
-        suggestedLabel: label.classificationLabel ?? '',
-        suggestedDescription: label.classificationDescription ?? '',
-        suggestedPrompt: label.classificationPrompt ?? '',
-        textPreview: '',
-      }))
-    );
+    setClassificationSuggestions(mappedSuggestions);
     setFeedback(`Loaded "${labelSet.labelSetName}" into the form for editing.`);
   };
 
