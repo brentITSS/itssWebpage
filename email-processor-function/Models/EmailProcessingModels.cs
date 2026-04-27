@@ -49,3 +49,22 @@ public class ClassificationTemplate
     public string? ClassificationDescription { get; set; }
     public string ClassificationPrompt { get; set; } = string.Empty;
 }
+
+public class WorkflowRule
+{
+    public int DocumentWorkflowRuleId { get; set; }
+    public string WorkflowName { get; set; } = string.Empty;
+    public string ClassificationLabel { get; set; } = string.Empty;
+    public double MinimumScore { get; set; }
+    public int Priority { get; set; }
+    public bool StopOnFailure { get; set; } = true;
+    public bool IsActive { get; set; } = true;
+    public List<WorkflowStep> Steps { get; set; } = new();
+}
+
+public class WorkflowStep
+{
+    public int StepOrder { get; set; }
+    public string StepType { get; set; } = string.Empty;
+    public string? StepConfigJson { get; set; }
+}

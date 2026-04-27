@@ -465,6 +465,325 @@ public class DocumentHubController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("workflow-rules")]
+    public async Task<ActionResult<List<DocumentWorkflowRuleDto>>> GetWorkflowRules()
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser)) return Forbid("Access denied: Property Hub access required.");
+
+        var rules = await _context.DocumentWorkflowRules
+            .AsNoTracking()
+            .Include(x => x.Steps)
+            .OrderBy(x => x.Priority)
+            .ThenBy(x => x.DocumentWorkflowRuleId)
+            .ToListAsync();
+
+        return Ok(rules.Select(MapWorkflowRule).ToList());
+    }
+
+    [HttpPost("workflow-rules")]
+    public async Task<ActionResult<DocumentWorkflowRuleDto>> CreateWorkflowRule([FromBody] CreateDocumentWorkflowRuleRequest request)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!_authService.HasPropertyHubAdminAccess(currentUser)) return Forbid("Access denied: Property Hub Admin permission required.");
+
+        if (string.IsNullOrWhiteSpace(request.WorkflowName) || string.IsNullOrWhiteSpace(request.ClassificationLabel))
+        {
+            return BadRequest(new { message = "WorkflowName and ClassificationLabel are required." });
+        }
+
+        if (request.MinimumScore is < 0 or > 1)
+        {
+            return BadRequest(new { message = "MinimumScore must be between 0 and 1." });
+        }
+
+        var userId = GetCurrentUserId();
+        var rule = new DocumentWorkflowRule
+        {
+            WorkflowName = request.WorkflowName.Trim(),
+            ClassificationLabel = request.ClassificationLabel.Trim(),
+            MinimumScore = request.MinimumScore,
+            Priority = request.Priority,
+            StopOnFailure = request.StopOnFailure,
+            IsActive = true,
+            CreatedByUserId = userId,
+            CreatedDate = DateTime.UtcNow
+        };
+
+        var steps = request.Steps
+            .Where(s => !string.IsNullOrWhiteSpace(s.StepType))
+            .OrderBy(s => s.StepOrder)
+            .Select((s, idx) => new DocumentWorkflowStep
+            {
+                StepOrder = s.StepOrder > 0 ? s.StepOrder : idx + 1,
+                StepType = s.StepType.Trim(),
+                StepConfigJson = s.StepConfigJson,
+                IsActive = s.IsActive,
+                CreatedByUserId = userId,
+                CreatedDate = DateTime.UtcNow
+            })
+            .ToList();
+        rule.Steps = steps;
+
+        _context.DocumentWorkflowRules.Add(rule);
+        await _context.SaveChangesAsync();
+
+        var created = await _context.DocumentWorkflowRules
+            .AsNoTracking()
+            .Include(x => x.Steps)
+            .FirstAsync(x => x.DocumentWorkflowRuleId == rule.DocumentWorkflowRuleId);
+
+        return Ok(MapWorkflowRule(created));
+    }
+
+    [HttpPut("workflow-rules/{ruleId:int}")]
+    public async Task<ActionResult<DocumentWorkflowRuleDto>> UpdateWorkflowRule(int ruleId, [FromBody] UpdateDocumentWorkflowRuleRequest request)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!_authService.HasPropertyHubAdminAccess(currentUser)) return Forbid("Access denied: Property Hub Admin permission required.");
+
+        var rule = await _context.DocumentWorkflowRules
+            .Include(x => x.Steps)
+            .FirstOrDefaultAsync(x => x.DocumentWorkflowRuleId == ruleId);
+        if (rule == null)
+        {
+            return NotFound(new { message = "Workflow rule not found." });
+        }
+
+        if (request.WorkflowName != null)
+        {
+            var name = request.WorkflowName.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest(new { message = "WorkflowName cannot be empty." });
+            }
+            rule.WorkflowName = name;
+        }
+
+        if (request.ClassificationLabel != null)
+        {
+            var label = request.ClassificationLabel.Trim();
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                return BadRequest(new { message = "ClassificationLabel cannot be empty." });
+            }
+            rule.ClassificationLabel = label;
+        }
+
+        if (request.MinimumScore.HasValue)
+        {
+            if (request.MinimumScore.Value is < 0 or > 1)
+            {
+                return BadRequest(new { message = "MinimumScore must be between 0 and 1." });
+            }
+            rule.MinimumScore = request.MinimumScore.Value;
+        }
+
+        if (request.Priority.HasValue) rule.Priority = request.Priority.Value;
+        if (request.StopOnFailure.HasValue) rule.StopOnFailure = request.StopOnFailure.Value;
+        if (request.IsActive.HasValue) rule.IsActive = request.IsActive.Value;
+
+        if (request.Steps != null)
+        {
+            _context.DocumentWorkflowSteps.RemoveRange(rule.Steps);
+            rule.Steps = request.Steps
+                .Where(s => !string.IsNullOrWhiteSpace(s.StepType))
+                .OrderBy(s => s.StepOrder)
+                .Select((s, idx) => new DocumentWorkflowStep
+                {
+                    DocumentWorkflowRuleId = ruleId,
+                    StepOrder = s.StepOrder > 0 ? s.StepOrder : idx + 1,
+                    StepType = s.StepType.Trim(),
+                    StepConfigJson = s.StepConfigJson,
+                    IsActive = s.IsActive,
+                    CreatedByUserId = GetCurrentUserId(),
+                    CreatedDate = DateTime.UtcNow
+                })
+                .ToList();
+        }
+
+        rule.UpdatedByUserId = GetCurrentUserId();
+        rule.UpdatedDate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        var updated = await _context.DocumentWorkflowRules
+            .AsNoTracking()
+            .Include(x => x.Steps)
+            .FirstAsync(x => x.DocumentWorkflowRuleId == ruleId);
+
+        return Ok(MapWorkflowRule(updated));
+    }
+
+    [HttpDelete("workflow-rules/{ruleId:int}")]
+    public async Task<ActionResult> DeleteWorkflowRule(int ruleId)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!_authService.HasPropertyHubAdminAccess(currentUser)) return Forbid("Access denied: Property Hub Admin permission required.");
+
+        var rule = await _context.DocumentWorkflowRules
+            .Include(x => x.Steps)
+            .FirstOrDefaultAsync(x => x.DocumentWorkflowRuleId == ruleId);
+        if (rule == null)
+        {
+            return NotFound(new { message = "Workflow rule not found." });
+        }
+
+        if (rule.Steps.Count > 0)
+        {
+            _context.DocumentWorkflowSteps.RemoveRange(rule.Steps);
+        }
+        _context.DocumentWorkflowRules.Remove(rule);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpPost("workflow-rules/{ruleId:int}/test")]
+    public async Task<ActionResult<DocumentWorkflowRuleTestResponse>> TestWorkflowRule(int ruleId, [FromForm] IFormFile file)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!_authService.HasPropertyHubAdminAccess(currentUser)) return Forbid("Access denied: Property Hub Admin permission required.");
+
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { message = "A document file is required." });
+        }
+
+        var rule = await _context.DocumentWorkflowRules
+            .AsNoTracking()
+            .Include(x => x.Steps)
+            .FirstOrDefaultAsync(x => x.DocumentWorkflowRuleId == ruleId);
+        if (rule == null)
+        {
+            return NotFound(new { message = "Workflow rule not found." });
+        }
+
+        var templates = await _context.DocumentClassificationLabels
+            .AsNoTracking()
+            .Include(x => x.DocumentLabelSet)
+            .Where(x => x.IsActive && x.DocumentLabelSet != null && x.DocumentLabelSet.IsActive)
+            .Select(x => new ClassificationTemplate
+            {
+                DocumentClassificationLabelId = x.DocumentClassificationLabelId,
+                ClassificationLabel = x.ClassificationLabel,
+                ClassificationDescription = x.ClassificationDescription,
+                ClassificationPrompt = x.ClassificationPrompt
+            })
+            .ToListAsync();
+
+        var extractedText = await ExtractTextAsync(file);
+        var consolidatedContent = $"File name: {file.FileName}\n\nContent:\n{extractedText}";
+        var (label, score, explainability, _) = ClassifyAgainstTemplates(consolidatedContent, templates);
+        var eligible =
+            rule.IsActive &&
+            score >= rule.MinimumScore &&
+            string.Equals(rule.ClassificationLabel, label, StringComparison.OrdinalIgnoreCase);
+
+        var contextFields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var stepResults = new List<DocumentWorkflowStepTestResultDto>();
+        foreach (var step in rule.Steps.Where(s => s.IsActive).OrderBy(s => s.StepOrder))
+        {
+            if (!eligible)
+            {
+                stepResults.Add(new DocumentWorkflowStepTestResultDto
+                {
+                    StepOrder = step.StepOrder,
+                    StepType = step.StepType,
+                    Status = "skipped",
+                    Details = "Rule is not eligible for this document classification."
+                });
+                continue;
+            }
+
+            var stepType = step.StepType.Trim().ToLowerInvariant();
+            if (stepType == "runextraction")
+            {
+                var config = ParseJsonObject(step.StepConfigJson);
+                var extractionTemplateId = GetConfigInt(config, "extractionTemplateId");
+                if (!extractionTemplateId.HasValue || extractionTemplateId.Value <= 0)
+                {
+                    stepResults.Add(new DocumentWorkflowStepTestResultDto
+                    {
+                        StepOrder = step.StepOrder,
+                        StepType = step.StepType,
+                        Status = "error",
+                        Details = "Missing extractionTemplateId in step config."
+                    });
+                    continue;
+                }
+
+                var templateFields = await _context.DocumentExtractionFields
+                    .AsNoTracking()
+                    .Where(f => f.IsActive && f.DocumentExtractionTemplateId == extractionTemplateId.Value)
+                    .OrderBy(f => f.DocumentExtractionFieldId)
+                    .Select(f => new { f.FieldName, f.ExampleValue })
+                    .ToListAsync();
+                var extracted = ExtractFieldsFromContent(
+                    consolidatedContent,
+                    templateFields.Select(f => (f.FieldName, f.ExampleValue)).ToList());
+                foreach (var kv in extracted)
+                {
+                    contextFields[kv.Key] = kv.Value;
+                }
+
+                stepResults.Add(new DocumentWorkflowStepTestResultDto
+                {
+                    StepOrder = step.StepOrder,
+                    StepType = step.StepType,
+                    Status = "would_run",
+                    Details = $"Would extract {extracted.Count} field(s): {string.Join(", ", extracted.Keys)}"
+                });
+                continue;
+            }
+
+            if (stepType == "createjournallog" || stepType == "createcontactlog")
+            {
+                var config = ParseJsonObject(step.StepConfigJson);
+                var template =
+                    GetConfigString(config, stepType == "createjournallog" ? "descriptionTemplate" : "notesTemplate") ??
+                    string.Empty;
+                var rendered = RenderWorkflowTemplate(template, label, score, file.FileName, contextFields);
+                stepResults.Add(new DocumentWorkflowStepTestResultDto
+                {
+                    StepOrder = step.StepOrder,
+                    StepType = step.StepType,
+                    Status = "would_run",
+                    Details = string.IsNullOrWhiteSpace(rendered)
+                        ? "Would execute create log step with current config."
+                        : $"Rendered template preview: {rendered}"
+                });
+                continue;
+            }
+
+            stepResults.Add(new DocumentWorkflowStepTestResultDto
+            {
+                StepOrder = step.StepOrder,
+                StepType = step.StepType,
+                Status = "would_run",
+                Details = $"Would execute step '{step.StepType}'."
+            });
+        }
+
+        return Ok(new DocumentWorkflowRuleTestResponse
+        {
+            DocumentWorkflowRuleId = rule.DocumentWorkflowRuleId,
+            WorkflowName = rule.WorkflowName,
+            ClassificationLabel = label,
+            ClassificationScore = score,
+            RuleEligible = eligible,
+            EligibilityReason = eligible
+                ? $"Matched label '{label}' at score {score} (threshold {rule.MinimumScore})."
+                : $"Classified as '{label}' with score {score}; rule requires label '{rule.ClassificationLabel}' and score >= {rule.MinimumScore}. Explainability: {explainability}",
+            Steps = stepResults
+        });
+    }
+
     [HttpPost("extraction-templates/{templateId:int}/fields")]
     public async Task<ActionResult<DocumentExtractionFieldDto>> CreateExtractionField(int templateId, [FromBody] CreateDocumentExtractionFieldRequest request)
     {
@@ -863,6 +1182,169 @@ public class DocumentHubController : ControllerBase
             BoundingBoxJson = x.BoundingBoxJson,
             IsActive = x.IsActive
         };
+    }
+
+    private static DocumentWorkflowRuleDto MapWorkflowRule(DocumentWorkflowRule x)
+    {
+        return new DocumentWorkflowRuleDto
+        {
+            DocumentWorkflowRuleId = x.DocumentWorkflowRuleId,
+            WorkflowName = x.WorkflowName,
+            ClassificationLabel = x.ClassificationLabel,
+            MinimumScore = x.MinimumScore,
+            Priority = x.Priority,
+            StopOnFailure = x.StopOnFailure,
+            IsActive = x.IsActive,
+            CreatedDate = x.CreatedDate,
+            Steps = x.Steps
+                .OrderBy(s => s.StepOrder)
+                .Select(MapWorkflowStep)
+                .ToList()
+        };
+    }
+
+    private static DocumentWorkflowStepDto MapWorkflowStep(DocumentWorkflowStep x)
+    {
+        return new DocumentWorkflowStepDto
+        {
+            DocumentWorkflowStepId = x.DocumentWorkflowStepId,
+            DocumentWorkflowRuleId = x.DocumentWorkflowRuleId,
+            StepOrder = x.StepOrder,
+            StepType = x.StepType,
+            StepConfigJson = x.StepConfigJson,
+            IsActive = x.IsActive
+        };
+    }
+
+    private static Dictionary<string, object?> ParseJsonObject(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        try
+        {
+            var dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(raw);
+            return dict ?? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static int? GetConfigInt(Dictionary<string, object?> config, string key)
+    {
+        if (!config.TryGetValue(key, out var value) || value == null)
+        {
+            return null;
+        }
+
+        if (value is JsonElement jsonEl)
+        {
+            if (jsonEl.ValueKind == JsonValueKind.Number && jsonEl.TryGetInt32(out var asInt))
+            {
+                return asInt;
+            }
+            if (jsonEl.ValueKind == JsonValueKind.String && int.TryParse(jsonEl.GetString(), out var parsed))
+            {
+                return parsed;
+            }
+        }
+        else if (int.TryParse(value.ToString(), out var fallback))
+        {
+            return fallback;
+        }
+
+        return null;
+    }
+
+    private static string? GetConfigString(Dictionary<string, object?> config, string key)
+    {
+        if (!config.TryGetValue(key, out var value) || value == null)
+        {
+            return null;
+        }
+
+        if (value is JsonElement jsonEl)
+        {
+            return jsonEl.ValueKind == JsonValueKind.String ? jsonEl.GetString() : jsonEl.ToString();
+        }
+
+        return value.ToString();
+    }
+
+    private static Dictionary<string, string> ExtractFieldsFromContent(
+        string content,
+        List<(string FieldName, string? ExampleValue)> fields)
+    {
+        var extracted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in fields)
+        {
+            var token = NormalizeFieldToken(field.FieldName);
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                continue;
+            }
+
+            var pattern = $@"(?im)^\s*{Regex.Escape(field.FieldName)}\s*[:\-]\s*(.+)$";
+            var match = Regex.Match(content, pattern);
+            if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+            {
+                extracted[token] = match.Groups[1].Value.Trim();
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(field.ExampleValue))
+            {
+                var idx = content.IndexOf(field.ExampleValue, StringComparison.OrdinalIgnoreCase);
+                if (idx >= 0)
+                {
+                    extracted[token] = field.ExampleValue.Trim();
+                }
+            }
+        }
+
+        return extracted;
+    }
+
+    private static string RenderWorkflowTemplate(
+        string template,
+        string classificationLabel,
+        double classificationScore,
+        string fileName,
+        IReadOnlyDictionary<string, string> fields)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            return string.Empty;
+        }
+
+        var rendered = template
+            .Replace("{classificationLabel}", classificationLabel, StringComparison.OrdinalIgnoreCase)
+            .Replace("{classificationScore}", classificationScore.ToString("0.####"), StringComparison.OrdinalIgnoreCase)
+            .Replace("{subject}", fileName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{from}", "test@local", StringComparison.OrdinalIgnoreCase)
+            .Replace("{receivedDate}", DateTime.UtcNow.ToString("u"), StringComparison.OrdinalIgnoreCase);
+
+        rendered = Regex.Replace(rendered, @"\{field:([a-zA-Z0-9_\- ]+)\}", match =>
+        {
+            var key = NormalizeFieldToken(match.Groups[1].Value);
+            return fields.TryGetValue(key, out var value) ? value : string.Empty;
+        });
+
+        rendered = rendered.Replace(
+            "{extractionJson}",
+            JsonSerializer.Serialize(fields),
+            StringComparison.OrdinalIgnoreCase);
+
+        return rendered;
+    }
+
+    private static string NormalizeFieldToken(string value)
+    {
+        return Regex.Replace(value.ToLowerInvariant(), @"[^a-z0-9]+", "_").Trim('_');
     }
 
     private static async Task<string> ExtractTextAsync(IFormFile file)

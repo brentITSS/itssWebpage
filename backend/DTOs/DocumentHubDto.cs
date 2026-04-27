@@ -213,3 +213,74 @@ public class TriggerPropertyHubEmailProcessingResponse
     public string Message { get; set; } = string.Empty;
     public object? ProcessingResult { get; set; }
 }
+
+public class DocumentWorkflowStepDto
+{
+    public int DocumentWorkflowStepId { get; set; }
+    public int DocumentWorkflowRuleId { get; set; }
+    public int StepOrder { get; set; }
+    public string StepType { get; set; } = string.Empty;
+    public string? StepConfigJson { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class DocumentWorkflowRuleDto
+{
+    public int DocumentWorkflowRuleId { get; set; }
+    public string WorkflowName { get; set; } = string.Empty;
+    public string ClassificationLabel { get; set; } = string.Empty;
+    public double MinimumScore { get; set; }
+    public int Priority { get; set; }
+    public bool StopOnFailure { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public List<DocumentWorkflowStepDto> Steps { get; set; } = new();
+}
+
+public class UpsertDocumentWorkflowStepRequest
+{
+    public int StepOrder { get; set; }
+    public string StepType { get; set; } = string.Empty;
+    public string? StepConfigJson { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public class CreateDocumentWorkflowRuleRequest
+{
+    public string WorkflowName { get; set; } = string.Empty;
+    public string ClassificationLabel { get; set; } = string.Empty;
+    public double MinimumScore { get; set; } = 0.28;
+    public int Priority { get; set; } = 100;
+    public bool StopOnFailure { get; set; } = true;
+    public List<UpsertDocumentWorkflowStepRequest> Steps { get; set; } = new();
+}
+
+public class UpdateDocumentWorkflowRuleRequest
+{
+    public string? WorkflowName { get; set; }
+    public string? ClassificationLabel { get; set; }
+    public double? MinimumScore { get; set; }
+    public int? Priority { get; set; }
+    public bool? StopOnFailure { get; set; }
+    public bool? IsActive { get; set; }
+    public List<UpsertDocumentWorkflowStepRequest>? Steps { get; set; }
+}
+
+public class DocumentWorkflowStepTestResultDto
+{
+    public int StepOrder { get; set; }
+    public string StepType { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Details { get; set; } = string.Empty;
+}
+
+public class DocumentWorkflowRuleTestResponse
+{
+    public int DocumentWorkflowRuleId { get; set; }
+    public string WorkflowName { get; set; } = string.Empty;
+    public string ClassificationLabel { get; set; } = string.Empty;
+    public double ClassificationScore { get; set; }
+    public bool RuleEligible { get; set; }
+    public string EligibilityReason { get; set; } = string.Empty;
+    public List<DocumentWorkflowStepTestResultDto> Steps { get; set; } = new();
+}

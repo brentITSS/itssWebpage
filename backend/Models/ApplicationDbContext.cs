@@ -64,6 +64,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<DocumentExtractionTemplate> DocumentExtractionTemplates { get; set; }
     public DbSet<DocumentExtractionField> DocumentExtractionFields { get; set; }
     public DbSet<DocumentCorrectionFeedback> DocumentCorrectionFeedback { get; set; }
+    public DbSet<DocumentWorkflowRule> DocumentWorkflowRules { get; set; }
+    public DbSet<DocumentWorkflowStep> DocumentWorkflowSteps { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

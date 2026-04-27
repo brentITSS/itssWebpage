@@ -242,3 +242,84 @@ public class DocumentCorrectionFeedback
     [Column("CreatedDate")]
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 }
+
+[Table("tbldocumentworkflowrule")]
+public class DocumentWorkflowRule
+{
+    [Key]
+    [Column("DocumentWorkflowRuleId")]
+    public int DocumentWorkflowRuleId { get; set; }
+
+    [Column("WorkflowName")]
+    [MaxLength(200)]
+    public string WorkflowName { get; set; } = string.Empty;
+
+    [Column("ClassificationLabel")]
+    [MaxLength(120)]
+    public string ClassificationLabel { get; set; } = string.Empty;
+
+    [Column("MinimumScore")]
+    public double MinimumScore { get; set; } = 0.28;
+
+    [Column("Priority")]
+    public int Priority { get; set; } = 100;
+
+    [Column("StopOnFailure")]
+    public bool StopOnFailure { get; set; } = true;
+
+    [Column("IsActive")]
+    public bool IsActive { get; set; } = true;
+
+    [Column("CreatedByUserId")]
+    public int? CreatedByUserId { get; set; }
+
+    [Column("CreatedDate")]
+    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+
+    [Column("UpdatedByUserId")]
+    public int? UpdatedByUserId { get; set; }
+
+    [Column("UpdatedDate")]
+    public DateTime? UpdatedDate { get; set; }
+
+    public virtual ICollection<DocumentWorkflowStep> Steps { get; set; } = new List<DocumentWorkflowStep>();
+}
+
+[Table("tbldocumentworkflowstep")]
+public class DocumentWorkflowStep
+{
+    [Key]
+    [Column("DocumentWorkflowStepId")]
+    public int DocumentWorkflowStepId { get; set; }
+
+    [Column("DocumentWorkflowRuleId")]
+    public int DocumentWorkflowRuleId { get; set; }
+
+    [Column("StepOrder")]
+    public int StepOrder { get; set; }
+
+    [Column("StepType")]
+    [MaxLength(80)]
+    public string StepType { get; set; } = string.Empty;
+
+    [Column("StepConfigJson")]
+    public string? StepConfigJson { get; set; }
+
+    [Column("IsActive")]
+    public bool IsActive { get; set; } = true;
+
+    [Column("CreatedByUserId")]
+    public int? CreatedByUserId { get; set; }
+
+    [Column("CreatedDate")]
+    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+
+    [Column("UpdatedByUserId")]
+    public int? UpdatedByUserId { get; set; }
+
+    [Column("UpdatedDate")]
+    public DateTime? UpdatedDate { get; set; }
+
+    [ForeignKey(nameof(DocumentWorkflowRuleId))]
+    public virtual DocumentWorkflowRule? Rule { get; set; }
+}

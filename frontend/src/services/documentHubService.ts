@@ -181,6 +181,70 @@ export interface TriggerPropertyHubEmailProcessingResponse {
   processingResult?: unknown;
 }
 
+export interface DocumentWorkflowStepDto {
+  documentWorkflowStepId: number;
+  documentWorkflowRuleId: number;
+  stepOrder: number;
+  stepType: string;
+  stepConfigJson?: string;
+  isActive: boolean;
+}
+
+export interface DocumentWorkflowRuleDto {
+  documentWorkflowRuleId: number;
+  workflowName: string;
+  classificationLabel: string;
+  minimumScore: number;
+  priority: number;
+  stopOnFailure: boolean;
+  isActive: boolean;
+  createdDate: string;
+  steps: DocumentWorkflowStepDto[];
+}
+
+export interface UpsertDocumentWorkflowStepRequest {
+  stepOrder: number;
+  stepType: string;
+  stepConfigJson?: string;
+  isActive?: boolean;
+}
+
+export interface CreateDocumentWorkflowRuleRequest {
+  workflowName: string;
+  classificationLabel: string;
+  minimumScore: number;
+  priority: number;
+  stopOnFailure: boolean;
+  steps: UpsertDocumentWorkflowStepRequest[];
+}
+
+export interface UpdateDocumentWorkflowRuleRequest {
+  workflowName?: string;
+  classificationLabel?: string;
+  minimumScore?: number;
+  priority?: number;
+  stopOnFailure?: boolean;
+  isActive?: boolean;
+  steps?: UpsertDocumentWorkflowStepRequest[];
+}
+
+export interface DocumentWorkflowStepTestResultDto {
+  stepOrder: number;
+  stepType: string;
+  status: string;
+  details: string;
+}
+
+export interface DocumentWorkflowRuleTestResponse {
+  documentWorkflowRuleId: number;
+  workflowName: string;
+  classificationLabel: string;
+  classificationScore: number;
+  ruleEligible: boolean;
+  eligibilityReason: string;
+  steps: DocumentWorkflowStepTestResultDto[];
+}
+
 export const documentHubService = {
   getLabelSets: async (): Promise<DocumentLabelSetDto[]> => {
     return await apiClient<DocumentLabelSetDto[]>('/document-hub/label-sets');
@@ -340,6 +404,43 @@ export const documentHubService = {
     return await apiClient<TriggerPropertyHubEmailProcessingResponse>('/document-hub/email-processing/property-hub/trigger', {
       method: 'POST',
       body: JSON.stringify(request),
+    });
+  },
+
+  getWorkflowRules: async (): Promise<DocumentWorkflowRuleDto[]> => {
+    return await apiClient<DocumentWorkflowRuleDto[]>('/document-hub/workflow-rules');
+  },
+
+  createWorkflowRule: async (request: CreateDocumentWorkflowRuleRequest): Promise<DocumentWorkflowRuleDto> => {
+    return await apiClient<DocumentWorkflowRuleDto>('/document-hub/workflow-rules', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  updateWorkflowRule: async (
+    ruleId: number,
+    request: UpdateDocumentWorkflowRuleRequest
+  ): Promise<DocumentWorkflowRuleDto> => {
+    return await apiClient<DocumentWorkflowRuleDto>(`/document-hub/workflow-rules/${ruleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  deleteWorkflowRule: async (ruleId: number): Promise<void> => {
+    await apiClient<void>(`/document-hub/workflow-rules/${ruleId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  testWorkflowRule: async (ruleId: number, file: File): Promise<DocumentWorkflowRuleTestResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return await apiClient<DocumentWorkflowRuleTestResponse>(`/document-hub/workflow-rules/${ruleId}/test`, {
+      method: 'POST',
+      body: formData,
     });
   },
 };

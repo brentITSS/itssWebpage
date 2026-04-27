@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Azure.Identity;
 using DocumentFormat.OpenXml.Packaging;
@@ -8,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
+using Microsoft.Graph.Users.Item.Messages.Item.Move;
 using MimeKit;
 using MsgReader.Outlook;
 using UglyToad.PdfPig;
@@ -54,6 +57,7 @@ public class GraphEmailReader : IGraphEmailReader
 
         var maxEmails = Math.Clamp(request.MaxEmails ?? 20, 1, 100);
         var templates = await LoadClassificationTemplatesAsync(cancellationToken);
+        var workflowRules = await LoadWorkflowRulesAsync(cancellationToken);
 
         var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
         var graphClient = new GraphServiceClient(credential, new[] { "https://graph.microsoft.com/.default" });
@@ -123,6 +127,17 @@ public class GraphEmailReader : IGraphEmailReader
                 unclassifiedCount++;
             }
 
+            var postActions = await ExecuteWorkflowAsync(
+                graphClient,
+                mailboxUser,
+                propertyHubFolder.Id,
+                detailedMessage,
+                consolidatedContent,
+                classification.Label,
+                classification.Score,
+                workflowRules,
+                cancellationToken);
+
             processedPreviews.Add(new EmailMessagePreview
             {
                 MessageId = detailedMessage.Id ?? string.Empty,
@@ -131,7 +146,7 @@ public class GraphEmailReader : IGraphEmailReader
                 ReceivedDateTime = detailedMessage.ReceivedDateTime,
                 HasAttachments = detailedMessage.HasAttachments ?? false,
                 Categories = detailedMessage.Categories?.ToList() ?? new List<string>(),
-                ProcessingStatus = "processed",
+                ProcessingStatus = postActions,
                 ClassificationLabel = classification.Label,
                 ClassificationScore = classification.Score,
                 ClassificationExplainability = classification.Explainability,
@@ -188,6 +203,364 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         return results;
+    }
+
+    private async Task<List<WorkflowRule>> LoadWorkflowRulesAsync(CancellationToken cancellationToken)
+    {
+        var connectionString = GetRequired("ConnectionStrings:DefaultConnection", "ConnectionStrings__DefaultConnection");
+        var rules = new Dictionary<int, WorkflowRule>();
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT
+                r.DocumentWorkflowRuleId,
+                r.WorkflowName,
+                r.ClassificationLabel,
+                r.MinimumScore,
+                r.Priority,
+                r.StopOnFailure,
+                r.IsActive,
+                s.StepOrder,
+                s.StepType,
+                s.StepConfigJson,
+                s.IsActive
+            FROM tbldocumentworkflowrule r
+            LEFT JOIN tbldocumentworkflowstep s
+                ON s.DocumentWorkflowRuleId = r.DocumentWorkflowRuleId
+            WHERE r.IsActive = 1
+            ORDER BY r.Priority ASC, r.DocumentWorkflowRuleId ASC, s.StepOrder ASC
+            """;
+
+        await using var command = new SqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var ruleId = reader.GetInt32(0);
+            if (!rules.TryGetValue(ruleId, out var rule))
+            {
+                rule = new WorkflowRule
+                {
+                    DocumentWorkflowRuleId = ruleId,
+                    WorkflowName = reader.GetString(1),
+                    ClassificationLabel = reader.GetString(2),
+                    MinimumScore = reader.IsDBNull(3) ? 0.28 : reader.GetDouble(3),
+                    Priority = reader.IsDBNull(4) ? 100 : reader.GetInt32(4),
+                    StopOnFailure = !reader.IsDBNull(5) && reader.GetBoolean(5),
+                    IsActive = !reader.IsDBNull(6) && reader.GetBoolean(6)
+                };
+                rules[ruleId] = rule;
+            }
+
+            if (!reader.IsDBNull(7) && !reader.IsDBNull(8) && !reader.IsDBNull(10) && reader.GetBoolean(10))
+            {
+                rule.Steps.Add(new WorkflowStep
+                {
+                    StepOrder = reader.GetInt32(7),
+                    StepType = reader.GetString(8),
+                    StepConfigJson = reader.IsDBNull(9) ? null : reader.GetString(9)
+                });
+            }
+        }
+
+        return rules.Values.ToList();
+    }
+
+    private async Task<string> ExecuteWorkflowAsync(
+        GraphServiceClient graphClient,
+        string mailboxUser,
+        string propertyHubFolderId,
+        Message message,
+        string consolidatedContent,
+        string classificationLabel,
+        double classificationScore,
+        List<WorkflowRule> rules,
+        CancellationToken cancellationToken)
+    {
+        if (message.Id == null)
+        {
+            return "processed";
+        }
+
+        var matchedRule = rules
+            .Where(r =>
+                r.IsActive &&
+                classificationScore >= r.MinimumScore &&
+                string.Equals(r.ClassificationLabel, classificationLabel, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(r => r.Priority)
+            .ThenBy(r => r.DocumentWorkflowRuleId)
+            .FirstOrDefault();
+
+        // Always ensure category reflects the final classification label.
+        await ApplyCategoryAsync(graphClient, mailboxUser, message.Id, message.Categories, classificationLabel, cancellationToken);
+        var workflowContext = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (matchedRule == null || matchedRule.Steps.Count == 0)
+        {
+            return "processed";
+        }
+
+        var currentMessageId = message.Id;
+        foreach (var step in matchedRule.Steps.OrderBy(s => s.StepOrder))
+        {
+            try
+            {
+                var stepType = step.StepType.Trim().ToLowerInvariant();
+                if (stepType == "setcategory")
+                {
+                    var category = classificationLabel;
+                    if (!string.IsNullOrWhiteSpace(step.StepConfigJson))
+                    {
+                        using var config = JsonDocument.Parse(step.StepConfigJson);
+                        if (config.RootElement.TryGetProperty("category", out var categoryEl))
+                        {
+                            category = categoryEl.GetString()?.Trim() ?? category;
+                        }
+                    }
+                    await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, category, cancellationToken);
+                }
+                else if (stepType == "markcompleted")
+                {
+                    await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, CompletedCategory, cancellationToken);
+                }
+                else if (stepType == "movetofolder")
+                {
+                    var destinationPath = "Inbox/Property Hub";
+                    if (!string.IsNullOrWhiteSpace(step.StepConfigJson))
+                    {
+                        using var config = JsonDocument.Parse(step.StepConfigJson);
+                        if (config.RootElement.TryGetProperty("destinationPath", out var pathEl))
+                        {
+                            destinationPath = pathEl.GetString()?.Trim() ?? destinationPath;
+                        }
+                    }
+
+                    var destinationId = await ResolveFolderIdByPathAsync(
+                        graphClient,
+                        mailboxUser,
+                        destinationPath,
+                        propertyHubFolderId,
+                        cancellationToken);
+
+                    var moveRequest = new MovePostRequestBody
+                    {
+                        DestinationId = destinationId
+                    };
+                    var moved = await graphClient.Users[mailboxUser]
+                        .Messages[currentMessageId]
+                        .Move
+                        .PostAsync(moveRequest, cancellationToken: cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(moved?.Id))
+                    {
+                        currentMessageId = moved.Id;
+                    }
+                }
+                else if (stepType == "createjournallog")
+                {
+                    await CreateJournalLogAsync(
+                        message,
+                        classificationLabel,
+                        classificationScore,
+                        step.StepConfigJson,
+                        workflowContext,
+                        cancellationToken);
+                }
+                else if (stepType == "createcontactlog")
+                {
+                    await CreateContactLogAsync(
+                        message,
+                        classificationLabel,
+                        classificationScore,
+                        step.StepConfigJson,
+                        workflowContext,
+                        cancellationToken);
+                }
+                else if (stepType == "runextraction")
+                {
+                    await RunExtractionStepAsync(
+                        consolidatedContent,
+                        step.StepConfigJson,
+                        workflowContext,
+                        cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Workflow step {StepType} failed for message {MessageId}", step.StepType, currentMessageId);
+                if (matchedRule.StopOnFailure)
+                {
+                    return $"workflow_failed:{step.StepType}";
+                }
+            }
+        }
+
+        return "workflow_applied";
+    }
+
+    private async Task CreateJournalLogAsync(
+        Message message,
+        string classificationLabel,
+        double classificationScore,
+        string? stepConfigJson,
+        IReadOnlyDictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = GetRequired("ConnectionStrings:DefaultConnection", "ConnectionStrings__DefaultConnection");
+        var utcNow = DateTime.UtcNow;
+        var effectiveDate = message.ReceivedDateTime?.UtcDateTime ?? utcNow;
+
+        int? propertyId = null;
+        int? tenancyId = null;
+        int? tenantId = null;
+        int? journalTypeId = null;
+        int? journalSubTypeId = null;
+        string? descriptionTemplate = null;
+
+        if (!string.IsNullOrWhiteSpace(stepConfigJson))
+        {
+            using var config = JsonDocument.Parse(stepConfigJson);
+            var root = config.RootElement;
+            propertyId = GetOptionalInt(root, "propertyId");
+            tenancyId = GetOptionalInt(root, "tenancyId");
+            tenantId = GetOptionalInt(root, "tenantId");
+            journalTypeId = GetOptionalInt(root, "journalTypeId");
+            journalSubTypeId = GetOptionalInt(root, "journalSubTypeId");
+            descriptionTemplate = GetOptionalString(root, "descriptionTemplate");
+        }
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string insertSql = """
+            INSERT INTO tblJournalLog (propertyID, tenancyID, tenantID, transactionDate, journalTypeID, journalSubTypeID)
+            VALUES (@propertyId, @tenancyId, @tenantId, @transactionDate, @journalTypeId, @journalSubTypeId);
+            SELECT CAST(SCOPE_IDENTITY() AS int);
+            """;
+        await using var command = new SqlCommand(insertSql, connection);
+        command.Parameters.AddWithValue("@propertyId", (object?)propertyId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@tenancyId", (object?)tenancyId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@tenantId", (object?)tenantId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@transactionDate", effectiveDate);
+        command.Parameters.AddWithValue("@journalTypeId", (object?)journalTypeId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalSubTypeId", (object?)journalSubTypeId ?? DBNull.Value);
+
+        var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
+
+        var description = ApplyTemplateTokens(
+            descriptionTemplate ??
+            "Workflow auto-created journal log for {classificationLabel} (score {classificationScore}) from email '{subject}'.",
+            message,
+            classificationLabel,
+            classificationScore,
+            workflowContext);
+
+        _logger.LogInformation(
+            "Created JournalLog {JournalLogId}. Description note: {Description}",
+            insertedId,
+            description);
+    }
+
+    private async Task CreateContactLogAsync(
+        Message message,
+        string classificationLabel,
+        double classificationScore,
+        string? stepConfigJson,
+        IReadOnlyDictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = GetRequired("ConnectionStrings:DefaultConnection", "ConnectionStrings__DefaultConnection");
+        var utcNow = DateTime.UtcNow;
+        var effectiveDate = message.ReceivedDateTime?.UtcDateTime ?? utcNow;
+
+        int? propertyGroupId = null;
+        int? propertyId = null;
+        int? tenantId = null;
+        int contactLogTypeId = 0;
+        var contactBy = "Workflow";
+        string? notesTemplate = null;
+
+        if (!string.IsNullOrWhiteSpace(stepConfigJson))
+        {
+            using var config = JsonDocument.Parse(stepConfigJson);
+            var root = config.RootElement;
+            propertyGroupId = GetOptionalInt(root, "propertyGroupId");
+            propertyId = GetOptionalInt(root, "propertyId");
+            tenantId = GetOptionalInt(root, "tenantId");
+            contactLogTypeId = GetOptionalInt(root, "contactLogTypeId") ?? 0;
+            contactBy = GetOptionalString(root, "contactBy") ?? contactBy;
+            notesTemplate = GetOptionalString(root, "notesTemplate");
+        }
+
+        if (contactLogTypeId <= 0)
+        {
+            throw new InvalidOperationException("CreateContactLog step requires contactLogTypeId in stepConfigJson.");
+        }
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string insertSql = """
+            INSERT INTO tblContactLog (propertyGrpID, propertyID, tenantID, contactDate, contactBy, contactNotes, contactLogTypeID)
+            VALUES (@propertyGroupId, @propertyId, @tenantId, @contactDate, @contactBy, @contactNotes, @contactLogTypeId);
+            SELECT CAST(SCOPE_IDENTITY() AS int);
+            """;
+        await using var command = new SqlCommand(insertSql, connection);
+        command.Parameters.AddWithValue("@propertyGroupId", (object?)propertyGroupId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@propertyId", (object?)propertyId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@tenantId", (object?)tenantId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@contactDate", effectiveDate);
+        command.Parameters.AddWithValue("@contactBy", string.IsNullOrWhiteSpace(contactBy) ? "Workflow" : contactBy.Trim());
+        command.Parameters.AddWithValue("@contactNotes", ApplyTemplateTokens(
+            notesTemplate ??
+            "Workflow auto-created contact log for {classificationLabel} (score {classificationScore}) from '{from}' re '{subject}'.",
+            message,
+            classificationLabel,
+            classificationScore,
+            workflowContext));
+        command.Parameters.AddWithValue("@contactLogTypeId", contactLogTypeId);
+
+        var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
+        _logger.LogInformation("Created ContactLog {ContactLogId} via workflow.", insertedId);
+    }
+
+    private async Task RunExtractionStepAsync(
+        string consolidatedContent,
+        string? stepConfigJson,
+        Dictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(stepConfigJson))
+        {
+            throw new InvalidOperationException("RunExtraction step requires stepConfigJson with extractionTemplateId.");
+        }
+
+        using var config = JsonDocument.Parse(stepConfigJson);
+        var root = config.RootElement;
+        var extractionTemplateId = GetOptionalInt(root, "extractionTemplateId");
+        if (!extractionTemplateId.HasValue || extractionTemplateId <= 0)
+        {
+            throw new InvalidOperationException("RunExtraction step requires a valid extractionTemplateId.");
+        }
+
+        var fields = await LoadExtractionTemplateFieldsAsync(extractionTemplateId.Value, cancellationToken);
+        if (fields.Count == 0)
+        {
+            _logger.LogInformation("RunExtraction template {TemplateId} has no active fields.", extractionTemplateId.Value);
+            return;
+        }
+
+        var extracted = ExtractFieldsFromContent(consolidatedContent, fields);
+        foreach (var item in extracted)
+        {
+            workflowContext[item.Key] = item.Value;
+        }
+
+        workflowContext["extractionJson"] = JsonSerializer.Serialize(extracted);
+        _logger.LogInformation(
+            "RunExtraction template {TemplateId} extracted {Count} field(s).",
+            extractionTemplateId.Value,
+            extracted.Count);
     }
 
     private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
@@ -331,6 +704,226 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         return Regex.Replace(value.ToLowerInvariant(), @"\s+", " ").Trim();
+    }
+
+    private async Task ApplyCategoryAsync(
+        GraphServiceClient graphClient,
+        string mailboxUser,
+        string messageId,
+        IEnumerable<string>? existingCategories,
+        string category,
+        CancellationToken cancellationToken)
+    {
+        var categories = existingCategories?.ToList() ?? new List<string>();
+        if (!categories.Any(c => c.Equals(category, StringComparison.OrdinalIgnoreCase)))
+        {
+            categories.Add(category);
+        }
+
+        await graphClient.Users[mailboxUser]
+            .Messages[messageId]
+            .PatchAsync(new Message
+            {
+                Categories = categories
+            }, cancellationToken: cancellationToken);
+    }
+
+    private async Task<string> ResolveFolderIdByPathAsync(
+        GraphServiceClient graphClient,
+        string mailboxUser,
+        string destinationPath,
+        string defaultPropertyHubFolderId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(destinationPath))
+        {
+            return defaultPropertyHubFolderId;
+        }
+
+        var parts = destinationPath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+        if (parts.Count == 0)
+        {
+            return defaultPropertyHubFolderId;
+        }
+
+        string? currentFolderId = null;
+        var currentStartIndex = 0;
+        if (parts[0].Equals("inbox", StringComparison.OrdinalIgnoreCase))
+        {
+            currentFolderId = "Inbox";
+            currentStartIndex = 1;
+        }
+
+        for (var i = currentStartIndex; i < parts.Count; i++)
+        {
+            var segment = parts[i];
+            var children = currentFolderId == null
+                ? await graphClient.Users[mailboxUser]
+                    .MailFolders
+                    .GetAsync(cfg =>
+                    {
+                        cfg.QueryParameters.Filter = $"displayName eq '{segment.Replace("'", "''")}'";
+                        cfg.QueryParameters.Top = 1;
+                    }, cancellationToken)
+                : await graphClient.Users[mailboxUser]
+                    .MailFolders[currentFolderId]
+                    .ChildFolders
+                    .GetAsync(cfg =>
+                    {
+                        cfg.QueryParameters.Filter = $"displayName eq '{segment.Replace("'", "''")}'";
+                        cfg.QueryParameters.Top = 1;
+                    }, cancellationToken);
+
+            var next = children?.Value?.FirstOrDefault();
+            if (next?.Id == null)
+            {
+                return defaultPropertyHubFolderId;
+            }
+
+            currentFolderId = next.Id;
+        }
+
+        return currentFolderId ?? defaultPropertyHubFolderId;
+    }
+
+    private async Task<List<(string FieldName, string? ExampleValue)>> LoadExtractionTemplateFieldsAsync(
+        int extractionTemplateId,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = GetRequired("ConnectionStrings:DefaultConnection", "ConnectionStrings__DefaultConnection");
+        var fields = new List<(string FieldName, string? ExampleValue)>();
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT FieldName, ExampleValue
+            FROM tbldocumentextractionfield
+            WHERE DocumentExtractionTemplateId = @templateId
+              AND IsActive = 1
+            ORDER BY DocumentExtractionFieldId ASC
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@templateId", extractionTemplateId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            fields.Add((
+                reader.GetString(0),
+                reader.IsDBNull(1) ? null : reader.GetString(1)
+            ));
+        }
+
+        return fields;
+    }
+
+    private static Dictionary<string, string> ExtractFieldsFromContent(
+        string content,
+        IEnumerable<(string FieldName, string? ExampleValue)> fields)
+    {
+        var extracted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in fields)
+        {
+            var normalizedName = NormalizeFieldToken(field.FieldName);
+            if (string.IsNullOrWhiteSpace(normalizedName))
+            {
+                continue;
+            }
+
+            var pattern = $@"(?im)^\s*{Regex.Escape(field.FieldName)}\s*[:\-]\s*(.+)$";
+            var match = Regex.Match(content, pattern);
+            if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+            {
+                extracted[normalizedName] = match.Groups[1].Value.Trim();
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(field.ExampleValue))
+            {
+                var idx = content.IndexOf(field.ExampleValue, StringComparison.OrdinalIgnoreCase);
+                if (idx >= 0)
+                {
+                    extracted[normalizedName] = field.ExampleValue.Trim();
+                }
+            }
+        }
+
+        return extracted;
+    }
+
+    private static int? GetOptionalInt(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var el))
+        {
+            return null;
+        }
+
+        if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var i))
+        {
+            return i;
+        }
+
+        if (el.ValueKind == JsonValueKind.String && int.TryParse(el.GetString(), out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
+    }
+
+    private static string? GetOptionalString(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var el) || el.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        return el.ValueKind == JsonValueKind.String ? el.GetString() : el.ToString();
+    }
+
+    private static string ApplyTemplateTokens(
+        string template,
+        Message message,
+        string classificationLabel,
+        double classificationScore,
+        IReadOnlyDictionary<string, string>? workflowContext = null)
+    {
+        var subject = message.Subject ?? "(no subject)";
+        var from = message.From?.EmailAddress?.Address ?? "unknown";
+        var received = message.ReceivedDateTime?.UtcDateTime.ToString("u") ?? DateTime.UtcNow.ToString("u");
+
+        var result = template
+            .Replace("{classificationLabel}", classificationLabel, StringComparison.OrdinalIgnoreCase)
+            .Replace("{classificationScore}", Math.Round(classificationScore, 4).ToString("0.####", CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase)
+            .Replace("{subject}", subject, StringComparison.OrdinalIgnoreCase)
+            .Replace("{from}", from, StringComparison.OrdinalIgnoreCase)
+            .Replace("{receivedDate}", received, StringComparison.OrdinalIgnoreCase);
+
+        if (workflowContext == null || workflowContext.Count == 0)
+        {
+            return result;
+        }
+
+        result = Regex.Replace(result, @"\{field:([a-zA-Z0-9_\- ]+)\}", match =>
+        {
+            var key = NormalizeFieldToken(match.Groups[1].Value);
+            return workflowContext.TryGetValue(key, out var value) ? value : string.Empty;
+        });
+
+        if (workflowContext.TryGetValue("extractionJson", out var extractionJson))
+        {
+            result = result.Replace("{extractionJson}", extractionJson, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return result;
+    }
+
+    private static string NormalizeFieldToken(string value)
+    {
+        var normalized = Regex.Replace(value.ToLowerInvariant(), @"[^a-z0-9]+", "_").Trim('_');
+        return normalized;
     }
 
     private static string CleanupEmailBody(string rawBody)

@@ -141,3 +141,46 @@ BEGIN
         ON tbldocumentcorrectionfeedback (DocumentProcessingRunId);
 END;
 GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'tbldocumentworkflowrule')
+BEGIN
+    CREATE TABLE tbldocumentworkflowrule (
+        DocumentWorkflowRuleId INT IDENTITY(1,1) PRIMARY KEY,
+        WorkflowName NVARCHAR(200) NOT NULL,
+        ClassificationLabel NVARCHAR(120) NOT NULL,
+        MinimumScore FLOAT NOT NULL CONSTRAINT DF_tbldocumentworkflowrule_MinimumScore DEFAULT (0.28),
+        Priority INT NOT NULL CONSTRAINT DF_tbldocumentworkflowrule_Priority DEFAULT (100),
+        StopOnFailure BIT NOT NULL CONSTRAINT DF_tbldocumentworkflowrule_StopOnFailure DEFAULT (1),
+        IsActive BIT NOT NULL CONSTRAINT DF_tbldocumentworkflowrule_IsActive DEFAULT (1),
+        CreatedByUserId INT NULL,
+        CreatedDate DATETIME2 NOT NULL CONSTRAINT DF_tbldocumentworkflowrule_CreatedDate DEFAULT (SYSUTCDATETIME()),
+        UpdatedByUserId INT NULL,
+        UpdatedDate DATETIME2 NULL
+    );
+
+    CREATE INDEX IX_tbldocumentworkflowrule_Label_Priority
+        ON tbldocumentworkflowrule (ClassificationLabel, Priority);
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'tbldocumentworkflowstep')
+BEGIN
+    CREATE TABLE tbldocumentworkflowstep (
+        DocumentWorkflowStepId INT IDENTITY(1,1) PRIMARY KEY,
+        DocumentWorkflowRuleId INT NOT NULL,
+        StepOrder INT NOT NULL,
+        StepType NVARCHAR(80) NOT NULL,
+        StepConfigJson NVARCHAR(MAX) NULL,
+        IsActive BIT NOT NULL CONSTRAINT DF_tbldocumentworkflowstep_IsActive DEFAULT (1),
+        CreatedByUserId INT NULL,
+        CreatedDate DATETIME2 NOT NULL CONSTRAINT DF_tbldocumentworkflowstep_CreatedDate DEFAULT (SYSUTCDATETIME()),
+        UpdatedByUserId INT NULL,
+        UpdatedDate DATETIME2 NULL,
+        CONSTRAINT FK_tbldocumentworkflowstep_tbldocumentworkflowrule
+            FOREIGN KEY (DocumentWorkflowRuleId) REFERENCES tbldocumentworkflowrule(DocumentWorkflowRuleId)
+    );
+
+    CREATE INDEX IX_tbldocumentworkflowstep_Rule_Order
+        ON tbldocumentworkflowstep (DocumentWorkflowRuleId, StepOrder);
+END;
+GO
