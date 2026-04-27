@@ -190,6 +190,13 @@ public class GraphEmailReader : IGraphEmailReader
         return results;
     }
 
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "and", "for", "with", "from", "this", "that", "are", "was", "were", "into", "onto", "your", "their",
+        "have", "has", "had", "will", "shall", "would", "could", "should", "about", "over", "under", "between", "per",
+        "each", "any", "all", "not", "but", "can", "may", "might", "than", "then", "also", "such", "via"
+    };
+
     private static (string Label, double Score, string Explainability) ClassifyAgainstTemplates(string content, List<ClassificationTemplate> templates)
     {
         if (templates.Count == 0 || string.IsNullOrWhiteSpace(content))
@@ -198,58 +205,132 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         var contentTokens = Tokenize(content);
+        var normalizedContent = NormalizeForPhraseMatch(content);
         if (contentTokens.Count == 0)
         {
             return ("Unclassified", 0, "Content did not contain enough meaningful tokens for template matching.");
         }
 
         ClassificationTemplate? bestTemplate = null;
-        double bestScore = 0;
+        double bestScore = 0d;
+        double bestCoreScore = 0d;
+        double bestLabelCoverage = 0d;
+        double bestPhraseBoost = 0d;
         var bestOverlapTerms = new List<string>();
 
         foreach (var template in templates)
         {
-            var templateText = $"{template.ClassificationLabel} {template.ClassificationDescription} {template.ClassificationPrompt}";
-            var templateTokens = Tokenize(templateText);
-            if (templateTokens.Count == 0)
+            var weightedTemplateTokens = BuildWeightedTemplateTokens(template);
+            if (weightedTemplateTokens.Count == 0)
             {
                 continue;
             }
 
-            var overlapTerms = templateTokens.Intersect(contentTokens, StringComparer.OrdinalIgnoreCase).ToList();
-            var overlap = overlapTerms.Count;
-            var score = (double)overlap / Math.Max(1, templateTokens.Count);
+            var overlapTerms = weightedTemplateTokens.Keys
+                .Where(contentTokens.Contains)
+                .Take(10)
+                .ToList();
+            var matchedWeight = weightedTemplateTokens
+                .Where(kv => contentTokens.Contains(kv.Key))
+                .Sum(kv => kv.Value);
+            var totalWeight = weightedTemplateTokens.Values.Sum();
+            var coreScore = totalWeight <= 0 ? 0d : matchedWeight / totalWeight;
+
+            var labelTokens = ExtractTokens(template.ClassificationLabel);
+            var labelMatches = labelTokens.Count == 0
+                ? 0
+                : labelTokens.Count(contentTokens.Contains);
+            var labelCoverage = labelTokens.Count == 0
+                ? 0d
+                : (double)labelMatches / labelTokens.Count;
+
+            var phraseBoost = ContainsPhrase(normalizedContent, template.ClassificationLabel) ? 0.25d : 0d;
+
+            var score = Math.Min(1d, (coreScore * 0.65d) + (labelCoverage * 0.25d) + phraseBoost);
             if (score > bestScore)
             {
                 bestScore = score;
+                bestCoreScore = coreScore;
+                bestLabelCoverage = labelCoverage;
+                bestPhraseBoost = phraseBoost;
                 bestTemplate = template;
-                bestOverlapTerms = overlapTerms.Take(8).ToList();
+                bestOverlapTerms = overlapTerms;
             }
         }
 
         // Conservative threshold to avoid false matches.
-        if (bestTemplate == null || bestScore < 0.08)
+        if (bestTemplate == null || bestScore < 0.28)
         {
             var explanation = bestTemplate == null
                 ? "No template produced a meaningful lexical overlap with the email content."
-                : $"Best template overlap score {Math.Round(bestScore, 4)} is below threshold 0.08. " +
-                  $"Closest template was '{bestTemplate.ClassificationLabel}' with terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}.";
+                : $"Best template confidence {Math.Round(bestScore, 4)} is below threshold 0.28. " +
+                  $"Closest template '{bestTemplate.ClassificationLabel}' had core={Math.Round(bestCoreScore, 4)}, " +
+                  $"labelCoverage={Math.Round(bestLabelCoverage, 4)}, phraseBoost={Math.Round(bestPhraseBoost, 2)} " +
+                  $"with overlap terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}.";
             return ("Unclassified", Math.Round(bestScore, 4), explanation);
         }
 
         var explainability =
-            $"Matched template '{bestTemplate.ClassificationLabel}' with score {Math.Round(bestScore, 4)} " +
-            $"using overlap terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}. " +
-            "Score is computed as overlap terms divided by template token count.";
+            $"Matched template '{bestTemplate.ClassificationLabel}' with confidence {Math.Round(bestScore, 4)} " +
+            $"(core={Math.Round(bestCoreScore, 4)}, labelCoverage={Math.Round(bestLabelCoverage, 4)}, phraseBoost={Math.Round(bestPhraseBoost, 2)}). " +
+            $"Overlap terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}.";
 
         return (bestTemplate.ClassificationLabel, Math.Round(bestScore, 4), explainability);
     }
 
-    private static HashSet<string> Tokenize(string value)
+    private static Dictionary<string, double> BuildWeightedTemplateTokens(ClassificationTemplate template)
     {
+        var weighted = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        AddWeightedTokens(weighted, template.ClassificationLabel, 3.0d);
+        AddWeightedTokens(weighted, template.ClassificationDescription, 1.5d);
+        AddWeightedTokens(weighted, template.ClassificationPrompt, 1.0d);
+        return weighted;
+    }
+
+    private static void AddWeightedTokens(Dictionary<string, double> target, string? value, double weight)
+    {
+        foreach (var token in ExtractTokens(value))
+        {
+            if (!target.TryGetValue(token, out var current) || weight > current)
+            {
+                target[token] = weight;
+            }
+        }
+    }
+
+    private static List<string> ExtractTokens(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return new List<string>();
+        }
+
         return Regex.Matches(value.ToLowerInvariant(), "[a-z0-9]{3,}")
             .Select(m => m.Value)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .Where(token => !StopWords.Contains(token))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static HashSet<string> Tokenize(string value)
+    {
+        return ExtractTokens(value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool ContainsPhrase(string haystack, string phrase)
+    {
+        var normalizedPhrase = NormalizeForPhraseMatch(phrase);
+        return normalizedPhrase.Length >= 4 && haystack.Contains(normalizedPhrase, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeForPhraseMatch(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return Regex.Replace(value.ToLowerInvariant(), @"\s+", " ").Trim();
     }
 
     private static string CleanupEmailBody(string rawBody)
