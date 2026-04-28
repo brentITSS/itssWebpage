@@ -384,6 +384,14 @@ public class GraphEmailReader : IGraphEmailReader
                         workflowContext,
                         cancellationToken);
                 }
+                else if (stepType == "runsummarisation")
+                {
+                    await RunSummarisationStepAsync(
+                        consolidatedContent,
+                        step.StepConfigJson,
+                        workflowContext,
+                        cancellationToken);
+                }
             }
             catch (Exception ex)
             {
@@ -561,6 +569,45 @@ public class GraphEmailReader : IGraphEmailReader
             "RunExtraction template {TemplateId} extracted {Count} field(s).",
             extractionTemplateId.Value,
             extracted.Count);
+    }
+
+    private async Task RunSummarisationStepAsync(
+        string consolidatedContent,
+        string? stepConfigJson,
+        Dictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        string? prompt = null;
+        int maxSentences = 3;
+        if (!string.IsNullOrWhiteSpace(stepConfigJson))
+        {
+            using var config = JsonDocument.Parse(stepConfigJson);
+            var root = config.RootElement;
+            prompt = GetOptionalString(root, "prompt");
+            var templateId = GetOptionalInt(root, "summarisationTemplateId");
+            if (templateId.HasValue && templateId.Value > 0 && string.IsNullOrWhiteSpace(prompt))
+            {
+                prompt = await LoadSummarisationTemplatePromptAsync(templateId.Value, cancellationToken);
+            }
+
+            var configuredMaxSentences = GetOptionalInt(root, "maxSentences");
+            if (configuredMaxSentences.HasValue && configuredMaxSentences.Value > 0)
+            {
+                maxSentences = Math.Clamp(configuredMaxSentences.Value, 1, 8);
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            throw new InvalidOperationException(
+                "RunSummarisation step requires stepConfigJson with summarisationTemplateId or prompt.");
+        }
+
+        var summary = BuildHeuristicSummary(consolidatedContent, prompt, maxSentences);
+        workflowContext["summary"] = summary;
+        workflowContext["summarisation"] = summary;
+        workflowContext["summaryPrompt"] = prompt.Trim();
+        _logger.LogInformation("RunSummarisation generated summary length {Length}.", summary.Length);
     }
 
     private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
@@ -917,7 +964,71 @@ public class GraphEmailReader : IGraphEmailReader
             result = result.Replace("{extractionJson}", extractionJson, StringComparison.OrdinalIgnoreCase);
         }
 
+        if (workflowContext.TryGetValue("summary", out var summary))
+        {
+            result = result
+                .Replace("{summary}", summary, StringComparison.OrdinalIgnoreCase)
+                .Replace("{summarisation}", summary, StringComparison.OrdinalIgnoreCase);
+        }
+
         return result;
+    }
+
+    private async Task<string?> LoadSummarisationTemplatePromptAsync(int summarisationTemplateId, CancellationToken cancellationToken)
+    {
+        var connectionString = GetRequired("ConnectionStrings:DefaultConnection", "ConnectionStrings__DefaultConnection");
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT TOP 1 summarisationPrompt
+            FROM tbldocumentsummarisationtemplate
+            WHERE documentSummarisationTemplateID = @templateId
+              AND isActive = 1;
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@templateId", summarisationTemplateId);
+
+        var prompt = await command.ExecuteScalarAsync(cancellationToken);
+        return prompt?.ToString();
+    }
+
+    private static string BuildHeuristicSummary(string content, string prompt, int maxSentences)
+    {
+        var cleaned = Regex.Replace(content ?? string.Empty, @"\s+", " ").Trim();
+        if (string.IsNullOrWhiteSpace(cleaned))
+        {
+            return string.Empty;
+        }
+
+        var sentenceMatches = Regex.Matches(cleaned, @"[^.!?\n]+[.!?]?");
+        var sentences = sentenceMatches
+            .Select(m => m.Value.Trim())
+            .Where(s => s.Length >= 16)
+            .Take(60)
+            .ToList();
+        if (sentences.Count == 0)
+        {
+            return cleaned.Length > 500 ? cleaned[..500] + "..." : cleaned;
+        }
+
+        var promptTokens = ExtractTokens(prompt);
+        var ranked = sentences
+            .Select((text, index) =>
+            {
+                var lower = text.ToLowerInvariant();
+                var tokenHits = promptTokens.Count(token => lower.Contains(token, StringComparison.Ordinal));
+                var score = tokenHits * 10 + Math.Min(text.Length, 220) / 40.0;
+                return (text, index, score);
+            })
+            .OrderByDescending(x => x.score)
+            .ThenBy(x => x.index)
+            .Take(Math.Clamp(maxSentences, 1, 8))
+            .OrderBy(x => x.index)
+            .Select(x => x.text)
+            .ToList();
+
+        return string.Join(" ", ranked);
     }
 
     private static string NormalizeFieldToken(string value)

@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  DocumentExtractionTemplateDto,
   DocumentLabelSetDto,
+  DocumentSummarisationTemplateDto,
   DocumentWorkflowRuleDto,
   DocumentWorkflowRuleTestResponse,
   UpsertDocumentWorkflowStepRequest,
@@ -30,6 +32,8 @@ const DocumentFlows: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [labelSets, setLabelSets] = useState<DocumentLabelSetDto[]>([]);
+  const [extractionTemplates, setExtractionTemplates] = useState<DocumentExtractionTemplateDto[]>([]);
+  const [summarisationTemplates, setSummarisationTemplates] = useState<DocumentSummarisationTemplateDto[]>([]);
   const [workflowRules, setWorkflowRules] = useState<DocumentWorkflowRuleDto[]>([]);
 
   const [editingWorkflowRuleId, setEditingWorkflowRuleId] = useState<number | null>(null);
@@ -65,12 +69,16 @@ const DocumentFlows: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [loadedRules, loadedLabelSets] = await Promise.all([
+      const [loadedRules, loadedLabelSets, loadedExtractionTemplates, loadedSummarisationTemplates] = await Promise.all([
         documentHubService.getWorkflowRules(),
         documentHubService.getLabelSets(),
+        documentHubService.getExtractionTemplates(),
+        documentHubService.getSummarisationTemplates(),
       ]);
       setWorkflowRules(loadedRules);
       setLabelSets(loadedLabelSets);
+      setExtractionTemplates(loadedExtractionTemplates);
+      setSummarisationTemplates(loadedSummarisationTemplates);
     } catch (error) {
       setFeedback(getFriendlyError(error));
     } finally {
@@ -215,6 +223,10 @@ const DocumentFlows: React.FC = () => {
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Document Flows</h2>
         <p className="mt-1 text-sm text-slate-500">Configure post-classification workflow actions and test them safely.</p>
+        <p className="mt-2 text-xs text-slate-500">
+          Current flow steps support category/folder actions, completion, journal/contact logs, and entity extraction.
+          Text summarisation is now available via <span className="font-semibold">RunSummarisation</span>.
+        </p>
         {feedback && <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">{feedback}</p>}
       </div>
 
@@ -245,12 +257,90 @@ const DocumentFlows: React.FC = () => {
                   <option value="CreateJournalLog">CreateJournalLog</option>
                   <option value="CreateContactLog">CreateContactLog</option>
                   <option value="RunExtraction">RunExtraction</option>
+                  <option value="RunSummarisation">RunSummarisation</option>
                 </select>
                 <button type="button" onClick={() => handleRemoveWorkflowStep(idx)} className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">Remove</button>
               </div>
               <input value={step.stepConfigJson ?? ''} onChange={(e) => handleUpdateWorkflowStep(idx, { stepConfigJson: e.target.value })} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder="Optional JSON config" />
+              {step.stepType === 'SetCategory' && (
+                <input
+                  value={String(parseStepConfig(step.stepConfigJson).category ?? '')}
+                  onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'category', e.target.value)}
+                  className="mt-2 w-full rounded border border-slate-300 px-2 py-1"
+                  placeholder='Optional override category (blank = classification label)'
+                />
+              )}
               {step.stepType === 'MoveToFolder' && (
                 <input value={String(parseStepConfig(step.stepConfigJson).destinationPath ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'destinationPath', e.target.value)} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder='destinationPath e.g. "Inbox/Property Hub/Citiq"' />
+              )}
+              {step.stepType === 'CreateJournalLog' && (
+                <div className="mt-2 grid gap-1 md:grid-cols-2">
+                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).journalTypeId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalTypeId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="journalTypeId" />
+                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).journalSubTypeId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalSubTypeId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="journalSubTypeId" />
+                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).propertyId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'propertyId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="propertyId" />
+                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).tenantId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tenantId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="tenantId" />
+                  <input value={String(parseStepConfig(step.stepConfigJson).descriptionTemplate ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'descriptionTemplate', e.target.value)} className="md:col-span-2 rounded border border-slate-300 px-2 py-1" placeholder="descriptionTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore})" />
+                </div>
+              )}
+              {step.stepType === 'CreateContactLog' && (
+                <div className="mt-2 grid gap-1 md:grid-cols-2">
+                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).contactLogTypeId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactLogTypeId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="contactLogTypeId (required)" />
+                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).propertyId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'propertyId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="propertyId" />
+                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).tenantId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tenantId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="tenantId" />
+                  <input value={String(parseStepConfig(step.stepConfigJson).contactBy ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactBy', e.target.value)} className="rounded border border-slate-300 px-2 py-1" placeholder="contactBy" />
+                  <input value={String(parseStepConfig(step.stepConfigJson).notesTemplate ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'notesTemplate', e.target.value)} className="md:col-span-2 rounded border border-slate-300 px-2 py-1" placeholder="notesTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore})" />
+                </div>
+              )}
+              {step.stepType === 'RunExtraction' && (
+                <div className="mt-2 grid gap-1">
+                  <select
+                    value={String(parseStepConfig(step.stepConfigJson).extractionTemplateId ?? '')}
+                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'extractionTemplateId', Number(e.target.value || 0))}
+                    className="rounded border border-slate-300 px-2 py-1"
+                  >
+                    <option value="">Select extraction template</option>
+                    {extractionTemplates.map((template) => (
+                      <option key={template.documentExtractionTemplateId} value={template.documentExtractionTemplateId}>
+                        {template.extractionTemplateName}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500">
+                    This runs entity extraction and makes fields available to later steps as {`{field:<field_name>}`}.
+                  </p>
+                </div>
+              )}
+              {step.stepType === 'RunSummarisation' && (
+                <div className="mt-2 grid gap-1">
+                  <select
+                    value={String(parseStepConfig(step.stepConfigJson).summarisationTemplateId ?? '')}
+                    onChange={(e) =>
+                      handleUpdateWorkflowStepConfigField(idx, 'summarisationTemplateId', Number(e.target.value || 0))
+                    }
+                    className="rounded border border-slate-300 px-2 py-1"
+                  >
+                    <option value="">Select summarisation template</option>
+                    {summarisationTemplates.map((template) => (
+                      <option
+                        key={template.documentSummarisationTemplateId}
+                        value={template.documentSummarisationTemplateId}
+                      >
+                        {template.summarisationName}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={String(parseStepConfig(step.stepConfigJson).prompt ?? '')}
+                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'prompt', e.target.value)}
+                    className="rounded border border-slate-300 px-2 py-1"
+                    placeholder="Optional prompt override (uses template prompt when blank)"
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    Generated summary is stored for later steps as <span className="font-semibold">{`{summary}`}</span>
+                    , <span className="font-semibold">{`{summarisation}`}</span>, or
+                    <span className="font-semibold"> {`{field:summary}`}</span>.
+                  </p>
+                </div>
               )}
             </div>
           ))}

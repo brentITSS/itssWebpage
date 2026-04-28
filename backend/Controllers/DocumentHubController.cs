@@ -742,6 +742,47 @@ public class DocumentHubController : ControllerBase
                 continue;
             }
 
+            if (stepType == "runsummarisation")
+            {
+                var config = ParseJsonObject(step.StepConfigJson);
+                var summarisationTemplateId = GetConfigInt(config, "summarisationTemplateId");
+                var prompt = GetConfigString(config, "prompt");
+                if (string.IsNullOrWhiteSpace(prompt) && summarisationTemplateId.HasValue && summarisationTemplateId.Value > 0)
+                {
+                    prompt = await _context.DocumentSummarisationTemplates
+                        .AsNoTracking()
+                        .Where(t => t.IsActive && t.DocumentSummarisationTemplateId == summarisationTemplateId.Value)
+                        .Select(t => t.SummarisationPrompt)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (string.IsNullOrWhiteSpace(prompt))
+                {
+                    stepResults.Add(new DocumentWorkflowStepTestResultDto
+                    {
+                        StepOrder = step.StepOrder,
+                        StepType = step.StepType,
+                        Status = "error",
+                        Details = "Missing summarisation prompt. Configure summarisationTemplateId or prompt."
+                    });
+                    continue;
+                }
+
+                var summary = await _documentAiService.SummariseAsync(consolidatedContent, prompt.Trim(), HttpContext.RequestAborted);
+                contextFields["summary"] = summary;
+                contextFields["summarisation"] = summary;
+
+                var preview = summary.Length > 260 ? summary[..260] + "..." : summary;
+                stepResults.Add(new DocumentWorkflowStepTestResultDto
+                {
+                    StepOrder = step.StepOrder,
+                    StepType = step.StepType,
+                    Status = "would_run",
+                    Details = $"Would generate summary (length {summary.Length}): {preview}"
+                });
+                continue;
+            }
+
             if (stepType == "createjournallog" || stepType == "createcontactlog")
             {
                 var config = ParseJsonObject(step.StepConfigJson);
@@ -1338,6 +1379,13 @@ public class DocumentHubController : ControllerBase
             "{extractionJson}",
             JsonSerializer.Serialize(fields),
             StringComparison.OrdinalIgnoreCase);
+
+        if (fields.TryGetValue("summary", out var summary))
+        {
+            rendered = rendered
+                .Replace("{summary}", summary, StringComparison.OrdinalIgnoreCase)
+                .Replace("{summarisation}", summary, StringComparison.OrdinalIgnoreCase);
+        }
 
         return rendered;
     }
