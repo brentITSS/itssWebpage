@@ -1,0 +1,311 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  DocumentLabelSetDto,
+  DocumentWorkflowRuleDto,
+  DocumentWorkflowRuleTestResponse,
+  UpsertDocumentWorkflowStepRequest,
+  documentHubService,
+} from '../../../services/documentHubService';
+
+type EditableWorkflowStep = UpsertDocumentWorkflowStepRequest;
+
+const parseStepConfig = (raw?: string): Record<string, string | number | boolean> => {
+  if (!raw?.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, string | number | boolean>) : {};
+  } catch {
+    return {};
+  }
+};
+
+const stringifyStepConfig = (config: Record<string, string | number | boolean>): string => {
+  const filtered = Object.fromEntries(
+    Object.entries(config).filter(([, value]) => value !== '' && value !== null && value !== undefined)
+  );
+  return Object.keys(filtered).length === 0 ? '' : JSON.stringify(filtered);
+};
+
+const DocumentFlows: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [labelSets, setLabelSets] = useState<DocumentLabelSetDto[]>([]);
+  const [workflowRules, setWorkflowRules] = useState<DocumentWorkflowRuleDto[]>([]);
+
+  const [editingWorkflowRuleId, setEditingWorkflowRuleId] = useState<number | null>(null);
+  const [workflowName, setWorkflowName] = useState('');
+  const [workflowClassificationLabel, setWorkflowClassificationLabel] = useState('');
+  const [workflowMinimumScore, setWorkflowMinimumScore] = useState(0.28);
+  const [workflowPriority, setWorkflowPriority] = useState(100);
+  const [workflowStopOnFailure, setWorkflowStopOnFailure] = useState(true);
+  const [workflowSteps, setWorkflowSteps] = useState<EditableWorkflowStep[]>([
+    { stepOrder: 1, stepType: 'SetCategory', stepConfigJson: '', isActive: true },
+  ]);
+
+  const [workflowTestRuleId, setWorkflowTestRuleId] = useState<number | null>(null);
+  const [workflowTestFile, setWorkflowTestFile] = useState<File | null>(null);
+  const [workflowTestResult, setWorkflowTestResult] = useState<DocumentWorkflowRuleTestResponse | null>(null);
+  const [workflowTestFeedback, setWorkflowTestFeedback] = useState<string | null>(null);
+
+  const getFriendlyError = useCallback((error: unknown): string => {
+    const raw = error instanceof Error ? error.message : 'Unexpected error.';
+    return raw.toLowerCase().includes('404')
+      ? 'Workflow API is unavailable on the backend deployment.'
+      : raw;
+  }, []);
+
+  const availableClassificationLabels = useMemo(() => {
+    const labels = labelSets
+      .flatMap((set) => set.labels ?? [])
+      .map((label) => (label.classificationLabel ?? '').trim())
+      .filter((label) => label.length > 0);
+    return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b));
+  }, [labelSets]);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [loadedRules, loadedLabelSets] = await Promise.all([
+        documentHubService.getWorkflowRules(),
+        documentHubService.getLabelSets(),
+      ]);
+      setWorkflowRules(loadedRules);
+      setLabelSets(loadedLabelSets);
+    } catch (error) {
+      setFeedback(getFriendlyError(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [getFriendlyError]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const resetWorkflowForm = () => {
+    setEditingWorkflowRuleId(null);
+    setWorkflowName('');
+    setWorkflowClassificationLabel('');
+    setWorkflowMinimumScore(0.28);
+    setWorkflowPriority(100);
+    setWorkflowStopOnFailure(true);
+    setWorkflowSteps([{ stepOrder: 1, stepType: 'SetCategory', stepConfigJson: '', isActive: true }]);
+  };
+
+  const handleAddWorkflowStep = () => {
+    setWorkflowSteps((prev) => [
+      ...prev,
+      { stepOrder: prev.length + 1, stepType: 'MoveToFolder', stepConfigJson: '', isActive: true },
+    ]);
+  };
+
+  const handleUpdateWorkflowStep = (idx: number, patch: Partial<EditableWorkflowStep>) => {
+    setWorkflowSteps((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch, stepOrder: i + 1 } : s)));
+  };
+
+  const handleRemoveWorkflowStep = (idx: number) => {
+    setWorkflowSteps((prev) => prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, stepOrder: i + 1 })));
+  };
+
+  const handleUpdateWorkflowStepConfigField = (idx: number, key: string, value: string | number | boolean) => {
+    const config = parseStepConfig(workflowSteps[idx]?.stepConfigJson);
+    config[key] = value;
+    handleUpdateWorkflowStep(idx, { stepConfigJson: stringifyStepConfig(config) });
+  };
+
+  const handleEditWorkflowRule = (rule: DocumentWorkflowRuleDto) => {
+    setEditingWorkflowRuleId(rule.documentWorkflowRuleId);
+    setWorkflowName(rule.workflowName);
+    setWorkflowClassificationLabel(rule.classificationLabel);
+    setWorkflowMinimumScore(rule.minimumScore);
+    setWorkflowPriority(rule.priority);
+    setWorkflowStopOnFailure(rule.stopOnFailure);
+    setWorkflowSteps(
+      (rule.steps ?? []).length
+        ? rule.steps.map((s, idx) => ({
+            stepOrder: idx + 1,
+            stepType: s.stepType,
+            stepConfigJson: s.stepConfigJson ?? '',
+            isActive: s.isActive,
+          }))
+        : [{ stepOrder: 1, stepType: 'SetCategory', stepConfigJson: '', isActive: true }]
+    );
+  };
+
+  const handleSaveWorkflowRule = async () => {
+    if (!workflowName.trim() || !workflowClassificationLabel.trim()) {
+      setFeedback('Workflow name and classification label are required.');
+      return;
+    }
+    const steps = workflowSteps
+      .map((s, idx) => ({ ...s, stepOrder: idx + 1, stepType: s.stepType.trim(), stepConfigJson: s.stepConfigJson?.trim() || undefined }))
+      .filter((s) => s.stepType);
+    if (steps.length === 0) {
+      setFeedback('At least one step is required.');
+      return;
+    }
+
+    setLoading(true);
+    setFeedback(null);
+    try {
+      if (editingWorkflowRuleId) {
+        await documentHubService.updateWorkflowRule(editingWorkflowRuleId, {
+          workflowName: workflowName.trim(),
+          classificationLabel: workflowClassificationLabel.trim(),
+          minimumScore: workflowMinimumScore,
+          priority: workflowPriority,
+          stopOnFailure: workflowStopOnFailure,
+          steps,
+        });
+      } else {
+        await documentHubService.createWorkflowRule({
+          workflowName: workflowName.trim(),
+          classificationLabel: workflowClassificationLabel.trim(),
+          minimumScore: workflowMinimumScore,
+          priority: workflowPriority,
+          stopOnFailure: workflowStopOnFailure,
+          steps,
+        });
+      }
+      resetWorkflowForm();
+      setFeedback('Workflow rule saved.');
+      await loadData();
+    } catch (error) {
+      setFeedback(getFriendlyError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteWorkflowRule = async (ruleId: number, name: string) => {
+    if (!window.confirm(`Delete workflow rule "${name}"?`)) return;
+    setLoading(true);
+    try {
+      await documentHubService.deleteWorkflowRule(ruleId);
+      if (editingWorkflowRuleId === ruleId) resetWorkflowForm();
+      await loadData();
+    } catch (error) {
+      setFeedback(getFriendlyError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRunWorkflowTest = async () => {
+    if (!workflowTestRuleId || !workflowTestFile) {
+      setWorkflowTestFeedback('Select a rule and upload a test document.');
+      return;
+    }
+    setLoading(true);
+    setWorkflowTestFeedback(null);
+    try {
+      const result = await documentHubService.testWorkflowRule(workflowTestRuleId, workflowTestFile);
+      setWorkflowTestResult(result);
+      setWorkflowTestFeedback(`Test completed for "${result.workflowName}".`);
+    } catch (error) {
+      setWorkflowTestFeedback(getFriendlyError(error));
+      setWorkflowTestResult(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Document Flows</h2>
+        <p className="mt-1 text-sm text-slate-500">Configure post-classification workflow actions and test them safely.</p>
+        {feedback && <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">{feedback}</p>}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-700">
+        <div className="grid gap-2">
+          <input value={workflowName} onChange={(e) => setWorkflowName(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="Workflow name" />
+          <input list="workflow-classification-label-options" value={workflowClassificationLabel} onChange={(e) => setWorkflowClassificationLabel(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="Classification label" />
+          <datalist id="workflow-classification-label-options">
+            {availableClassificationLabels.map((label) => <option key={label} value={label} />)}
+            <option value="Unclassified" />
+          </datalist>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <input type="number" min={0} max={1} step={0.01} value={workflowMinimumScore} onChange={(e) => setWorkflowMinimumScore(Number(e.target.value || 0.28))} className="rounded border border-slate-300 px-2 py-1" />
+          <input type="number" min={1} value={workflowPriority} onChange={(e) => setWorkflowPriority(Number(e.target.value || 100))} className="rounded border border-slate-300 px-2 py-1" />
+        </div>
+        <label className="mt-2 inline-flex items-center gap-2"><input type="checkbox" checked={workflowStopOnFailure} onChange={(e) => setWorkflowStopOnFailure(e.target.checked)} />Stop on failure</label>
+
+        <div className="mt-3 space-y-2 rounded border border-slate-200 bg-slate-50 p-2">
+          {workflowSteps.map((step, idx) => (
+            <div key={idx} className="rounded border border-slate-200 bg-white p-2">
+              <div className="grid gap-2 md:grid-cols-[90px_1fr_auto]">
+                <span className="self-center">Step {idx + 1}</span>
+                <select value={step.stepType} onChange={(e) => handleUpdateWorkflowStep(idx, { stepType: e.target.value })} className="rounded border border-slate-300 px-2 py-1">
+                  <option value="SetCategory">SetCategory</option>
+                  <option value="MoveToFolder">MoveToFolder</option>
+                  <option value="MarkCompleted">MarkCompleted</option>
+                  <option value="CreateJournalLog">CreateJournalLog</option>
+                  <option value="CreateContactLog">CreateContactLog</option>
+                  <option value="RunExtraction">RunExtraction</option>
+                </select>
+                <button type="button" onClick={() => handleRemoveWorkflowStep(idx)} className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">Remove</button>
+              </div>
+              <input value={step.stepConfigJson ?? ''} onChange={(e) => handleUpdateWorkflowStep(idx, { stepConfigJson: e.target.value })} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder="Optional JSON config" />
+              {step.stepType === 'MoveToFolder' && (
+                <input value={String(parseStepConfig(step.stepConfigJson).destinationPath ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'destinationPath', e.target.value)} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder='destinationPath e.g. "Inbox/Property Hub/Citiq"' />
+              )}
+            </div>
+          ))}
+          <button type="button" onClick={handleAddWorkflowStep} className="rounded border border-slate-300 bg-white px-2 py-1">Add Step</button>
+        </div>
+
+        <div className="mt-3">
+          <button type="button" onClick={handleSaveWorkflowRule} disabled={loading} className="rounded-lg bg-slate-900 px-3 py-1.5 text-white">{editingWorkflowRuleId ? 'Update Workflow Rule' : 'Save Workflow Rule'}</button>
+          {editingWorkflowRuleId && <button type="button" onClick={resetWorkflowForm} className="ml-2 rounded-lg border border-slate-300 px-3 py-1.5">Cancel Edit</button>}
+        </div>
+
+        <div className="mt-3 rounded border border-slate-200 bg-white p-2">
+          <p className="font-semibold">Saved Workflow Rules</p>
+          {workflowRules.length === 0 ? <p className="mt-1 text-slate-500">No workflow rules configured yet.</p> : (
+            <ul className="mt-2 space-y-2">
+              {workflowRules.map((rule) => (
+                <li key={rule.documentWorkflowRuleId} className="rounded border border-slate-200 bg-slate-50 p-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{rule.workflowName}</p>
+                      <p className="text-[11px] text-slate-600">Label: {rule.classificationLabel} | Min: {rule.minimumScore} | Priority: {rule.priority}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => handleEditWorkflowRule(rule)} className="rounded border border-slate-300 px-2 py-0.5">Edit</button>
+                      <button type="button" onClick={() => handleDeleteWorkflowRule(rule.documentWorkflowRuleId, rule.workflowName)} className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">Delete</button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="mt-3 rounded border border-slate-200 bg-white p-2">
+          <p className="font-semibold">Test Workflow Rule</p>
+          <div className="mt-2 grid gap-2">
+            <select value={workflowTestRuleId ?? ''} onChange={(e) => setWorkflowTestRuleId(e.target.value ? Number(e.target.value) : null)} className="rounded border border-slate-300 px-2 py-1">
+              <option value="">Select workflow rule</option>
+              {workflowRules.map((rule) => <option key={rule.documentWorkflowRuleId} value={rule.documentWorkflowRuleId}>{rule.workflowName}</option>)}
+            </select>
+            <input type="file" accept=".pdf,.txt,.csv,.json,.xml,.log,.md" onChange={(e) => setWorkflowTestFile(e.target.files?.[0] ?? null)} className="rounded border border-slate-300 px-2 py-1" />
+            <button type="button" onClick={handleRunWorkflowTest} disabled={loading} className="rounded border border-slate-300 bg-white px-3 py-1.5">Run Workflow Test</button>
+          </div>
+          {workflowTestFeedback && <p className="mt-2 text-[11px]">{workflowTestFeedback}</p>}
+          {workflowTestResult && (
+            <div className="mt-2 rounded border border-indigo-100 bg-indigo-50 p-2 text-[11px]">
+              <p><span className="font-semibold">Eligibility:</span> {workflowTestResult.ruleEligible ? 'Eligible' : 'Not eligible'}</p>
+              <p><span className="font-semibold">Classification:</span> {workflowTestResult.classificationLabel} ({workflowTestResult.classificationScore})</p>
+              <p className="whitespace-pre-wrap"><span className="font-semibold">Reason:</span> {workflowTestResult.eligibilityReason}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DocumentFlows;
