@@ -633,6 +633,7 @@ public class GraphEmailReader : IGraphEmailReader
 
         ClassificationTemplate? bestTemplate = null;
         double bestScore = 0d;
+        double secondBestScore = 0d;
         double bestCoreScore = 0d;
         double bestLabelCoverage = 0d;
         double bestPhraseBoost = 0d;
@@ -669,6 +670,7 @@ public class GraphEmailReader : IGraphEmailReader
             var score = Math.Min(1d, (coreScore * 0.65d) + (labelCoverage * 0.25d) + phraseBoost);
             if (score > bestScore)
             {
+                secondBestScore = bestScore;
                 bestScore = score;
                 bestCoreScore = coreScore;
                 bestLabelCoverage = labelCoverage;
@@ -676,26 +678,61 @@ public class GraphEmailReader : IGraphEmailReader
                 bestTemplate = template;
                 bestOverlapTerms = overlapTerms;
             }
+            else if (score > secondBestScore)
+            {
+                secondBestScore = score;
+            }
         }
 
+        var calibratedScore = CalibrateConfidence(
+            bestScore,
+            secondBestScore,
+            bestLabelCoverage,
+            bestPhraseBoost,
+            bestOverlapTerms.Count);
+
         // Conservative threshold to avoid false matches.
-        if (bestTemplate == null || bestScore < 0.28)
+        if (bestTemplate == null || calibratedScore < 0.28)
         {
             var explanation = bestTemplate == null
                 ? "No template produced a meaningful lexical overlap with the email content."
-                : $"Best template confidence {Math.Round(bestScore, 4)} is below threshold 0.28. " +
+                : $"Best template calibrated confidence {Math.Round(calibratedScore, 4)} is below threshold 0.28. " +
+                  $"Raw={Math.Round(bestScore, 4)}, secondBest={Math.Round(secondBestScore, 4)}. " +
                   $"Closest template '{bestTemplate.ClassificationLabel}' had core={Math.Round(bestCoreScore, 4)}, " +
                   $"labelCoverage={Math.Round(bestLabelCoverage, 4)}, phraseBoost={Math.Round(bestPhraseBoost, 2)} " +
                   $"with overlap terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}.";
-            return ("Unclassified", Math.Round(bestScore, 4), explanation);
+            return ("Unclassified", Math.Round(calibratedScore, 4), explanation);
         }
 
         var explainability =
-            $"Matched template '{bestTemplate.ClassificationLabel}' with confidence {Math.Round(bestScore, 4)} " +
+            $"Matched template '{bestTemplate.ClassificationLabel}' with calibrated confidence {Math.Round(calibratedScore, 4)} " +
+            $"(raw={Math.Round(bestScore, 4)}, secondBest={Math.Round(secondBestScore, 4)}). " +
             $"(core={Math.Round(bestCoreScore, 4)}, labelCoverage={Math.Round(bestLabelCoverage, 4)}, phraseBoost={Math.Round(bestPhraseBoost, 2)}). " +
             $"Overlap terms: {string.Join(", ", bestOverlapTerms.DefaultIfEmpty("none"))}.";
 
-        return (bestTemplate.ClassificationLabel, Math.Round(bestScore, 4), explainability);
+        return (bestTemplate.ClassificationLabel, Math.Round(calibratedScore, 4), explainability);
+    }
+
+    private static double CalibrateConfidence(
+        double rawScore,
+        double secondBestScore,
+        double labelCoverage,
+        double phraseBoost,
+        int overlapTermCount)
+    {
+        var margin = Math.Max(0d, rawScore - secondBestScore);
+        var calibrated = rawScore;
+        calibrated += Math.Min(0.22d, margin * 1.1d);
+        calibrated += Math.Min(0.18d, labelCoverage * 0.22d);
+        calibrated += Math.Min(0.12d, overlapTermCount * 0.015d);
+        if (phraseBoost > 0)
+        {
+            calibrated += 0.08d;
+        }
+
+        calibrated = Math.Min(0.995d, Math.Max(0d, calibrated));
+        calibrated = 1d - Math.Pow(1d - calibrated, 1.65d);
+        return Math.Min(0.995d, Math.Max(0d, calibrated));
     }
 
     private static Dictionary<string, double> BuildWeightedTemplateTokens(ClassificationTemplate template)
