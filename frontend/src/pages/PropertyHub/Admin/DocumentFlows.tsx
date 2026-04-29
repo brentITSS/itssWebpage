@@ -521,7 +521,7 @@ const DocumentFlows: React.FC = () => {
                           placeholder="journalAmountRandTemplate (e.g. {field:total_incl_vat} or {field:total_incl_vat}*3.8%)"
                         />
                         <div>
-                          <label className="block text-[11px] font-medium text-slate-600">ZAR->GBP rate source</label>
+                          <label className="block text-[11px] font-medium text-slate-600">ZAR-&gt;GBP rate source</label>
                           <select
                             value={String(config.zarGbpRateSource ?? 'live')}
                             onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'zarGbpRateSource', e.target.value)}
