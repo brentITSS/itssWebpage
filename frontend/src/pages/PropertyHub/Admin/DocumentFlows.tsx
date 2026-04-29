@@ -463,6 +463,10 @@ const DocumentFlows: React.FC = () => {
                           className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
                           placeholder="descriptionTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore}, {summary})"
                         />
+                        <p className="md:col-span-2 text-[10px] text-slate-500">
+                          Token helpers: {'{field:meter_number}'}, {'{field:account_number}'}, {'{field:invoice_total}'},{' '}
+                          {'{extractionJson}'}, {'{classificationLabel}'}, {'{classificationScore}'}, {'{summary}'}.
+                        </p>
                       </>
                     );
                   })()}
@@ -578,6 +582,10 @@ const DocumentFlows: React.FC = () => {
                           className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
                           placeholder="notesTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore}, {summary})"
                         />
+                        <p className="md:col-span-2 text-[10px] text-slate-500">
+                          Token helpers: {'{field:meter_number}'}, {'{field:account_number}'}, {'{field:invoice_total}'},{' '}
+                          {'{extractionJson}'}, {'{classificationLabel}'}, {'{classificationScore}'}, {'{summary}'}.
+                        </p>
                       </>
                     );
                   })()}
