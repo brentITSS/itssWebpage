@@ -132,6 +132,7 @@ public class GraphEmailReader : IGraphEmailReader
                 mailboxUser,
                 propertyHubFolder.Id,
                 detailedMessage,
+                attachmentExtraction.Attachments,
                 consolidatedContent,
                 classification.Label,
                 classification.Score,
@@ -272,6 +273,7 @@ public class GraphEmailReader : IGraphEmailReader
         string mailboxUser,
         string propertyHubFolderId,
         Message message,
+        List<AttachmentPreview> attachmentPreviews,
         string consolidatedContent,
         string classificationLabel,
         double classificationScore,
@@ -360,6 +362,7 @@ public class GraphEmailReader : IGraphEmailReader
                 {
                     await CreateJournalLogAsync(
                         message,
+                        attachmentPreviews,
                         classificationLabel,
                         classificationScore,
                         step.StepConfigJson,
@@ -370,6 +373,7 @@ public class GraphEmailReader : IGraphEmailReader
                 {
                     await CreateContactLogAsync(
                         message,
+                        attachmentPreviews,
                         classificationLabel,
                         classificationScore,
                         step.StepConfigJson,
@@ -408,6 +412,7 @@ public class GraphEmailReader : IGraphEmailReader
 
     private async Task CreateJournalLogAsync(
         Message message,
+        IReadOnlyList<AttachmentPreview> attachmentPreviews,
         string classificationLabel,
         double classificationScore,
         string? stepConfigJson,
@@ -424,6 +429,13 @@ public class GraphEmailReader : IGraphEmailReader
         int? journalTypeId = null;
         int? journalSubTypeId = null;
         string? descriptionTemplate = null;
+        string? journalReferenceTemplate = null;
+        string? amountRandTemplate = null;
+        string? amountGbpTemplate = null;
+        string? exchangeRateTemplate = null;
+        int transactionDateOffsetDays = 0;
+        var attachEmailAttachments = false;
+        string? attachmentAddedByTemplate = null;
 
         if (!string.IsNullOrWhiteSpace(stepConfigJson))
         {
@@ -434,43 +446,99 @@ public class GraphEmailReader : IGraphEmailReader
             tenantId = GetOptionalInt(root, "tenantId");
             journalTypeId = GetOptionalInt(root, "journalTypeId");
             journalSubTypeId = GetOptionalInt(root, "journalSubTypeId");
-            descriptionTemplate = GetOptionalString(root, "descriptionTemplate");
+            descriptionTemplate = GetOptionalString(root, "journalDescriptionTemplate") ?? GetOptionalString(root, "descriptionTemplate");
+            journalReferenceTemplate = GetOptionalString(root, "journalReferenceTemplate");
+            amountRandTemplate = GetOptionalString(root, "journalAmountRandTemplate");
+            amountGbpTemplate = GetOptionalString(root, "journalAmountGbpTemplate");
+            exchangeRateTemplate = GetOptionalString(root, "zarGbpCurrencyExchangeRateTemplate");
+            transactionDateOffsetDays = GetOptionalInt(root, "transactionDateOffsetDays") ?? 0;
+            attachEmailAttachments = GetOptionalBool(root, "attachEmailAttachments") ?? false;
+            attachmentAddedByTemplate = GetOptionalString(root, "attachmentAddedByTemplate");
         }
 
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
-
-        const string insertSql = """
-            INSERT INTO tblJournalLog (propertyID, tenancyID, tenantID, transactionDate, journalTypeID, journalSubTypeID)
-            VALUES (@propertyId, @tenancyId, @tenantId, @transactionDate, @journalTypeId, @journalSubTypeId);
-            SELECT CAST(SCOPE_IDENTITY() AS int);
-            """;
-        await using var command = new SqlCommand(insertSql, connection);
-        command.Parameters.AddWithValue("@propertyId", (object?)propertyId ?? DBNull.Value);
-        command.Parameters.AddWithValue("@tenancyId", (object?)tenancyId ?? DBNull.Value);
-        command.Parameters.AddWithValue("@tenantId", (object?)tenantId ?? DBNull.Value);
-        command.Parameters.AddWithValue("@transactionDate", effectiveDate);
-        command.Parameters.AddWithValue("@journalTypeId", (object?)journalTypeId ?? DBNull.Value);
-        command.Parameters.AddWithValue("@journalSubTypeId", (object?)journalSubTypeId ?? DBNull.Value);
-
-        var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
-
-        var description = ApplyTemplateTokens(
+        effectiveDate = effectiveDate.AddDays(transactionDateOffsetDays);
+        var renderedDescription = ApplyTemplateTokens(
             descriptionTemplate ??
             "Workflow auto-created journal log for {classificationLabel} (score {classificationScore}) from email '{subject}'.",
             message,
             classificationLabel,
             classificationScore,
             workflowContext);
+        var renderedReference = ApplyTemplateTokens(journalReferenceTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
+        var renderedAmountRand = ApplyTemplateTokens(amountRandTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
+        var renderedAmountGbp = ApplyTemplateTokens(amountGbpTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
+        var renderedExchange = ApplyTemplateTokens(exchangeRateTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string insertSql = """
+            INSERT INTO tblJournalLog (
+                propertyGroupID,
+                propertyID,
+                tenancyID,
+                tenantID,
+                transactionDate,
+                journalTypeID,
+                journalSubTypeID,
+                journalDescription,
+                journalAmountRand,
+                zAR_GBP_CurrencyExchangeRate,
+                journalAmountGBP,
+                journalReference)
+            VALUES (
+                @propertyGroupId,
+                @propertyId,
+                @tenancyId,
+                @tenantId,
+                @transactionDate,
+                @journalTypeId,
+                @journalSubTypeId,
+                @journalDescription,
+                @journalAmountRand,
+                @zarGbpCurrencyExchangeRate,
+                @journalAmountGbp,
+                @journalReference);
+            SELECT CAST(SCOPE_IDENTITY() AS int);
+            """;
+        await using var command = new SqlCommand(insertSql, connection);
+        var propertyGroupIdForInsert = propertyId.HasValue
+            ? await ResolvePropertyGroupIdAsync(connection, propertyId.Value, cancellationToken)
+            : null;
+        command.Parameters.AddWithValue("@propertyGroupId", (object?)propertyGroupIdForInsert ?? DBNull.Value);
+        command.Parameters.AddWithValue("@propertyId", (object?)propertyId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@tenancyId", (object?)tenancyId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@tenantId", (object?)tenantId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@transactionDate", effectiveDate);
+        command.Parameters.AddWithValue("@journalTypeId", (object?)journalTypeId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalSubTypeId", (object?)journalSubTypeId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalDescription", (object?)NullIfEmpty(renderedDescription) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalAmountRand", (object?)ParseDecimalOrNull(renderedAmountRand) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@zarGbpCurrencyExchangeRate", (object?)NullIfEmpty(renderedExchange) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalAmountGbp", (object?)ParseDecimalOrNull(renderedAmountGbp) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalReference", (object?)NullIfEmpty(renderedReference) ?? DBNull.Value);
+
+        var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
+
+        if (attachEmailAttachments && insertedId.HasValue && attachmentPreviews.Count > 0)
+        {
+            await CreateJournalAttachmentRowsAsync(
+                connection,
+                insertedId.Value,
+                attachmentPreviews,
+                ApplyTemplateTokens(attachmentAddedByTemplate ?? "Workflow", message, classificationLabel, classificationScore, workflowContext),
+                cancellationToken);
+        }
 
         _logger.LogInformation(
             "Created JournalLog {JournalLogId}. Description note: {Description}",
             insertedId,
-            description);
+            renderedDescription);
     }
 
     private async Task CreateContactLogAsync(
         Message message,
+        IReadOnlyList<AttachmentPreview> attachmentPreviews,
         string classificationLabel,
         double classificationScore,
         string? stepConfigJson,
@@ -487,6 +555,10 @@ public class GraphEmailReader : IGraphEmailReader
         int contactLogTypeId = 0;
         var contactBy = "Workflow";
         string? notesTemplate = null;
+        int contactDateOffsetDays = 0;
+        var attachEmailAttachments = false;
+        string? attachmentDescriptionTemplate = null;
+        string? contactIdTemplate = null;
 
         if (!string.IsNullOrWhiteSpace(stepConfigJson))
         {
@@ -498,12 +570,18 @@ public class GraphEmailReader : IGraphEmailReader
             contactLogTypeId = GetOptionalInt(root, "contactLogTypeId") ?? 0;
             contactBy = GetOptionalString(root, "contactBy") ?? contactBy;
             notesTemplate = GetOptionalString(root, "notesTemplate");
+            contactDateOffsetDays = GetOptionalInt(root, "contactDateOffsetDays") ?? 0;
+            attachEmailAttachments = GetOptionalBool(root, "attachEmailAttachments") ?? false;
+            attachmentDescriptionTemplate = GetOptionalString(root, "attachmentDescriptionTemplate");
+            contactIdTemplate = GetOptionalString(root, "contactIdTemplate");
         }
 
         if (contactLogTypeId <= 0)
         {
             throw new InvalidOperationException("CreateContactLog step requires contactLogTypeId in stepConfigJson.");
         }
+
+        effectiveDate = effectiveDate.AddDays(contactDateOffsetDays);
 
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -529,6 +607,21 @@ public class GraphEmailReader : IGraphEmailReader
         command.Parameters.AddWithValue("@contactLogTypeId", contactLogTypeId);
 
         var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
+
+        if (attachEmailAttachments && insertedId.HasValue && attachmentPreviews.Count > 0)
+        {
+            await CreateContactAttachmentRowsAsync(
+                connection,
+                insertedId.Value,
+                attachmentPreviews,
+                ApplyTemplateTokens(contactIdTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext),
+                attachmentDescriptionTemplate,
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext,
+                cancellationToken);
+        }
         _logger.LogInformation("Created ContactLog {ContactLogId} via workflow.", insertedId);
     }
 
@@ -903,6 +996,122 @@ public class GraphEmailReader : IGraphEmailReader
         return fields;
     }
 
+    private static string? NullIfEmpty(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static decimal? ParseDecimalOrNull(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim().Replace(",", string.Empty);
+        return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private async Task<int?> ResolvePropertyGroupIdAsync(SqlConnection connection, int propertyId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT TOP 1 propertyGroupID
+            FROM tblProperty
+            WHERE propertyID = @propertyId;
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@propertyId", propertyId);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        if (result == null || result == DBNull.Value)
+        {
+            return null;
+        }
+
+        return Convert.ToInt32(result, CultureInfo.InvariantCulture);
+    }
+
+    private static async Task CreateJournalAttachmentRowsAsync(
+        SqlConnection connection,
+        int journalLogId,
+        IReadOnlyList<AttachmentPreview> attachmentPreviews,
+        string? attachedBy,
+        CancellationToken cancellationToken)
+    {
+        if (attachmentPreviews.Count == 0)
+        {
+            return;
+        }
+
+        const string insertSql = """
+            INSERT INTO tblJournalLogAttachment (journalLogID, dateAttached, attachedBy)
+            VALUES (@journalLogId, @dateAttached, @attachedBy);
+            """;
+
+        foreach (var attachment in attachmentPreviews)
+        {
+            await using var command = new SqlCommand(insertSql, connection);
+            command.Parameters.AddWithValue("@journalLogId", journalLogId);
+            command.Parameters.AddWithValue("@dateAttached", DateTime.UtcNow);
+
+            var attachedByValue = NullIfEmpty(attachedBy);
+            if (!string.IsNullOrWhiteSpace(attachment.Name))
+            {
+                attachedByValue = string.IsNullOrWhiteSpace(attachedByValue)
+                    ? $"Workflow ({attachment.Name})"
+                    : $"{attachedByValue} ({attachment.Name})";
+            }
+
+            var safeAttachedBy = attachedByValue;
+            if (!string.IsNullOrWhiteSpace(safeAttachedBy) && safeAttachedBy.Length > 255)
+            {
+                safeAttachedBy = safeAttachedBy[..255];
+            }
+            command.Parameters.AddWithValue("@attachedBy", (object?)safeAttachedBy ?? DBNull.Value);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private static async Task CreateContactAttachmentRowsAsync(
+        SqlConnection connection,
+        int contactLogId,
+        IReadOnlyList<AttachmentPreview> attachmentPreviews,
+        string? contactId,
+        string? attachmentDescriptionTemplate,
+        Message message,
+        string classificationLabel,
+        double classificationScore,
+        IReadOnlyDictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        if (attachmentPreviews.Count == 0)
+        {
+            return;
+        }
+
+        const string insertSql = """
+            INSERT INTO tblContactLogAttachment (contactID, contactLogID, attachmentDescription)
+            VALUES (@contactId, @contactLogId, @attachmentDescription);
+            """;
+
+        foreach (var attachment in attachmentPreviews)
+        {
+            await using var command = new SqlCommand(insertSql, connection);
+            command.Parameters.AddWithValue("@contactId", (object?)NullIfEmpty(contactId) ?? DBNull.Value);
+            command.Parameters.AddWithValue("@contactLogId", contactLogId);
+
+            var description = ApplyTemplateTokens(
+                attachmentDescriptionTemplate ?? $"Attachment: {attachment.Name}",
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext);
+            command.Parameters.AddWithValue("@attachmentDescription", (object?)NullIfEmpty(description) ?? DBNull.Value);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
     private static Dictionary<string, string> ExtractFieldsFromContent(
         string content,
         IEnumerable<(string FieldName, string? ExampleValue)> fields)
@@ -950,6 +1159,26 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         if (el.ValueKind == JsonValueKind.String && int.TryParse(el.GetString(), out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
+    }
+
+    private static bool? GetOptionalBool(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var el))
+        {
+            return null;
+        }
+
+        if (el.ValueKind == JsonValueKind.True || el.ValueKind == JsonValueKind.False)
+        {
+            return el.GetBoolean();
+        }
+
+        if (el.ValueKind == JsonValueKind.String && bool.TryParse(el.GetString(), out var parsed))
         {
             return parsed;
         }

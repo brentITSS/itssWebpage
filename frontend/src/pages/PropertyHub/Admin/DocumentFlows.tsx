@@ -14,6 +14,7 @@ import {
   type JournalTypeDto,
   type PropertyGroupResponseDto,
   type PropertyResponseDto,
+  type TenancyResponseDto,
   type TenantResponseDto,
 } from '../../../services/propertyAdminService';
 
@@ -48,6 +49,7 @@ const DocumentFlows: React.FC = () => {
   const [propertyGroups, setPropertyGroups] = useState<PropertyGroupResponseDto[]>([]);
   const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
   const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
+  const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
   const [contactLogTypes, setContactLogTypes] = useState<ContactLogTypeDto[]>([]);
 
@@ -92,6 +94,7 @@ const DocumentFlows: React.FC = () => {
         loadedPropertyGroups,
         loadedProperties,
         loadedTenants,
+        loadedTenancies,
         loadedJournalTypes,
         loadedContactLogTypes,
       ] = await Promise.all([
@@ -102,6 +105,7 @@ const DocumentFlows: React.FC = () => {
         propertyAdminService.getPropertyGroups(),
         propertyAdminService.getProperties(),
         propertyAdminService.getTenants(),
+        propertyAdminService.getTenancies(),
         propertyAdminService.getJournalTypes(),
         propertyAdminService.getContactLogTypes(),
       ]);
@@ -112,6 +116,7 @@ const DocumentFlows: React.FC = () => {
       setPropertyGroups(loadedPropertyGroups);
       setProperties(loadedProperties);
       setTenants(loadedTenants);
+      setTenancies(loadedTenancies);
       setJournalTypes(loadedJournalTypes);
       setContactLogTypes(loadedContactLogTypes);
     } catch (error) {
@@ -349,6 +354,9 @@ const DocumentFlows: React.FC = () => {
 
                     const selectedJournalType = journalTypes.find((t) => t.journalTypeId === selectedJournalTypeId);
                     const subTypes = selectedJournalType?.subTypes ?? [];
+                    const filteredTenancies = selectedPropertyGroupId
+                      ? tenancies.filter((t) => t.propertyId === Number(config.propertyId ?? 0))
+                      : tenancies;
 
                     return (
                       <>
@@ -439,6 +447,24 @@ const DocumentFlows: React.FC = () => {
                         </div>
 
                         <div className="md:col-span-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Tenancy</label>
+                          <select
+                            value={normalizeIdForSelect(config.tenancyId)}
+                            onChange={(e) =>
+                              handleUpdateWorkflowStepConfigField(idx, 'tenancyId', e.target.value === '' ? '' : Number(e.target.value))
+                            }
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select tenancy</option>
+                            {filteredTenancies.map((t) => (
+                              <option key={t.tenancyId} value={t.tenancyId}>
+                                {t.propertyName} ({new Date(t.startDate).toLocaleDateString()})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2">
                           <label className="block text-[11px] font-medium text-slate-600">Tenant</label>
                           <select
                             value={normalizeIdForSelect(config.tenantId)}
@@ -453,15 +479,65 @@ const DocumentFlows: React.FC = () => {
                             ))}
                           </select>
                           <p className="mt-1 text-[10px] text-slate-500">
-                            These selections are written as integer IDs for `tblJournalLog` (journalTypeId, journalSubTypeId, propertyId, tenantId).
+                            These selections are written as integer IDs for `tblJournalLog` (journalTypeId, journalSubTypeId, propertyId, tenancyId, tenantId).
                           </p>
                         </div>
 
                         <input
+                          value={String(config.journalReferenceTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalReferenceTemplate', e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="journalReferenceTemplate (supports tokens)"
+                        />
+                        <input
+                          value={String(config.transactionDateOffsetDays ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'transactionDateOffsetDays', e.target.value === '' ? '' : Number(e.target.value))}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="transactionDateOffsetDays (e.g. 0, 1, -1)"
+                        />
+                        <input
+                          value={String(config.journalAmountRandTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalAmountRandTemplate', e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="journalAmountRandTemplate (e.g. {field:invoice_total})"
+                        />
+                        <input
+                          value={String(config.journalAmountGbpTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalAmountGbpTemplate', e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="journalAmountGbpTemplate"
+                        />
+                        <input
+                          value={String(config.zarGbpCurrencyExchangeRateTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'zarGbpCurrencyExchangeRateTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="zarGbpCurrencyExchangeRateTemplate"
+                        />
+
+                        <input
                           value={String(config.descriptionTemplate ?? '')}
-                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'descriptionTemplate', e.target.value)}
+                          onChange={(e) =>
+                            handleUpdateWorkflowStepConfigFields(idx, {
+                              descriptionTemplate: e.target.value,
+                              journalDescriptionTemplate: e.target.value,
+                            })
+                          }
                           className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
                           placeholder="descriptionTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore}, {summary})"
+                        />
+                        <label className="md:col-span-2 inline-flex items-center gap-2 text-[11px] text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(config.attachEmailAttachments)}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'attachEmailAttachments', e.target.checked)}
+                          />
+                          Add rows to `tblJournalLogAttachment` for each email attachment.
+                        </label>
+                        <input
+                          value={String(config.attachmentAddedByTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'attachmentAddedByTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="attachmentAddedByTemplate (optional)"
                         />
                         <p className="md:col-span-2 text-[10px] text-slate-500">
                           Token helpers: {'{field:meter_number}'}, {'{field:account_number}'}, {'{field:invoice_total}'},{' '}
@@ -570,6 +646,18 @@ const DocumentFlows: React.FC = () => {
                         </div>
 
                         <input
+                          value={String(config.contactDateOffsetDays ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactDateOffsetDays', e.target.value === '' ? '' : Number(e.target.value))}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="contactDateOffsetDays (e.g. 0, 1, -1)"
+                        />
+                        <input
+                          value={String(config.contactIdTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactIdTemplate', e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="contactIdTemplate (optional)"
+                        />
+                        <input
                           value={String(config.contactBy ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactBy', e.target.value)}
                           className="rounded border border-slate-300 px-2 py-1"
@@ -581,6 +669,20 @@ const DocumentFlows: React.FC = () => {
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'notesTemplate', e.target.value)}
                           className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
                           placeholder="notesTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore}, {summary})"
+                        />
+                        <label className="md:col-span-2 inline-flex items-center gap-2 text-[11px] text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(config.attachEmailAttachments)}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'attachEmailAttachments', e.target.checked)}
+                          />
+                          Add rows to `tblContactLogAttachment` for each email attachment.
+                        </label>
+                        <input
+                          value={String(config.attachmentDescriptionTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'attachmentDescriptionTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="attachmentDescriptionTemplate (optional, defaults to attachment filename)"
                         />
                         <p className="md:col-span-2 text-[10px] text-slate-500">
                           Token helpers: {'{field:meter_number}'}, {'{field:account_number}'}, {'{field:invoice_total}'},{' '}
