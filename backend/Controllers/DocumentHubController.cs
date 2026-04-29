@@ -1095,10 +1095,31 @@ public class DocumentHubController : ControllerBase
 
         if (!response.IsSuccessStatusCode)
         {
+            string message = $"Email processor function returned {(int)response.StatusCode}.";
+            if (!string.IsNullOrWhiteSpace(rawContent))
+            {
+                try
+                {
+                    using var errorDoc = JsonDocument.Parse(rawContent);
+                    if (errorDoc.RootElement.TryGetProperty("message", out var messageEl))
+                    {
+                        var innerMessage = messageEl.GetString();
+                        if (!string.IsNullOrWhiteSpace(innerMessage))
+                        {
+                            message = $"Email processor function returned {(int)response.StatusCode}: {innerMessage}";
+                        }
+                    }
+                }
+                catch
+                {
+                    // Non-JSON response body; keep generic message and preserve raw content in payload.
+                }
+            }
+
             return StatusCode((int)response.StatusCode, new TriggerPropertyHubEmailProcessingResponse
             {
                 Status = "error",
-                Message = $"Email processor function returned {(int)response.StatusCode}.",
+                Message = message,
                 ProcessingResult = rawContent
             });
         }
