@@ -960,8 +960,13 @@ const DocumentHub: React.FC = () => {
                 Cancel Edit
               </button>
             )}
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              <p className="font-semibold text-slate-700">Saved Label Sets</p>
+            <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 text-xs text-slate-700 shadow-sm">
+              <p className="flex items-center gap-2 font-semibold text-indigo-900">
+                Saved Label Sets
+                <span className="inline-flex items-center rounded-full border border-indigo-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                  Saved
+                </span>
+              </p>
               {labelSets.length === 0 ? (
                 <p className="mt-1">No label sets saved yet.</p>
               ) : (
@@ -969,7 +974,7 @@ const DocumentHub: React.FC = () => {
                   {labelSets.slice(0, 5).map((item) => (
                     <li
                       key={item.documentLabelSetId}
-                      className="flex items-center justify-between rounded border border-slate-200 bg-white px-2 py-1"
+                      className="flex items-center justify-between rounded-md border border-indigo-100 bg-white px-2.5 py-1.5 shadow-sm transition hover:border-indigo-200 hover:shadow"
                     >
                       <span>
                         {item.labelSetName} ({item.labels.length} labels)
@@ -1163,14 +1168,19 @@ const DocumentHub: React.FC = () => {
           {summarisationFeedback && (
             <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">{summarisationFeedback}</div>
           )}
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-            <p className="font-semibold text-slate-700">Saved Summarisation Templates</p>
+          <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 text-xs text-slate-700 shadow-sm">
+            <p className="flex items-center gap-2 font-semibold text-indigo-900">
+              Saved Summarisation Templates
+              <span className="inline-flex items-center rounded-full border border-indigo-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                Saved
+              </span>
+            </p>
             {summarisationTemplates.length === 0 ? (
               <p className="mt-1">No templates saved yet.</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {summarisationTemplates.slice(0, 5).map((item) => (
-                  <li key={item.documentSummarisationTemplateId} className="flex items-center justify-between rounded border border-slate-200 bg-white px-2 py-1">
+                  <li key={item.documentSummarisationTemplateId} className="flex items-center justify-between rounded-md border border-indigo-100 bg-white px-2.5 py-1.5 shadow-sm transition hover:border-indigo-200 hover:shadow">
                     <span>{item.summarisationName}</span>
                     <div className="flex items-center gap-1">
                       <button
@@ -1280,8 +1290,13 @@ const DocumentHub: React.FC = () => {
                 Cancel Edit
               </button>
             )}
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              <p className="font-semibold text-slate-700">Saved Extraction Templates</p>
+            <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 text-xs text-slate-700 shadow-sm">
+              <p className="flex items-center gap-2 font-semibold text-indigo-900">
+                Saved Extraction Templates
+                <span className="inline-flex items-center rounded-full border border-indigo-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                  Saved
+                </span>
+              </p>
               {extractionTemplates.length === 0 ? (
                 <p className="mt-1">No templates saved yet.</p>
               ) : (
@@ -1289,7 +1304,7 @@ const DocumentHub: React.FC = () => {
                   {extractionTemplates.slice(0, 5).map((item) => (
                     <li
                       key={item.documentExtractionTemplateId}
-                      className="flex items-center justify-between rounded border border-slate-200 bg-white px-2 py-1"
+                      className="flex items-center justify-between rounded-md border border-indigo-100 bg-white px-2.5 py-1.5 shadow-sm transition hover:border-indigo-200 hover:shadow"
                     >
                       <span>
                         {item.extractionTemplateName} ({item.fields.length} fields)

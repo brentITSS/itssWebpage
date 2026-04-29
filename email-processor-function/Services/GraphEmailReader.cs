@@ -27,6 +27,10 @@ public interface IGraphEmailReader
 public class GraphEmailReader : IGraphEmailReader
 {
     private const string CompletedCategory = "Completed";
+    private static readonly HttpClient FxHttpClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(10)
+    };
     private readonly IConfiguration _configuration;
     private readonly ILogger<GraphEmailReader> _logger;
 
@@ -433,6 +437,7 @@ public class GraphEmailReader : IGraphEmailReader
         string? amountRandTemplate = null;
         string? amountGbpTemplate = null;
         string? exchangeRateTemplate = null;
+        string? exchangeRateSource = null;
         int transactionDateOffsetDays = 0;
         var attachEmailAttachments = false;
         string? attachmentAddedByTemplate = null;
@@ -451,6 +456,7 @@ public class GraphEmailReader : IGraphEmailReader
             amountRandTemplate = GetOptionalString(root, "journalAmountRandTemplate");
             amountGbpTemplate = GetOptionalString(root, "journalAmountGbpTemplate");
             exchangeRateTemplate = GetOptionalString(root, "zarGbpCurrencyExchangeRateTemplate");
+            exchangeRateSource = GetOptionalString(root, "zarGbpRateSource");
             transactionDateOffsetDays = GetOptionalInt(root, "transactionDateOffsetDays") ?? 0;
             attachEmailAttachments = GetOptionalBool(root, "attachEmailAttachments") ?? false;
             attachmentAddedByTemplate = GetOptionalString(root, "attachmentAddedByTemplate");
@@ -468,6 +474,35 @@ public class GraphEmailReader : IGraphEmailReader
         var renderedAmountRand = ApplyTemplateTokens(amountRandTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
         var renderedAmountGbp = ApplyTemplateTokens(amountGbpTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
         var renderedExchange = ApplyTemplateTokens(exchangeRateTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
+        var amountRand = ParseDecimalOrNull(renderedAmountRand);
+        var amountGbp = ParseDecimalOrNull(renderedAmountGbp);
+        var exchangeRate = ParseDecimalOrNull(renderedExchange);
+        var shouldFetchLiveRate =
+            string.Equals(exchangeRateSource, "live", StringComparison.OrdinalIgnoreCase) ||
+            (amountRand.HasValue && !exchangeRate.HasValue);
+
+        // Primary workflow: use live rate when configured (or when no rate value is provided).
+        if (shouldFetchLiveRate)
+        {
+            var liveRate = await FetchLiveZarToGbpRateAsync(cancellationToken);
+            if (liveRate.HasValue)
+            {
+                exchangeRate = liveRate;
+            }
+        }
+
+        if (amountRand.HasValue && exchangeRate.HasValue && !amountGbp.HasValue)
+        {
+            amountGbp = Math.Round(amountRand.Value * exchangeRate.Value, 6);
+        }
+        else if (amountRand.HasValue && amountGbp.HasValue && !exchangeRate.HasValue && amountRand.Value != 0)
+        {
+            exchangeRate = Math.Round(amountGbp.Value / amountRand.Value, 10);
+        }
+        else if (amountGbp.HasValue && exchangeRate.HasValue && !amountRand.HasValue && exchangeRate.Value != 0)
+        {
+            amountRand = Math.Round(amountGbp.Value / exchangeRate.Value, 6);
+        }
 
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -513,9 +548,13 @@ public class GraphEmailReader : IGraphEmailReader
         command.Parameters.AddWithValue("@journalTypeId", (object?)journalTypeId ?? DBNull.Value);
         command.Parameters.AddWithValue("@journalSubTypeId", (object?)journalSubTypeId ?? DBNull.Value);
         command.Parameters.AddWithValue("@journalDescription", (object?)NullIfEmpty(renderedDescription) ?? DBNull.Value);
-        command.Parameters.AddWithValue("@journalAmountRand", (object?)ParseDecimalOrNull(renderedAmountRand) ?? DBNull.Value);
-        command.Parameters.AddWithValue("@zarGbpCurrencyExchangeRate", (object?)NullIfEmpty(renderedExchange) ?? DBNull.Value);
-        command.Parameters.AddWithValue("@journalAmountGbp", (object?)ParseDecimalOrNull(renderedAmountGbp) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalAmountRand", (object?)amountRand ?? DBNull.Value);
+        command.Parameters.AddWithValue(
+            "@zarGbpCurrencyExchangeRate",
+            exchangeRate.HasValue
+                ? exchangeRate.Value.ToString("0.##########", CultureInfo.InvariantCulture)
+                : (object?)NullIfEmpty(renderedExchange) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@journalAmountGbp", (object?)amountGbp ?? DBNull.Value);
         command.Parameters.AddWithValue("@journalReference", (object?)NullIfEmpty(renderedReference) ?? DBNull.Value);
 
         var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
@@ -1008,10 +1047,200 @@ public class GraphEmailReader : IGraphEmailReader
             return null;
         }
 
-        var normalized = value.Trim().Replace(",", string.Empty);
-        return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed)
-            ? parsed
-            : null;
+        return TryEvaluateDecimalExpression(value, out var parsed) ? parsed : null;
+    }
+
+    private static bool TryEvaluateDecimalExpression(string rawValue, out decimal parsed)
+    {
+        parsed = 0m;
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return false;
+        }
+
+        var normalized = rawValue
+            .Trim()
+            .Replace(",", string.Empty, StringComparison.Ordinal)
+            .Replace("R", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("ZAR", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("GBP", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("£", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        // Convert percentages so expressions like "x * 3.8%" work naturally.
+        normalized = Regex.Replace(normalized, @"(\d+(?:\.\d+)?)%", "($1/100)");
+
+        var hasOperator = normalized.IndexOfAny(new[] { '+', '-', '*', '/', '(', ')' }) >= 0;
+        if (!hasOperator)
+        {
+            return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out parsed);
+        }
+
+        return TryEvaluateArithmeticExpression(normalized, out parsed);
+    }
+
+    private static bool TryEvaluateArithmeticExpression(string expression, out decimal result)
+    {
+        result = 0m;
+        var values = new Stack<decimal>();
+        var operators = new Stack<char>();
+        var i = 0;
+
+        while (i < expression.Length)
+        {
+            var ch = expression[i];
+
+            if (char.IsWhiteSpace(ch))
+            {
+                i++;
+                continue;
+            }
+
+            if (ch == '(')
+            {
+                operators.Push(ch);
+                i++;
+                continue;
+            }
+
+            if (ch == ')')
+            {
+                while (operators.Count > 0 && operators.Peek() != '(')
+                {
+                    if (!ApplyOperator(values, operators.Pop()))
+                    {
+                        return false;
+                    }
+                }
+
+                if (operators.Count == 0 || operators.Pop() != '(')
+                {
+                    return false;
+                }
+
+                i++;
+                continue;
+            }
+
+            if (IsOperator(ch))
+            {
+                var isUnaryMinus = ch == '-' && (i == 0 || expression[i - 1] == '(' || IsOperator(expression[i - 1]));
+                if (isUnaryMinus)
+                {
+                    var start = i;
+                    i++;
+                    while (i < expression.Length && (char.IsDigit(expression[i]) || expression[i] == '.'))
+                    {
+                        i++;
+                    }
+
+                    if (!decimal.TryParse(expression[start..i], NumberStyles.Any, CultureInfo.InvariantCulture, out var unaryValue))
+                    {
+                        return false;
+                    }
+                    values.Push(unaryValue);
+                    continue;
+                }
+
+                while (operators.Count > 0 && operators.Peek() != '(' && Precedence(operators.Peek()) >= Precedence(ch))
+                {
+                    if (!ApplyOperator(values, operators.Pop()))
+                    {
+                        return false;
+                    }
+                }
+
+                operators.Push(ch);
+                i++;
+                continue;
+            }
+
+            if (char.IsDigit(ch) || ch == '.')
+            {
+                var start = i;
+                i++;
+                while (i < expression.Length && (char.IsDigit(expression[i]) || expression[i] == '.'))
+                {
+                    i++;
+                }
+
+                if (!decimal.TryParse(expression[start..i], NumberStyles.Any, CultureInfo.InvariantCulture, out var number))
+                {
+                    return false;
+                }
+                values.Push(number);
+                continue;
+            }
+
+            return false;
+        }
+
+        while (operators.Count > 0)
+        {
+            if (!ApplyOperator(values, operators.Pop()))
+            {
+                return false;
+            }
+        }
+
+        if (values.Count != 1)
+        {
+            return false;
+        }
+
+        result = values.Pop();
+        return true;
+    }
+
+    private static bool IsOperator(char op)
+    {
+        return op is '+' or '-' or '*' or '/';
+    }
+
+    private static int Precedence(char op)
+    {
+        return op is '*' or '/' ? 2 : 1;
+    }
+
+    private static bool ApplyOperator(Stack<decimal> values, char op)
+    {
+        if (values.Count < 2)
+        {
+            return false;
+        }
+
+        var right = values.Pop();
+        var left = values.Pop();
+        decimal result;
+        switch (op)
+        {
+            case '+':
+                result = left + right;
+                break;
+            case '-':
+                result = left - right;
+                break;
+            case '*':
+                result = left * right;
+                break;
+            case '/':
+                if (right == 0)
+                {
+                    return false;
+                }
+                result = left / right;
+                break;
+            default:
+                return false;
+        }
+
+        values.Push(result);
+        return true;
     }
 
     private async Task<int?> ResolvePropertyGroupIdAsync(SqlConnection connection, int propertyId, CancellationToken cancellationToken)
@@ -1238,6 +1467,67 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         return result;
+    }
+
+    private async Task<decimal?> FetchLiveZarToGbpRateAsync(CancellationToken cancellationToken)
+    {
+        var endpoint = _configuration["Fx:ZarBaseUrl"] ??
+                       Environment.GetEnvironmentVariable("Fx__ZarBaseUrl") ??
+                       "https://open.er-api.com/v6/latest/ZAR";
+
+        try
+        {
+            using var response = await FxHttpClient.GetAsync(endpoint, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("FX API request failed with status {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(payload);
+            if (!doc.RootElement.TryGetProperty("rates", out var ratesEl))
+            {
+                _logger.LogWarning("FX API payload missing rates object.");
+                return null;
+            }
+
+            if (!ratesEl.TryGetProperty("GBP", out var gbpEl))
+            {
+                _logger.LogWarning("FX API payload missing GBP rate.");
+                return null;
+            }
+
+            decimal rate;
+            if (gbpEl.ValueKind == JsonValueKind.Number)
+            {
+                rate = gbpEl.GetDecimal();
+            }
+            else if (gbpEl.ValueKind == JsonValueKind.String &&
+                     decimal.TryParse(gbpEl.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
+            {
+                rate = parsed;
+            }
+            else
+            {
+                _logger.LogWarning("FX API GBP rate could not be parsed.");
+                return null;
+            }
+
+            if (rate <= 0)
+            {
+                _logger.LogWarning("FX API GBP rate was non-positive: {Rate}", rate);
+                return null;
+            }
+
+            _logger.LogInformation("Fetched live ZAR->GBP rate: {Rate}", rate);
+            return Math.Round(rate, 10);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch live ZAR->GBP rate.");
+            return null;
+        }
     }
 
     private async Task<string?> LoadSummarisationTemplatePromptAsync(int summarisationTemplateId, CancellationToken cancellationToken)

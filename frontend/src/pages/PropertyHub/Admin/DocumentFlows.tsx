@@ -518,19 +518,30 @@ const DocumentFlows: React.FC = () => {
                           value={String(config.journalAmountRandTemplate ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalAmountRandTemplate', e.target.value)}
                           className="rounded border border-slate-300 px-2 py-1"
-                          placeholder="journalAmountRandTemplate (e.g. {field:invoice_total})"
+                          placeholder="journalAmountRandTemplate (e.g. {field:total_incl_vat} or {field:total_incl_vat}*3.8%)"
                         />
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-600">ZAR->GBP rate source</label>
+                          <select
+                            value={String(config.zarGbpRateSource ?? 'live')}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'zarGbpRateSource', e.target.value)}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="live">Live (fetch latest ZAR-&gt;GBP during flow run)</option>
+                            <option value="template">Template/manual value</option>
+                          </select>
+                        </div>
                         <input
                           value={String(config.journalAmountGbpTemplate ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalAmountGbpTemplate', e.target.value)}
                           className="rounded border border-slate-300 px-2 py-1"
-                          placeholder="journalAmountGbpTemplate"
+                          placeholder="journalAmountGbpTemplate (optional override, usually auto-calculated)"
                         />
                         <input
                           value={String(config.zarGbpCurrencyExchangeRateTemplate ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'zarGbpCurrencyExchangeRateTemplate', e.target.value)}
                           className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
-                          placeholder="zarGbpCurrencyExchangeRateTemplate"
+                          placeholder="zarGbpCurrencyExchangeRateTemplate (optional override; blank = fetch live ZAR->GBP)"
                         />
 
                         <input
@@ -561,6 +572,7 @@ const DocumentFlows: React.FC = () => {
                         <p className="md:col-span-2 text-[10px] text-slate-500">
                           Token helpers: {'{field:meter_number}'}, {'{field:account_number}'}, {'{field:invoice_total}'},{' '}
                           {'{extractionJson}'}, {'{classificationLabel}'}, {'{classificationScore}'}, {'{summary}'}.
+                          Numeric templates support math: +, -, *, /, brackets, and percentages (e.g. {'{field:total_incl_vat}*3.8%'}). To trigger live FX fetch, set rate source to <span className="font-semibold">Live</span> and provide a ZAR amount template. The flow then fetches current ZAR-&gt;GBP and calculates GBP as ZAR x rate.
                         </p>
                       </>
                     );
@@ -817,19 +829,24 @@ const DocumentFlows: React.FC = () => {
           {feedback && <p className="mt-2 text-[11px] text-slate-600">{feedback}</p>}
         </div>
 
-        <div className="mt-3 rounded border border-slate-200 bg-white p-2">
-          <p className="font-semibold">Saved Workflow Rules</p>
+        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 shadow-sm">
+          <p className="flex items-center gap-2 font-semibold text-indigo-900">
+            Saved Workflow Rules
+            <span className="inline-flex items-center rounded-full border border-indigo-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+              Saved
+            </span>
+          </p>
           {workflowRules.length === 0 ? <p className="mt-1 text-slate-500">No workflow rules configured yet.</p> : (
             <ul className="mt-2 space-y-2">
               {workflowRules.map((rule) => (
-                <li key={rule.documentWorkflowRuleId} className="rounded border border-slate-200 bg-slate-50 p-2">
+                <li key={rule.documentWorkflowRuleId} className="rounded-md border border-indigo-100 bg-white p-2.5 shadow-sm transition hover:border-indigo-200 hover:shadow">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">{rule.workflowName}</p>
+                      <p className="font-medium text-slate-900">{rule.workflowName}</p>
                       <p className="text-[11px] text-slate-600">Label: {rule.classificationLabel} | Min: {rule.minimumScore} | Priority: {rule.priority}</p>
                     </div>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => handleEditWorkflowRule(rule)} className="rounded border border-slate-300 px-2 py-0.5">Edit</button>
+                      <button type="button" onClick={() => handleEditWorkflowRule(rule)} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-700 hover:border-slate-400">Edit</button>
                       <button type="button" onClick={() => handleDeleteWorkflowRule(rule.documentWorkflowRuleId, rule.workflowName)} className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">Delete</button>
                     </div>
                   </div>
