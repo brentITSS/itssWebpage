@@ -303,6 +303,7 @@ public class GraphEmailReader : IGraphEmailReader
         var workflowContext = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         long? auditRunId = null;
         SqlConnection? auditConnection = null;
+        string? auditUnavailableReason = null;
 
         try
         {
@@ -323,6 +324,7 @@ public class GraphEmailReader : IGraphEmailReader
         catch (Exception auditEx)
         {
             _logger.LogWarning(auditEx, "Workflow audit setup failed for message {MessageId}. Continuing without audit row.", message.Id);
+            auditUnavailableReason = auditEx.Message;
         }
 
         try
@@ -338,7 +340,9 @@ public class GraphEmailReader : IGraphEmailReader
                         null,
                         cancellationToken);
                 }
-                return "processed";
+                return string.IsNullOrWhiteSpace(auditUnavailableReason)
+                    ? "processed"
+                    : $"processed|audit_unavailable:{auditUnavailableReason}";
             }
 
             var currentMessageId = message.Id;
@@ -485,7 +489,9 @@ public class GraphEmailReader : IGraphEmailReader
                                 $"{step.StepType}: {ex.Message}",
                                 cancellationToken);
                         }
-                        return $"workflow_failed:{step.StepType}";
+                        return string.IsNullOrWhiteSpace(auditUnavailableReason)
+                            ? $"workflow_failed:{step.StepType}"
+                            : $"workflow_failed:{step.StepType}|audit_unavailable:{auditUnavailableReason}";
                     }
                 }
             }
@@ -500,7 +506,9 @@ public class GraphEmailReader : IGraphEmailReader
                     cancellationToken);
             }
 
-            return "workflow_applied";
+            return string.IsNullOrWhiteSpace(auditUnavailableReason)
+                ? "workflow_applied"
+                : $"workflow_applied|audit_unavailable:{auditUnavailableReason}";
         }
         finally
         {
@@ -1235,17 +1243,17 @@ public class GraphEmailReader : IGraphEmailReader
         string? categoryColor,
         CancellationToken cancellationToken)
     {
-        OutlookCategory? existingCategory = null;
-        var escaped = categoryName.Replace("'", "''");
+        // Some Graph endpoints do not reliably honor OData filter here in app-only mode,
+        // so we resolve category existence client-side by display name.
         var existing = await graphClient.Users[mailboxUser]
             .Outlook
             .MasterCategories
             .GetAsync(cfg =>
             {
-                cfg.QueryParameters.Filter = $"displayName eq '{escaped}'";
-                cfg.QueryParameters.Top = 1;
+                cfg.QueryParameters.Top = 200;
             }, cancellationToken);
-        existingCategory = existing?.Value?.FirstOrDefault();
+        var existingCategory = existing?.Value?
+            .FirstOrDefault(x => string.Equals(x.DisplayName?.Trim(), categoryName.Trim(), StringComparison.OrdinalIgnoreCase));
 
         var parsedColor = ParseCategoryColorOrNull(categoryColor);
 
