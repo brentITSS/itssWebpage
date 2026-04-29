@@ -151,9 +151,30 @@ const DocumentFlows: React.FC = () => {
   };
 
   const handleUpdateWorkflowStepConfigField = (idx: number, key: string, value: string | number | boolean) => {
-    const config = parseStepConfig(workflowSteps[idx]?.stepConfigJson);
-    config[key] = value;
-    handleUpdateWorkflowStep(idx, { stepConfigJson: stringifyStepConfig(config) });
+    setWorkflowSteps((prev) =>
+      prev.map((step, index) => {
+        if (index !== idx) return step;
+        const config = parseStepConfig(step.stepConfigJson);
+        config[key] = value;
+        return { ...step, stepOrder: index + 1, stepConfigJson: stringifyStepConfig(config) };
+      })
+    );
+  };
+
+  const handleUpdateWorkflowStepConfigFields = (
+    idx: number,
+    patch: Record<string, string | number | boolean>
+  ) => {
+    setWorkflowSteps((prev) =>
+      prev.map((step, index) => {
+        if (index !== idx) return step;
+        const config = parseStepConfig(step.stepConfigJson);
+        Object.entries(patch).forEach(([key, value]) => {
+          config[key] = value;
+        });
+        return { ...step, stepOrder: index + 1, stepConfigJson: stringifyStepConfig(config) };
+      })
+    );
   };
 
   const handleEditWorkflowRule = (rule: DocumentWorkflowRuleDto) => {
@@ -337,8 +358,10 @@ const DocumentFlows: React.FC = () => {
                             value={normalizeIdForSelect(config.journalTypeId)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              handleUpdateWorkflowStepConfigField(idx, 'journalTypeId', v === '' ? '' : Number(v));
-                              handleUpdateWorkflowStepConfigField(idx, 'journalSubTypeId', '');
+                              handleUpdateWorkflowStepConfigFields(idx, {
+                                journalTypeId: v === '' ? '' : Number(v),
+                                journalSubTypeId: '',
+                              });
                             }}
                             className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
                           >
@@ -376,8 +399,10 @@ const DocumentFlows: React.FC = () => {
                             value={normalizeIdForSelect(config.propertyGroupId)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : Number(v));
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', '');
+                              handleUpdateWorkflowStepConfigFields(idx, {
+                                propertyGroupId: v === '' ? '' : Number(v),
+                                propertyId: '',
+                              });
                             }}
                             className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
                           >
@@ -397,8 +422,10 @@ const DocumentFlows: React.FC = () => {
                             onChange={(e) => {
                               const v = e.target.value;
                               const prop = properties.find((p) => p.propertyId === Number(v));
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', v === '' ? '' : Number(v));
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : prop?.propertyGroupId ?? '');
+                              handleUpdateWorkflowStepConfigFields(idx, {
+                                propertyId: v === '' ? '' : Number(v),
+                                propertyGroupId: v === '' ? '' : prop?.propertyGroupId ?? '',
+                              });
                             }}
                             className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
                           >
@@ -480,8 +507,10 @@ const DocumentFlows: React.FC = () => {
                             value={normalizeIdForSelect(config.propertyGroupId)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : Number(v));
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', '');
+                              handleUpdateWorkflowStepConfigFields(idx, {
+                                propertyGroupId: v === '' ? '' : Number(v),
+                                propertyId: '',
+                              });
                             }}
                             className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
                           >
@@ -501,8 +530,10 @@ const DocumentFlows: React.FC = () => {
                             onChange={(e) => {
                               const v = e.target.value;
                               const prop = properties.find((p) => p.propertyId === Number(v));
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', v === '' ? '' : Number(v));
-                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : prop?.propertyGroupId ?? '');
+                              handleUpdateWorkflowStepConfigFields(idx, {
+                                propertyId: v === '' ? '' : Number(v),
+                                propertyGroupId: v === '' ? '' : prop?.propertyGroupId ?? '',
+                              });
                             }}
                             className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
                           >
