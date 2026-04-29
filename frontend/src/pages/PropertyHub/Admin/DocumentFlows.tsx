@@ -8,6 +8,14 @@ import {
   UpsertDocumentWorkflowStepRequest,
   documentHubService,
 } from '../../../services/documentHubService';
+import {
+  propertyAdminService,
+  type ContactLogTypeDto,
+  type JournalTypeDto,
+  type PropertyGroupResponseDto,
+  type PropertyResponseDto,
+  type TenantResponseDto,
+} from '../../../services/propertyAdminService';
 
 type EditableWorkflowStep = UpsertDocumentWorkflowStepRequest;
 
@@ -35,6 +43,13 @@ const DocumentFlows: React.FC = () => {
   const [extractionTemplates, setExtractionTemplates] = useState<DocumentExtractionTemplateDto[]>([]);
   const [summarisationTemplates, setSummarisationTemplates] = useState<DocumentSummarisationTemplateDto[]>([]);
   const [workflowRules, setWorkflowRules] = useState<DocumentWorkflowRuleDto[]>([]);
+
+  // Lookup datasets for user-friendly dropdowns in workflow steps.
+  const [propertyGroups, setPropertyGroups] = useState<PropertyGroupResponseDto[]>([]);
+  const [properties, setProperties] = useState<PropertyResponseDto[]>([]);
+  const [tenants, setTenants] = useState<TenantResponseDto[]>([]);
+  const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
+  const [contactLogTypes, setContactLogTypes] = useState<ContactLogTypeDto[]>([]);
 
   const [editingWorkflowRuleId, setEditingWorkflowRuleId] = useState<number | null>(null);
   const [workflowName, setWorkflowName] = useState('');
@@ -69,16 +84,36 @@ const DocumentFlows: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [loadedRules, loadedLabelSets, loadedExtractionTemplates, loadedSummarisationTemplates] = await Promise.all([
+      const [
+        loadedRules,
+        loadedLabelSets,
+        loadedExtractionTemplates,
+        loadedSummarisationTemplates,
+        loadedPropertyGroups,
+        loadedProperties,
+        loadedTenants,
+        loadedJournalTypes,
+        loadedContactLogTypes,
+      ] = await Promise.all([
         documentHubService.getWorkflowRules(),
         documentHubService.getLabelSets(),
         documentHubService.getExtractionTemplates(),
         documentHubService.getSummarisationTemplates(),
+        propertyAdminService.getPropertyGroups(),
+        propertyAdminService.getProperties(),
+        propertyAdminService.getTenants(),
+        propertyAdminService.getJournalTypes(),
+        propertyAdminService.getContactLogTypes(),
       ]);
       setWorkflowRules(loadedRules);
       setLabelSets(loadedLabelSets);
       setExtractionTemplates(loadedExtractionTemplates);
       setSummarisationTemplates(loadedSummarisationTemplates);
+      setPropertyGroups(loadedPropertyGroups);
+      setProperties(loadedProperties);
+      setTenants(loadedTenants);
+      setJournalTypes(loadedJournalTypes);
+      setContactLogTypes(loadedContactLogTypes);
     } catch (error) {
       setFeedback(getFriendlyError(error));
     } finally {
@@ -218,6 +253,13 @@ const DocumentFlows: React.FC = () => {
     }
   };
 
+  const normalizeIdForSelect = (value: string | number | boolean | undefined): string => {
+    if (value === undefined || value === null) return '';
+    const rawNum = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(rawNum) || rawNum <= 0) return '';
+    return String(rawNum);
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-200 bg-white p-5">
@@ -275,20 +317,239 @@ const DocumentFlows: React.FC = () => {
               )}
               {step.stepType === 'CreateJournalLog' && (
                 <div className="mt-2 grid gap-1 md:grid-cols-2">
-                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).journalTypeId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalTypeId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="journalTypeId" />
-                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).journalSubTypeId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'journalSubTypeId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="journalSubTypeId" />
-                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).propertyId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'propertyId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="propertyId" />
-                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).tenantId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tenantId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="tenantId" />
-                  <input value={String(parseStepConfig(step.stepConfigJson).descriptionTemplate ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'descriptionTemplate', e.target.value)} className="md:col-span-2 rounded border border-slate-300 px-2 py-1" placeholder="descriptionTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore})" />
+                  {(() => {
+                    const config = parseStepConfig(step.stepConfigJson);
+                    const selectedJournalTypeId = Number(config.journalTypeId ?? 0);
+                    const selectedPropertyGroupId = Number(config.propertyGroupId ?? 0);
+
+                    const filteredProperties = selectedPropertyGroupId
+                      ? properties.filter((p) => p.propertyGroupId === selectedPropertyGroupId)
+                      : properties;
+
+                    const selectedJournalType = journalTypes.find((t) => t.journalTypeId === selectedJournalTypeId);
+                    const subTypes = selectedJournalType?.subTypes ?? [];
+
+                    return (
+                      <>
+                        <div className="md:col-span-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Journal Type</label>
+                          <select
+                            value={normalizeIdForSelect(config.journalTypeId)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              handleUpdateWorkflowStepConfigField(idx, 'journalTypeId', v === '' ? '' : Number(v));
+                              handleUpdateWorkflowStepConfigField(idx, 'journalSubTypeId', '');
+                            }}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select journal type</option>
+                            {journalTypes.map((t) => (
+                              <option key={t.journalTypeId} value={t.journalTypeId}>
+                                {t.journalTypeName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Journal Sub Type</label>
+                          <select
+                            value={normalizeIdForSelect(config.journalSubTypeId)}
+                            onChange={(e) =>
+                              handleUpdateWorkflowStepConfigField(idx, 'journalSubTypeId', e.target.value === '' ? '' : Number(e.target.value))
+                            }
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                            disabled={!selectedJournalTypeId}
+                          >
+                            <option value="">{selectedJournalTypeId ? 'Select sub type' : 'Select journal type first'}</option>
+                            {subTypes.map((st) => (
+                              <option key={st.journalSubTypeId} value={st.journalSubTypeId}>
+                                {st.journalSubTypeName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-600">Property Group</label>
+                          <select
+                            value={normalizeIdForSelect(config.propertyGroupId)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : Number(v));
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', '');
+                            }}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select property group</option>
+                            {propertyGroups.map((g) => (
+                              <option key={g.propertyGroupId} value={g.propertyGroupId}>
+                                {g.propertyGroupName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-600">Property</label>
+                          <select
+                            value={normalizeIdForSelect(config.propertyId)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              const prop = properties.find((p) => p.propertyId === Number(v));
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', v === '' ? '' : Number(v));
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : prop?.propertyGroupId ?? '');
+                            }}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select property</option>
+                            {filteredProperties.map((p) => (
+                              <option key={p.propertyId} value={p.propertyId}>
+                                {p.propertyName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Tenant</label>
+                          <select
+                            value={normalizeIdForSelect(config.tenantId)}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tenantId', e.target.value === '' ? '' : Number(e.target.value))}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select tenant</option>
+                            {tenants.map((t) => (
+                              <option key={t.tenantId} value={t.tenantId}>
+                                {t.firstName} {t.lastName}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            These selections are written as integer IDs for `tblJournalLog` (journalTypeId, journalSubTypeId, propertyId, tenantId).
+                          </p>
+                        </div>
+
+                        <input
+                          value={String(config.descriptionTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'descriptionTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="descriptionTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore}, {summary})"
+                        />
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               {step.stepType === 'CreateContactLog' && (
                 <div className="mt-2 grid gap-1 md:grid-cols-2">
-                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).contactLogTypeId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactLogTypeId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="contactLogTypeId (required)" />
-                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).propertyId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'propertyId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="propertyId" />
-                  <input type="number" value={Number(parseStepConfig(step.stepConfigJson).tenantId ?? 0)} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tenantId', Number(e.target.value || 0))} className="rounded border border-slate-300 px-2 py-1" placeholder="tenantId" />
-                  <input value={String(parseStepConfig(step.stepConfigJson).contactBy ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactBy', e.target.value)} className="rounded border border-slate-300 px-2 py-1" placeholder="contactBy" />
-                  <input value={String(parseStepConfig(step.stepConfigJson).notesTemplate ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'notesTemplate', e.target.value)} className="md:col-span-2 rounded border border-slate-300 px-2 py-1" placeholder="notesTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore})" />
+                  {(() => {
+                    const config = parseStepConfig(step.stepConfigJson);
+                    const selectedPropertyGroupId = Number(config.propertyGroupId ?? 0);
+                    const filteredProperties = selectedPropertyGroupId
+                      ? properties.filter((p) => p.propertyGroupId === selectedPropertyGroupId)
+                      : properties;
+
+                    return (
+                      <>
+                        <div className="md:col-span-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Contact Log Type</label>
+                          <select
+                            value={normalizeIdForSelect(config.contactLogTypeId)}
+                            onChange={(e) =>
+                              handleUpdateWorkflowStepConfigField(
+                                idx,
+                                'contactLogTypeId',
+                                e.target.value === '' ? '' : Number(e.target.value)
+                              )
+                            }
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select contact log type</option>
+                            {contactLogTypes.map((t) => (
+                              <option key={t.contactLogTypeId} value={t.contactLogTypeId}>
+                                {t.contactLogTypeName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-600">Property Group</label>
+                          <select
+                            value={normalizeIdForSelect(config.propertyGroupId)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : Number(v));
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', '');
+                            }}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select property group</option>
+                            {propertyGroups.map((g) => (
+                              <option key={g.propertyGroupId} value={g.propertyGroupId}>
+                                {g.propertyGroupName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-600">Property</label>
+                          <select
+                            value={normalizeIdForSelect(config.propertyId)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              const prop = properties.find((p) => p.propertyId === Number(v));
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyId', v === '' ? '' : Number(v));
+                              handleUpdateWorkflowStepConfigField(idx, 'propertyGroupId', v === '' ? '' : prop?.propertyGroupId ?? '');
+                            }}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select property</option>
+                            {filteredProperties.map((p) => (
+                              <option key={p.propertyId} value={p.propertyId}>
+                                {p.propertyName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Tenant</label>
+                          <select
+                            value={normalizeIdForSelect(config.tenantId)}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tenantId', e.target.value === '' ? '' : Number(e.target.value))}
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                          >
+                            <option value="">Select tenant</option>
+                            {tenants.map((t) => (
+                              <option key={t.tenantId} value={t.tenantId}>
+                                {t.firstName} {t.lastName}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            These selections are written as integer IDs for `tblContactLog` (contactLogTypeId, propertyId, propertyGroupId, tenantId).
+                          </p>
+                        </div>
+
+                        <input
+                          value={String(config.contactBy ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'contactBy', e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="contactBy (optional, default: Workflow)"
+                        />
+
+                        <input
+                          value={String(config.notesTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'notesTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="notesTemplate (supports {field:<name>}, {classificationLabel}, {classificationScore}, {summary})"
+                        />
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               {step.stepType === 'RunExtraction' && (
