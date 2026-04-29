@@ -301,117 +301,390 @@ public class GraphEmailReader : IGraphEmailReader
         // Always ensure category reflects the final classification label.
         await ApplyCategoryAsync(graphClient, mailboxUser, message.Id, message.Categories, classificationLabel, cancellationToken);
         var workflowContext = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        long? auditRunId = null;
+        SqlConnection? auditConnection = null;
 
-        if (matchedRule == null || matchedRule.Steps.Count == 0)
+        try
         {
-            return "processed";
+            var connectionString = GetRequired("ConnectionStrings:DefaultConnection", "ConnectionStrings__DefaultConnection");
+            auditConnection = new SqlConnection(connectionString);
+            await auditConnection.OpenAsync(cancellationToken);
+            await EnsureWorkflowAuditTablesAsync(auditConnection, cancellationToken);
+            auditRunId = await InsertWorkflowAuditRunAsync(
+                auditConnection,
+                message,
+                mailboxUser,
+                classificationLabel,
+                classificationScore,
+                matchedRule,
+                matchedRule == null ? "NoRuleMatched" : "Started",
+                cancellationToken);
+        }
+        catch (Exception auditEx)
+        {
+            _logger.LogWarning(auditEx, "Workflow audit setup failed for message {MessageId}. Continuing without audit row.", message.Id);
         }
 
-        var currentMessageId = message.Id;
-        foreach (var step in matchedRule.Steps.OrderBy(s => s.StepOrder))
+        try
         {
-            try
+            if (matchedRule == null || matchedRule.Steps.Count == 0)
             {
-                var stepType = step.StepType.Trim().ToLowerInvariant();
-                if (stepType == "setcategory")
+                if (auditConnection != null && auditRunId.HasValue)
                 {
-                    var category = classificationLabel;
-                    if (!string.IsNullOrWhiteSpace(step.StepConfigJson))
-                    {
-                        using var config = JsonDocument.Parse(step.StepConfigJson);
-                        if (config.RootElement.TryGetProperty("category", out var categoryEl))
-                        {
-                            category = categoryEl.GetString()?.Trim() ?? category;
-                        }
-                    }
-                    await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, category, cancellationToken);
+                    await FinalizeWorkflowAuditRunAsync(
+                        auditConnection,
+                        auditRunId.Value,
+                        "NoRuleMatched",
+                        null,
+                        cancellationToken);
                 }
-                else if (stepType == "markcompleted")
+                return "processed";
+            }
+
+            var currentMessageId = message.Id;
+            foreach (var step in matchedRule.Steps.OrderBy(s => s.StepOrder))
+            {
+                long? auditStepId = null;
+                try
                 {
-                    await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, CompletedCategory, cancellationToken);
-                }
-                else if (stepType == "movetofolder")
-                {
-                    var destinationPath = "Inbox/Property Hub";
-                    if (!string.IsNullOrWhiteSpace(step.StepConfigJson))
+                    if (auditConnection != null && auditRunId.HasValue)
                     {
-                        using var config = JsonDocument.Parse(step.StepConfigJson);
-                        if (config.RootElement.TryGetProperty("destinationPath", out var pathEl))
-                        {
-                            destinationPath = pathEl.GetString()?.Trim() ?? destinationPath;
-                        }
+                        auditStepId = await InsertWorkflowAuditStepAsync(
+                            auditConnection,
+                            auditRunId.Value,
+                            step,
+                            "Started",
+                            null,
+                            cancellationToken);
                     }
 
-                    var destinationId = await ResolveFolderIdByPathAsync(
-                        graphClient,
-                        mailboxUser,
-                        destinationPath,
-                        propertyHubFolderId,
-                        cancellationToken);
+                    var stepType = step.StepType.Trim().ToLowerInvariant();
+                    if (stepType == "setcategory")
+                    {
+                        var category = classificationLabel;
+                        if (!string.IsNullOrWhiteSpace(step.StepConfigJson))
+                        {
+                            using var config = JsonDocument.Parse(step.StepConfigJson);
+                            if (config.RootElement.TryGetProperty("category", out var categoryEl))
+                            {
+                                category = categoryEl.GetString()?.Trim() ?? category;
+                            }
+                        }
+                        await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, category, cancellationToken);
+                    }
+                    else if (stepType == "markcompleted")
+                    {
+                        await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, CompletedCategory, cancellationToken);
+                    }
+                    else if (stepType == "movetofolder")
+                    {
+                        var destinationPath = "Inbox/Property Hub";
+                        if (!string.IsNullOrWhiteSpace(step.StepConfigJson))
+                        {
+                            using var config = JsonDocument.Parse(step.StepConfigJson);
+                            if (config.RootElement.TryGetProperty("destinationPath", out var pathEl))
+                            {
+                                destinationPath = pathEl.GetString()?.Trim() ?? destinationPath;
+                            }
+                        }
 
-                    var moveRequest = new MovePostRequestBody
+                        var destinationId = await ResolveFolderIdByPathAsync(
+                            graphClient,
+                            mailboxUser,
+                            destinationPath,
+                            propertyHubFolderId,
+                            cancellationToken);
+
+                        var moveRequest = new MovePostRequestBody
+                        {
+                            DestinationId = destinationId
+                        };
+                        var moved = await graphClient.Users[mailboxUser]
+                            .Messages[currentMessageId]
+                            .Move
+                            .PostAsync(moveRequest, cancellationToken: cancellationToken);
+                        if (!string.IsNullOrWhiteSpace(moved?.Id))
+                        {
+                            currentMessageId = moved.Id;
+                        }
+                    }
+                    else if (stepType == "createjournallog")
                     {
-                        DestinationId = destinationId
-                    };
-                    var moved = await graphClient.Users[mailboxUser]
-                        .Messages[currentMessageId]
-                        .Move
-                        .PostAsync(moveRequest, cancellationToken: cancellationToken);
-                    if (!string.IsNullOrWhiteSpace(moved?.Id))
+                        await CreateJournalLogAsync(
+                            message,
+                            attachmentPreviews,
+                            classificationLabel,
+                            classificationScore,
+                            step.StepConfigJson,
+                            workflowContext,
+                            cancellationToken);
+                    }
+                    else if (stepType == "createcontactlog")
                     {
-                        currentMessageId = moved.Id;
+                        await CreateContactLogAsync(
+                            message,
+                            attachmentPreviews,
+                            classificationLabel,
+                            classificationScore,
+                            step.StepConfigJson,
+                            workflowContext,
+                            cancellationToken);
+                    }
+                    else if (stepType == "runextraction")
+                    {
+                        await RunExtractionStepAsync(
+                            consolidatedContent,
+                            step.StepConfigJson,
+                            workflowContext,
+                            cancellationToken);
+                    }
+                    else if (stepType == "runsummarisation")
+                    {
+                        await RunSummarisationStepAsync(
+                            consolidatedContent,
+                            step.StepConfigJson,
+                            workflowContext,
+                            cancellationToken);
+                    }
+
+                    if (auditConnection != null && auditStepId.HasValue)
+                    {
+                        await FinalizeWorkflowAuditStepAsync(
+                            auditConnection,
+                            auditStepId.Value,
+                            "Completed",
+                            null,
+                            cancellationToken);
                     }
                 }
-                else if (stepType == "createjournallog")
+                catch (Exception ex)
                 {
-                    await CreateJournalLogAsync(
-                        message,
-                        attachmentPreviews,
-                        classificationLabel,
-                        classificationScore,
-                        step.StepConfigJson,
-                        workflowContext,
-                        cancellationToken);
-                }
-                else if (stepType == "createcontactlog")
-                {
-                    await CreateContactLogAsync(
-                        message,
-                        attachmentPreviews,
-                        classificationLabel,
-                        classificationScore,
-                        step.StepConfigJson,
-                        workflowContext,
-                        cancellationToken);
-                }
-                else if (stepType == "runextraction")
-                {
-                    await RunExtractionStepAsync(
-                        consolidatedContent,
-                        step.StepConfigJson,
-                        workflowContext,
-                        cancellationToken);
-                }
-                else if (stepType == "runsummarisation")
-                {
-                    await RunSummarisationStepAsync(
-                        consolidatedContent,
-                        step.StepConfigJson,
-                        workflowContext,
-                        cancellationToken);
+                    _logger.LogWarning(ex, "Workflow step {StepType} failed for message {MessageId}", step.StepType, currentMessageId);
+                    if (auditConnection != null && auditStepId.HasValue)
+                    {
+                        await FinalizeWorkflowAuditStepAsync(
+                            auditConnection,
+                            auditStepId.Value,
+                            "Failed",
+                            ex.Message,
+                            cancellationToken);
+                    }
+                    if (matchedRule.StopOnFailure)
+                    {
+                        if (auditConnection != null && auditRunId.HasValue)
+                        {
+                            await FinalizeWorkflowAuditRunAsync(
+                                auditConnection,
+                                auditRunId.Value,
+                                "Failed",
+                                $"{step.StepType}: {ex.Message}",
+                                cancellationToken);
+                        }
+                        return $"workflow_failed:{step.StepType}";
+                    }
                 }
             }
-            catch (Exception ex)
+
+            if (auditConnection != null && auditRunId.HasValue)
             {
-                _logger.LogWarning(ex, "Workflow step {StepType} failed for message {MessageId}", step.StepType, currentMessageId);
-                if (matchedRule.StopOnFailure)
-                {
-                    return $"workflow_failed:{step.StepType}";
-                }
+                await FinalizeWorkflowAuditRunAsync(
+                    auditConnection,
+                    auditRunId.Value,
+                    "Completed",
+                    null,
+                    cancellationToken);
+            }
+
+            return "workflow_applied";
+        }
+        finally
+        {
+            if (auditConnection != null)
+            {
+                await auditConnection.DisposeAsync();
             }
         }
+    }
 
-        return "workflow_applied";
+    private static async Task EnsureWorkflowAuditTablesAsync(SqlConnection connection, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'tbldocumentworkflowauditrun')
+            BEGIN
+                CREATE TABLE tbldocumentworkflowauditrun (
+                    DocumentWorkflowAuditRunId BIGINT IDENTITY(1,1) PRIMARY KEY,
+                    MessageId NVARCHAR(1024) NOT NULL,
+                    MailboxUser NVARCHAR(320) NULL,
+                    Subject NVARCHAR(500) NULL,
+                    ClassificationLabel NVARCHAR(120) NULL,
+                    ClassificationScore FLOAT NULL,
+                    DocumentWorkflowRuleId INT NULL,
+                    WorkflowName NVARCHAR(200) NULL,
+                    Status NVARCHAR(40) NOT NULL,
+                    ErrorMessage NVARCHAR(MAX) NULL,
+                    StartedDate DATETIME2 NOT NULL CONSTRAINT DF_tbldocumentworkflowauditrun_StartedDate DEFAULT (SYSUTCDATETIME()),
+                    CompletedDate DATETIME2 NULL
+                );
+                CREATE INDEX IX_tbldocumentworkflowauditrun_MessageId
+                    ON tbldocumentworkflowauditrun (MessageId, StartedDate DESC);
+            END;
+
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'tbldocumentworkflowauditstep')
+            BEGIN
+                CREATE TABLE tbldocumentworkflowauditstep (
+                    DocumentWorkflowAuditStepId BIGINT IDENTITY(1,1) PRIMARY KEY,
+                    DocumentWorkflowAuditRunId BIGINT NOT NULL,
+                    StepOrder INT NOT NULL,
+                    StepType NVARCHAR(80) NOT NULL,
+                    Status NVARCHAR(40) NOT NULL,
+                    Details NVARCHAR(MAX) NULL,
+                    StartedDate DATETIME2 NOT NULL CONSTRAINT DF_tbldocumentworkflowauditstep_StartedDate DEFAULT (SYSUTCDATETIME()),
+                    CompletedDate DATETIME2 NULL,
+                    CONSTRAINT FK_tbldocumentworkflowauditstep_tbldocumentworkflowauditrun
+                        FOREIGN KEY (DocumentWorkflowAuditRunId)
+                        REFERENCES tbldocumentworkflowauditrun(DocumentWorkflowAuditRunId)
+                );
+                CREATE INDEX IX_tbldocumentworkflowauditstep_RunId_Order
+                    ON tbldocumentworkflowauditstep (DocumentWorkflowAuditRunId, StepOrder);
+            END;
+            """;
+
+        await using var command = new SqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<long?> InsertWorkflowAuditRunAsync(
+        SqlConnection connection,
+        Message message,
+        string mailboxUser,
+        string classificationLabel,
+        double classificationScore,
+        WorkflowRule? matchedRule,
+        string status,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO tbldocumentworkflowauditrun (
+                MessageId,
+                MailboxUser,
+                Subject,
+                ClassificationLabel,
+                ClassificationScore,
+                DocumentWorkflowRuleId,
+                WorkflowName,
+                Status
+            )
+            VALUES (
+                @messageId,
+                @mailboxUser,
+                @subject,
+                @classificationLabel,
+                @classificationScore,
+                @documentWorkflowRuleId,
+                @workflowName,
+                @status
+            );
+            SELECT CAST(SCOPE_IDENTITY() AS BIGINT);
+            """;
+
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@messageId", message.Id ?? string.Empty);
+        command.Parameters.AddWithValue("@mailboxUser", mailboxUser);
+        command.Parameters.AddWithValue("@subject", (object?)message.Subject ?? DBNull.Value);
+        command.Parameters.AddWithValue("@classificationLabel", classificationLabel);
+        command.Parameters.AddWithValue("@classificationScore", classificationScore);
+        command.Parameters.AddWithValue("@documentWorkflowRuleId", (object?)matchedRule?.DocumentWorkflowRuleId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@workflowName", (object?)matchedRule?.WorkflowName ?? DBNull.Value);
+        command.Parameters.AddWithValue("@status", status);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        if (result == null || result == DBNull.Value)
+        {
+            return null;
+        }
+
+        return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+    }
+
+    private static async Task<long?> InsertWorkflowAuditStepAsync(
+        SqlConnection connection,
+        long auditRunId,
+        WorkflowStep step,
+        string status,
+        string? details,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO tbldocumentworkflowauditstep (
+                DocumentWorkflowAuditRunId,
+                StepOrder,
+                StepType,
+                Status,
+                Details
+            )
+            VALUES (
+                @auditRunId,
+                @stepOrder,
+                @stepType,
+                @status,
+                @details
+            );
+            SELECT CAST(SCOPE_IDENTITY() AS BIGINT);
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@auditRunId", auditRunId);
+        command.Parameters.AddWithValue("@stepOrder", step.StepOrder);
+        command.Parameters.AddWithValue("@stepType", step.StepType);
+        command.Parameters.AddWithValue("@status", status);
+        command.Parameters.AddWithValue("@details", (object?)details ?? DBNull.Value);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        if (result == null || result == DBNull.Value)
+        {
+            return null;
+        }
+
+        return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+    }
+
+    private static async Task FinalizeWorkflowAuditRunAsync(
+        SqlConnection connection,
+        long auditRunId,
+        string status,
+        string? errorMessage,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE tbldocumentworkflowauditrun
+            SET Status = @status,
+                ErrorMessage = @errorMessage,
+                CompletedDate = SYSUTCDATETIME()
+            WHERE DocumentWorkflowAuditRunId = @auditRunId;
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@auditRunId", auditRunId);
+        command.Parameters.AddWithValue("@status", status);
+        command.Parameters.AddWithValue("@errorMessage", (object?)errorMessage ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task FinalizeWorkflowAuditStepAsync(
+        SqlConnection connection,
+        long auditStepId,
+        string status,
+        string? details,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE tbldocumentworkflowauditstep
+            SET Status = @status,
+                Details = @details,
+                CompletedDate = SYSUTCDATETIME()
+            WHERE DocumentWorkflowAuditStepId = @auditStepId;
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@auditStepId", auditStepId);
+        command.Parameters.AddWithValue("@status", status);
+        command.Parameters.AddWithValue("@details", (object?)details ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private async Task CreateJournalLogAsync(
@@ -995,7 +1268,36 @@ public class GraphEmailReader : IGraphEmailReader
             var next = children?.Value?.FirstOrDefault();
             if (next?.Id == null)
             {
-                return defaultPropertyHubFolderId;
+                var createdFolder = currentFolderId == null
+                    ? await graphClient.Users[mailboxUser]
+                        .MailFolders
+                        .PostAsync(new MailFolder
+                        {
+                            DisplayName = segment
+                        }, cancellationToken: cancellationToken)
+                    : await graphClient.Users[mailboxUser]
+                        .MailFolders[currentFolderId]
+                        .ChildFolders
+                        .PostAsync(new MailFolder
+                        {
+                            DisplayName = segment
+                        }, cancellationToken: cancellationToken);
+
+                if (createdFolder?.Id == null)
+                {
+                    _logger.LogWarning(
+                        "Failed to create destination folder segment '{Segment}' for path '{Path}'. Falling back to default folder.",
+                        segment,
+                        destinationPath);
+                    return defaultPropertyHubFolderId;
+                }
+
+                _logger.LogInformation(
+                    "Created missing destination folder segment '{Segment}' for path '{Path}'.",
+                    segment,
+                    destinationPath);
+                currentFolderId = createdFolder.Id;
+                continue;
             }
 
             currentFolderId = next.Id;
