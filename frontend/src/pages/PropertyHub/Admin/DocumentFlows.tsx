@@ -19,6 +19,7 @@ import {
 } from '../../../services/propertyAdminService';
 
 type EditableWorkflowStep = UpsertDocumentWorkflowStepRequest;
+const OUTLOOK_CATEGORY_COLORS = Array.from({ length: 25 }, (_, idx) => `Preset${idx}`);
 
 const parseStepConfig = (raw?: string): Record<string, string | number | boolean> => {
   if (!raw?.trim()) return {};
@@ -350,12 +351,29 @@ const DocumentFlows: React.FC = () => {
               </div>
               <input value={step.stepConfigJson ?? ''} onChange={(e) => handleUpdateWorkflowStep(idx, { stepConfigJson: e.target.value })} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder="Optional JSON config" />
               {step.stepType === 'SetCategory' && (
-                <input
-                  value={String(parseStepConfig(step.stepConfigJson).category ?? '')}
-                  onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'category', e.target.value)}
-                  className="mt-2 w-full rounded border border-slate-300 px-2 py-1"
-                  placeholder='Optional override category (blank = classification label)'
-                />
+                <div className="mt-2 grid gap-1 md:grid-cols-2">
+                  <input
+                    value={String(parseStepConfig(step.stepConfigJson).category ?? '')}
+                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'category', e.target.value)}
+                    className="w-full rounded border border-slate-300 px-2 py-1"
+                    placeholder='Optional override category (blank = classification label)'
+                  />
+                  <select
+                    value={String(parseStepConfig(step.stepConfigJson).categoryColor ?? '')}
+                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'categoryColor', e.target.value)}
+                    className="w-full rounded border border-slate-300 px-2 py-1"
+                  >
+                    <option value="">Default color / keep existing</option>
+                    {OUTLOOK_CATEGORY_COLORS.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="md:col-span-2 text-[10px] text-slate-500">
+                    SetCategory now ensures the category exists in Outlook Master Categories. Choosing a color applies it to the master category.
+                  </p>
+                </div>
               )}
               {step.stepType === 'MoveToFolder' && (
                 <input value={String(parseStepConfig(step.stepConfigJson).destinationPath ?? '')} onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'destinationPath', e.target.value)} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder='destinationPath e.g. "Inbox/Property Hub/Citiq"' />

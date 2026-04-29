@@ -299,7 +299,7 @@ public class GraphEmailReader : IGraphEmailReader
             .FirstOrDefault();
 
         // Always ensure category reflects the final classification label.
-        await ApplyCategoryAsync(graphClient, mailboxUser, message.Id, message.Categories, classificationLabel, cancellationToken);
+        await ApplyCategoryAsync(graphClient, mailboxUser, message.Id, message.Categories, classificationLabel, null, cancellationToken);
         var workflowContext = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         long? auditRunId = null;
         SqlConnection? auditConnection = null;
@@ -362,6 +362,7 @@ public class GraphEmailReader : IGraphEmailReader
                     if (stepType == "setcategory")
                     {
                         var category = classificationLabel;
+                    string? categoryColor = null;
                         if (!string.IsNullOrWhiteSpace(step.StepConfigJson))
                         {
                             using var config = JsonDocument.Parse(step.StepConfigJson);
@@ -369,12 +370,16 @@ public class GraphEmailReader : IGraphEmailReader
                             {
                                 category = categoryEl.GetString()?.Trim() ?? category;
                             }
+                        if (config.RootElement.TryGetProperty("categoryColor", out var categoryColorEl))
+                        {
+                            categoryColor = categoryColorEl.GetString()?.Trim();
                         }
-                        await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, category, cancellationToken);
+                        }
+                    await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, category, categoryColor, cancellationToken);
                     }
                     else if (stepType == "markcompleted")
                     {
-                        await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, CompletedCategory, cancellationToken);
+                    await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, CompletedCategory, null, cancellationToken);
                     }
                     else if (stepType == "movetofolder")
                     {
@@ -1201,8 +1206,14 @@ public class GraphEmailReader : IGraphEmailReader
         string messageId,
         IEnumerable<string>? existingCategories,
         string category,
+        string? categoryColor,
         CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            await EnsureMasterCategoryAsync(graphClient, mailboxUser, category, categoryColor, cancellationToken);
+        }
+
         var categories = existingCategories?.ToList() ?? new List<string>();
         if (!categories.Any(c => c.Equals(category, StringComparison.OrdinalIgnoreCase)))
         {
@@ -1215,6 +1226,72 @@ public class GraphEmailReader : IGraphEmailReader
             {
                 Categories = categories
             }, cancellationToken: cancellationToken);
+    }
+
+    private async Task EnsureMasterCategoryAsync(
+        GraphServiceClient graphClient,
+        string mailboxUser,
+        string categoryName,
+        string? categoryColor,
+        CancellationToken cancellationToken)
+    {
+        OutlookCategory? existingCategory = null;
+        var escaped = categoryName.Replace("'", "''");
+        var existing = await graphClient.Users[mailboxUser]
+            .Outlook
+            .MasterCategories
+            .GetAsync(cfg =>
+            {
+                cfg.QueryParameters.Filter = $"displayName eq '{escaped}'";
+                cfg.QueryParameters.Top = 1;
+            }, cancellationToken);
+        existingCategory = existing?.Value?.FirstOrDefault();
+
+        var parsedColor = ParseCategoryColorOrNull(categoryColor);
+
+        if (existingCategory == null)
+        {
+            var createPayload = new OutlookCategory
+            {
+                DisplayName = categoryName
+            };
+            if (parsedColor.HasValue)
+            {
+                createPayload.Color = parsedColor.Value;
+            }
+
+            await graphClient.Users[mailboxUser]
+                .Outlook
+                .MasterCategories
+                .PostAsync(createPayload, cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (parsedColor.HasValue && existingCategory.Color != parsedColor.Value && !string.IsNullOrWhiteSpace(existingCategory.Id))
+        {
+            await graphClient.Users[mailboxUser]
+                .Outlook
+                .MasterCategories[existingCategory.Id]
+                .PatchAsync(new OutlookCategory
+                {
+                    Color = parsedColor.Value
+                }, cancellationToken: cancellationToken);
+        }
+    }
+
+    private static CategoryColor? ParseCategoryColorOrNull(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+        {
+            return null;
+        }
+
+        if (Enum.TryParse<CategoryColor>(color, true, out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
     }
 
     private async Task<string> ResolveFolderIdByPathAsync(
