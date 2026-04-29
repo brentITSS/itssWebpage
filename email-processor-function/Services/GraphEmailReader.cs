@@ -489,9 +489,11 @@ public class GraphEmailReader : IGraphEmailReader
                                 $"{step.StepType}: {ex.Message}",
                                 cancellationToken);
                         }
+                        var safeError = SanitizeStatusSegment(ex.Message);
+                        var baseStatus = $"workflow_failed:{step.StepType}:{safeError}";
                         return string.IsNullOrWhiteSpace(auditUnavailableReason)
-                            ? $"workflow_failed:{step.StepType}"
-                            : $"workflow_failed:{step.StepType}|audit_unavailable:{auditUnavailableReason}";
+                            ? baseStatus
+                            : $"{baseStatus}|audit_unavailable:{SanitizeStatusSegment(auditUnavailableReason)}";
                     }
                 }
             }
@@ -1300,6 +1302,23 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         return null;
+    }
+
+    private static string SanitizeStatusSegment(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "unknown_error";
+        }
+
+        var singleLine = Regex.Replace(value, @"\s+", " ").Trim();
+        singleLine = singleLine.Replace("|", "/", StringComparison.Ordinal);
+        if (singleLine.Length > 220)
+        {
+            singleLine = singleLine[..220] + "...";
+        }
+
+        return singleLine;
     }
 
     private async Task<string> ResolveFolderIdByPathAsync(
