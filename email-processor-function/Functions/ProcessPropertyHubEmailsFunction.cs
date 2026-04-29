@@ -50,14 +50,55 @@ public class ProcessPropertyHubEmailsFunction
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process Inbox/Property Hub emails.");
+            var errorSource = ClassifyErrorSource(ex);
             return new ObjectResult(new
             {
                 status = "error",
-                message = ex.Message
+                source = errorSource,
+                message = $"[{errorSource}] {ex.Message}"
             })
             {
                 StatusCode = StatusCodes.Status500InternalServerError
             };
         }
+    }
+
+    private static string ClassifyErrorSource(Exception ex)
+    {
+        if (ex is InvalidOperationException invalidOp)
+        {
+            var opMessage = invalidOp.Message.ToLowerInvariant();
+            if (opMessage.Contains("required configuration is missing"))
+            {
+                return "Config";
+            }
+            if (opMessage.Contains("mailbox user") || opMessage.Contains("folder"))
+            {
+                return "MailboxAccess";
+            }
+        }
+
+        var message = ex.ToString().ToLowerInvariant();
+        if (message.Contains("clientsecretcredential") ||
+            message.Contains("aadsts") ||
+            message.Contains("unauthorized") ||
+            message.Contains("forbidden"))
+        {
+            return "GraphAuth";
+        }
+
+        if (message.Contains("sql") ||
+            message.Contains("connectionstring") ||
+            message.Contains("login failed"))
+        {
+            return "SqlAuth";
+        }
+
+        if (message.Contains("graph"))
+        {
+            return "GraphApi";
+        }
+
+        return "Unknown";
     }
 }
