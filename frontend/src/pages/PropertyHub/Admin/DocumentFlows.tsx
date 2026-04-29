@@ -202,6 +202,9 @@ const DocumentFlows: React.FC = () => {
   };
 
   const handleSaveWorkflowRule = async () => {
+    if (loading) {
+      return;
+    }
     if (!workflowName.trim() || !workflowClassificationLabel.trim()) {
       setFeedback('Workflow name and classification label are required.');
       return;
@@ -215,10 +218,12 @@ const DocumentFlows: React.FC = () => {
     }
 
     setLoading(true);
-    setFeedback(null);
+    setFeedback('Saving workflow rule...');
     try {
+      const expectedStepCount = steps.length;
+      let savedRule: DocumentWorkflowRuleDto;
       if (editingWorkflowRuleId) {
-        await documentHubService.updateWorkflowRule(editingWorkflowRuleId, {
+        savedRule = await documentHubService.updateWorkflowRule(editingWorkflowRuleId, {
           workflowName: workflowName.trim(),
           classificationLabel: workflowClassificationLabel.trim(),
           minimumScore: workflowMinimumScore,
@@ -227,7 +232,7 @@ const DocumentFlows: React.FC = () => {
           steps,
         });
       } else {
-        await documentHubService.createWorkflowRule({
+        savedRule = await documentHubService.createWorkflowRule({
           workflowName: workflowName.trim(),
           classificationLabel: workflowClassificationLabel.trim(),
           minimumScore: workflowMinimumScore,
@@ -236,9 +241,23 @@ const DocumentFlows: React.FC = () => {
           steps,
         });
       }
-      resetWorkflowForm();
-      setFeedback('Workflow rule saved.');
-      await loadData();
+
+      const persistedSteps = savedRule.steps?.length ?? 0;
+      if (persistedSteps < expectedStepCount) {
+        setFeedback(
+          `Workflow saved but only ${persistedSteps}/${expectedStepCount} steps were persisted. Your current form was kept so you can retry.`
+        );
+        await loadData();
+        return;
+      }
+
+      try {
+        await loadData();
+        resetWorkflowForm();
+        setFeedback('Workflow rule saved.');
+      } catch {
+        setFeedback('Workflow rule saved, but the page failed to refresh data. Your form was kept so you can retry safely.');
+      }
     } catch (error) {
       setFeedback(getFriendlyError(error));
     } finally {
@@ -695,8 +714,23 @@ const DocumentFlows: React.FC = () => {
               )}
               {step.stepType === 'RunExtraction' && (
                 <div className="mt-2 grid gap-1">
+                  {(() => {
+                    const config = parseStepConfig(step.stepConfigJson);
+                    const selectedTemplateId = Number(config.extractionTemplateId ?? 0);
+                    const selectedTemplate = extractionTemplates.find(
+                      (template) => template.documentExtractionTemplateId === selectedTemplateId
+                    );
+                    const templateFieldTokens = (selectedTemplate?.fields ?? [])
+                      .map((field) => field.fieldName?.trim() ?? '')
+                      .filter((name) => name.length > 0)
+                      .map((name) => `{field:${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')}}`)
+                      .filter((token) => token !== '{field:}')
+                      .slice(0, 12);
+
+                    return (
+                      <>
                   <select
-                    value={String(parseStepConfig(step.stepConfigJson).extractionTemplateId ?? '')}
+                    value={String(config.extractionTemplateId ?? '')}
                     onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'extractionTemplateId', Number(e.target.value || 0))}
                     className="rounded border border-slate-300 px-2 py-1"
                   >
@@ -710,12 +744,29 @@ const DocumentFlows: React.FC = () => {
                   <p className="text-[11px] text-slate-500">
                     This runs entity extraction and makes fields available to later steps as {`{field:<field_name>}`}.
                   </p>
+                        {selectedTemplate && (
+                          <p className="text-[11px] text-indigo-700">
+                            Template fields available in later steps: {templateFieldTokens.length > 0 ? templateFieldTokens.join(', ') : 'No fields configured yet.'}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               {step.stepType === 'RunSummarisation' && (
                 <div className="mt-2 grid gap-1">
+                  {(() => {
+                    const config = parseStepConfig(step.stepConfigJson);
+                    const selectedTemplateId = Number(config.summarisationTemplateId ?? 0);
+                    const selectedTemplate = summarisationTemplates.find(
+                      (template) => template.documentSummarisationTemplateId === selectedTemplateId
+                    );
+
+                    return (
+                      <>
                   <select
-                    value={String(parseStepConfig(step.stepConfigJson).summarisationTemplateId ?? '')}
+                    value={String(config.summarisationTemplateId ?? '')}
                     onChange={(e) =>
                       handleUpdateWorkflowStepConfigField(idx, 'summarisationTemplateId', Number(e.target.value || 0))
                     }
@@ -742,6 +793,15 @@ const DocumentFlows: React.FC = () => {
                     , <span className="font-semibold">{`{summarisation}`}</span>, or
                     <span className="font-semibold"> {`{field:summary}`}</span>.
                   </p>
+                        {selectedTemplate && (
+                          <p className="text-[11px] text-indigo-700">
+                            Selected template: {selectedTemplate.summarisationName}
+                            {selectedTemplate.summarisationDescription ? ` - ${selectedTemplate.summarisationDescription}` : ''}.
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -750,8 +810,11 @@ const DocumentFlows: React.FC = () => {
         </div>
 
         <div className="mt-3">
-          <button type="button" onClick={handleSaveWorkflowRule} disabled={loading} className="rounded-lg bg-slate-900 px-3 py-1.5 text-white">{editingWorkflowRuleId ? 'Update Workflow Rule' : 'Save Workflow Rule'}</button>
+          <button type="button" onClick={handleSaveWorkflowRule} disabled={loading} className="rounded-lg bg-slate-900 px-3 py-1.5 text-white">
+            {loading ? 'Saving...' : editingWorkflowRuleId ? 'Update Workflow Rule' : 'Save Workflow Rule'}
+          </button>
           {editingWorkflowRuleId && <button type="button" onClick={resetWorkflowForm} className="ml-2 rounded-lg border border-slate-300 px-3 py-1.5">Cancel Edit</button>}
+          {feedback && <p className="mt-2 text-[11px] text-slate-600">{feedback}</p>}
         </div>
 
         <div className="mt-3 rounded border border-slate-200 bg-white p-2">
