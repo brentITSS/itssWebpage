@@ -31,12 +31,26 @@ public class JournalLog
     [Column("journalSubTypeID")]
     public int? JournalSubTypeId { get; set; }
 
-    // Computed properties for fields that don't exist in database (for backward compatibility)
+    [Column("journalAmountRand")]
+    public decimal? JournalAmountRand { get; set; }
+
+    [Column("journalDescription")]
+    public string? JournalDescription { get; set; }
+
+    // Backward-compatible aliases used by existing service and UI mappings.
     [NotMapped]
-    public decimal? Amount { get; set; }
+    public decimal? Amount
+    {
+        get => JournalAmountRand;
+        set => JournalAmountRand = value;
+    }
 
     [NotMapped]
-    public string? Description { get; set; }
+    public string? Description
+    {
+        get => JournalDescription;
+        set => JournalDescription = value;
+    }
 
     // Navigation properties
     [ForeignKey("PropertyId")]

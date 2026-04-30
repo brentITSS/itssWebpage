@@ -174,4 +174,14 @@ public class JournalLogRepository : IJournalLogRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<int> CountAttachmentsAsync(int journalLogId)
+    {
+        return await _context.JournalLogAttachments.CountAsync(a => a.JournalLogId == journalLogId);
+    }
+
+    public async Task<int> CountTagsAsync(int journalLogId)
+    {
+        return await _context.TagLogs.CountAsync(t => t.JournalLogId == journalLogId);
+    }
 }

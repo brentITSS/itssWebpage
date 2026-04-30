@@ -23,6 +23,7 @@ const MaintenanceList: React.FC = () => {
   const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(
     scoped ? scopedPropertyId : ''
   );
+  const [filterPropertyGroupId, setFilterPropertyGroupId] = useState<number | ''>('');
   const [filterTypeId, setFilterTypeId] = useState<number | ''>('');
   const [types, setTypes] = useState<{ maintenanceTypeId: number; maintenanceTypeName: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -55,12 +56,32 @@ const MaintenanceList: React.FC = () => {
     }
   };
 
+  const propertyGroups = useMemo(
+    () =>
+      Array.from(
+        new Map(properties.map((p) => [p.propertyGroupId, { propertyGroupId: p.propertyGroupId, propertyGroupName: p.propertyGroupName }])).values()
+      ).sort((a, b) => a.propertyGroupName.localeCompare(b.propertyGroupName)),
+    [properties]
+  );
+
+  const propertyToGroup = useMemo(
+    () => new Map(properties.map((p) => [p.propertyId, p.propertyGroupId])),
+    [properties]
+  );
+
   const applyFilters = useCallback(() => {
     let list = [...rows];
+    if (filterPropertyGroupId) {
+      list = list.filter((x) => {
+        const groupFromProperty = x.propertyId ? propertyToGroup.get(x.propertyId) : undefined;
+        const effectiveGroupId = x.propertyGroupId ?? groupFromProperty;
+        return effectiveGroupId === filterPropertyGroupId;
+      });
+    }
     if (filterPropertyId) list = list.filter((x) => x.propertyId === filterPropertyId);
     if (filterTypeId) list = list.filter((x) => x.maintenanceTypeId === filterTypeId);
     setFiltered(list);
-  }, [rows, filterPropertyId, filterTypeId]);
+  }, [rows, filterPropertyId, filterPropertyGroupId, filterTypeId, propertyToGroup]);
 
   useEffect(() => {
     applyFilters();
@@ -257,16 +278,51 @@ const MaintenanceList: React.FC = () => {
           </button>
         </div>
         {showFilters && (
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Property Group</label>
+              <select
+                value={filterPropertyGroupId === '' ? '' : String(filterPropertyGroupId)}
+                onChange={(e) => {
+                  const nextGroup = e.target.value ? parseInt(e.target.value, 10) : '';
+                  setFilterPropertyGroupId(nextGroup);
+                  if (nextGroup && filterPropertyId) {
+                    const selectedProperty = properties.find((p) => p.propertyId === filterPropertyId);
+                    if (selectedProperty && selectedProperty.propertyGroupId !== nextGroup) {
+                      setFilterPropertyId('');
+                    }
+                  }
+                }}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              >
+                <option value="">All</option>
+                {propertyGroups.map((g) => (
+                  <option key={g.propertyGroupId} value={g.propertyGroupId}>
+                    {g.propertyGroupName}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
               <select
                 value={filterPropertyId === '' ? '' : String(filterPropertyId)}
-                onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                onChange={(e) => {
+                  const nextPropertyId = e.target.value ? parseInt(e.target.value, 10) : '';
+                  setFilterPropertyId(nextPropertyId);
+                  if (nextPropertyId) {
+                    const selectedProperty = properties.find((p) => p.propertyId === nextPropertyId);
+                    if (selectedProperty) {
+                      setFilterPropertyGroupId(selectedProperty.propertyGroupId);
+                    }
+                  }
+                }}
                 className="w-full rounded-md border border-gray-300 px-3 py-2"
               >
                 <option value="">All</option>
-                {properties.map((p) => (
+                {properties
+                  .filter((p) => !filterPropertyGroupId || p.propertyGroupId === filterPropertyGroupId)
+                  .map((p) => (
                   <option key={p.propertyId} value={p.propertyId}>
                     {p.propertyName}
                   </option>

@@ -730,6 +730,12 @@ public class GraphEmailReader : IGraphEmailReader
         int transactionDateOffsetDays = 0;
         var attachEmailAttachments = false;
         string? attachmentAddedByTemplate = null;
+        var addToCalendar = false;
+        int calendarDateOffsetDays = 0;
+        string? calendarTitleTemplate = null;
+        string? calendarNotesTemplate = null;
+        string? tagTypeIdsCsv = null;
+        string? tagTypeIdsCsvTemplate = null;
 
         if (!string.IsNullOrWhiteSpace(stepConfigJson))
         {
@@ -750,6 +756,12 @@ public class GraphEmailReader : IGraphEmailReader
             transactionDateOffsetDays = GetOptionalInt(root, "transactionDateOffsetDays") ?? 0;
             attachEmailAttachments = GetOptionalBool(root, "attachEmailAttachments") ?? false;
             attachmentAddedByTemplate = GetOptionalString(root, "attachmentAddedByTemplate");
+            addToCalendar = GetOptionalBool(root, "addToCalendar") ?? false;
+            calendarDateOffsetDays = GetOptionalInt(root, "calendarDateOffsetDays") ?? 0;
+            calendarTitleTemplate = GetOptionalString(root, "calendarTitleTemplate");
+            calendarNotesTemplate = GetOptionalString(root, "calendarNotesTemplate");
+            tagTypeIdsCsv = GetOptionalString(root, "tagTypeIdsCsv");
+            tagTypeIdsCsvTemplate = GetOptionalString(root, "tagTypeIdsCsvTemplate");
         }
 
         effectiveDate = effectiveDate.AddDays(transactionDateOffsetDays);
@@ -862,6 +874,49 @@ public class GraphEmailReader : IGraphEmailReader
                 cancellationToken);
         }
 
+        if (insertedId.HasValue && addToCalendar)
+        {
+            var calendarDate = effectiveDate.AddDays(calendarDateOffsetDays).Date;
+            await UpsertCalendarAppointmentRowAsync(
+                connection,
+                sourceType: "journallog",
+                sourceId: insertedId.Value,
+                appointmentDate: calendarDate,
+                titleOverride: ApplyTemplateTokens(
+                    calendarTitleTemplate ?? "Workflow journal reminder: {classificationLabel}",
+                    message,
+                    classificationLabel,
+                    classificationScore,
+                    workflowContext),
+                notes: ApplyTemplateTokens(
+                    calendarNotesTemplate ?? "Workflow-created journal reminder for '{subject}'.",
+                    message,
+                    classificationLabel,
+                    classificationScore,
+                    workflowContext),
+                cancellationToken);
+        }
+
+        if (insertedId.HasValue)
+        {
+            var renderedTagTypeIdsCsv = ApplyTemplateTokens(
+                tagTypeIdsCsvTemplate ?? string.Empty,
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext);
+            if (string.IsNullOrWhiteSpace(renderedTagTypeIdsCsv))
+            {
+                renderedTagTypeIdsCsv = tagTypeIdsCsv ?? string.Empty;
+            }
+            await CreateTagRowsAsync(
+                connection,
+                entityType: "journallog",
+                entityId: insertedId.Value,
+                tagTypeIdsCsv: renderedTagTypeIdsCsv,
+                cancellationToken);
+        }
+
         _logger.LogInformation(
             "Created JournalLog {JournalLogId}. Description note: {Description}",
             insertedId,
@@ -891,6 +946,12 @@ public class GraphEmailReader : IGraphEmailReader
         var attachEmailAttachments = false;
         string? attachmentDescriptionTemplate = null;
         string? contactIdTemplate = null;
+        var addToCalendar = false;
+        int calendarDateOffsetDays = 0;
+        string? calendarTitleTemplate = null;
+        string? calendarNotesTemplate = null;
+        string? tagTypeIdsCsv = null;
+        string? tagTypeIdsCsvTemplate = null;
 
         if (!string.IsNullOrWhiteSpace(stepConfigJson))
         {
@@ -906,6 +967,12 @@ public class GraphEmailReader : IGraphEmailReader
             attachEmailAttachments = GetOptionalBool(root, "attachEmailAttachments") ?? false;
             attachmentDescriptionTemplate = GetOptionalString(root, "attachmentDescriptionTemplate");
             contactIdTemplate = GetOptionalString(root, "contactIdTemplate");
+            addToCalendar = GetOptionalBool(root, "addToCalendar") ?? false;
+            calendarDateOffsetDays = GetOptionalInt(root, "calendarDateOffsetDays") ?? 0;
+            calendarTitleTemplate = GetOptionalString(root, "calendarTitleTemplate");
+            calendarNotesTemplate = GetOptionalString(root, "calendarNotesTemplate");
+            tagTypeIdsCsv = GetOptionalString(root, "tagTypeIdsCsv");
+            tagTypeIdsCsvTemplate = GetOptionalString(root, "tagTypeIdsCsvTemplate");
         }
 
         if (contactLogTypeId <= 0)
@@ -954,7 +1021,139 @@ public class GraphEmailReader : IGraphEmailReader
                 workflowContext,
                 cancellationToken);
         }
+
+        if (insertedId.HasValue && addToCalendar)
+        {
+            var calendarDate = effectiveDate.AddDays(calendarDateOffsetDays).Date;
+            await UpsertCalendarAppointmentRowAsync(
+                connection,
+                sourceType: "contactlog",
+                sourceId: insertedId.Value,
+                appointmentDate: calendarDate,
+                titleOverride: ApplyTemplateTokens(
+                    calendarTitleTemplate ?? "Workflow contact reminder: {classificationLabel}",
+                    message,
+                    classificationLabel,
+                    classificationScore,
+                    workflowContext),
+                notes: ApplyTemplateTokens(
+                    calendarNotesTemplate ?? "Workflow-created contact reminder for '{subject}'.",
+                    message,
+                    classificationLabel,
+                    classificationScore,
+                    workflowContext),
+                cancellationToken);
+        }
+
+        if (insertedId.HasValue)
+        {
+            var renderedTagTypeIdsCsv = ApplyTemplateTokens(
+                tagTypeIdsCsvTemplate ?? string.Empty,
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext);
+            if (string.IsNullOrWhiteSpace(renderedTagTypeIdsCsv))
+            {
+                renderedTagTypeIdsCsv = tagTypeIdsCsv ?? string.Empty;
+            }
+            await CreateTagRowsAsync(
+                connection,
+                entityType: "contactlog",
+                entityId: insertedId.Value,
+                tagTypeIdsCsv: renderedTagTypeIdsCsv,
+                cancellationToken);
+        }
         _logger.LogInformation("Created ContactLog {ContactLogId} via workflow.", insertedId);
+    }
+
+    private static async Task UpsertCalendarAppointmentRowAsync(
+        SqlConnection connection,
+        string sourceType,
+        int sourceId,
+        DateTime appointmentDate,
+        string? titleOverride,
+        string? notes,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            MERGE tblCalendarAppointment AS target
+            USING (SELECT @sourceType AS sourceType, @sourceId AS sourceId) AS src
+            ON target.sourceType = src.sourceType AND target.sourceID = src.sourceId
+            WHEN MATCHED THEN
+                UPDATE SET
+                    appointmentDate = @appointmentDate,
+                    isAllDay = 1,
+                    titleOverride = @titleOverride,
+                    notes = @notes,
+                    active = 1,
+                    modifiedDate = SYSUTCDATETIME()
+            WHEN NOT MATCHED THEN
+                INSERT (sourceType, sourceID, appointmentDate, isAllDay, titleOverride, notes, active, createdDate)
+                VALUES (@sourceType, @sourceId, @appointmentDate, 1, @titleOverride, @notes, 1, SYSUTCDATETIME());
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@sourceType", sourceType);
+        command.Parameters.AddWithValue("@sourceId", sourceId);
+        command.Parameters.AddWithValue("@appointmentDate", appointmentDate);
+        command.Parameters.AddWithValue("@titleOverride", (object?)NullIfEmpty(titleOverride) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@notes", (object?)NullIfEmpty(notes) ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task CreateTagRowsAsync(
+        SqlConnection connection,
+        string entityType,
+        int entityId,
+        string? tagTypeIdsCsv,
+        CancellationToken cancellationToken)
+    {
+        var tagTypeIds = ParseIntCsv(tagTypeIdsCsv).Distinct().ToList();
+        if (tagTypeIds.Count == 0)
+        {
+            return;
+        }
+
+        var column = entityType.Equals("contactlog", StringComparison.OrdinalIgnoreCase)
+            ? "contactLogID"
+            : "journalLogID";
+
+        foreach (var tagTypeId in tagTypeIds)
+        {
+            var sql = $"""
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM tblTagLog
+                    WHERE tagTypeID = @tagTypeId
+                      AND {column} = @entityId
+                )
+                BEGIN
+                    INSERT INTO tblTagLog (tagTypeID, tagActive, {column})
+                    VALUES (@tagTypeId, 1, @entityId);
+                END
+                """;
+
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@tagTypeId", tagTypeId);
+            command.Parameters.AddWithValue("@entityId", entityId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private static IEnumerable<int> ParseIntCsv(string? csv)
+    {
+        if (string.IsNullOrWhiteSpace(csv))
+        {
+            yield break;
+        }
+
+        foreach (var part in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) && id > 0)
+            {
+                yield return id;
+            }
+        }
     }
 
     private async Task RunExtractionStepAsync(
@@ -1691,6 +1890,17 @@ public class GraphEmailReader : IGraphEmailReader
 
         foreach (var attachment in attachmentPreviews)
         {
+            // Skip inline/signature-like images for workflow-generated journal attachments.
+            var isImage = !string.IsNullOrWhiteSpace(attachment.ContentType) &&
+                          attachment.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+            var looksLikeSignature = !string.IsNullOrWhiteSpace(attachment.Name) &&
+                                     (attachment.Name.StartsWith("Outlook-", StringComparison.OrdinalIgnoreCase) ||
+                                      attachment.Name.Contains("signature", StringComparison.OrdinalIgnoreCase));
+            if (isImage || looksLikeSignature)
+            {
+                continue;
+            }
+
             await using var command = new SqlCommand(insertSql, connection);
             command.Parameters.AddWithValue("@journalLogId", journalLogId);
             command.Parameters.AddWithValue("@dateAttached", DateTime.UtcNow);

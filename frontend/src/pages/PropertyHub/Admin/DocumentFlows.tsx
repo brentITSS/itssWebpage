@@ -14,6 +14,7 @@ import {
   type JournalTypeDto,
   type PropertyGroupResponseDto,
   type PropertyResponseDto,
+  type TagTypeResponseDto,
   type TenancyResponseDto,
   type TenantResponseDto,
 } from '../../../services/propertyAdminService';
@@ -79,6 +80,7 @@ const DocumentFlows: React.FC = () => {
   const [tenancies, setTenancies] = useState<TenancyResponseDto[]>([]);
   const [journalTypes, setJournalTypes] = useState<JournalTypeDto[]>([]);
   const [contactLogTypes, setContactLogTypes] = useState<ContactLogTypeDto[]>([]);
+  const [tagTypes, setTagTypes] = useState<TagTypeResponseDto[]>([]);
 
   const [editingWorkflowRuleId, setEditingWorkflowRuleId] = useState<number | null>(null);
   const [workflowName, setWorkflowName] = useState('');
@@ -124,6 +126,7 @@ const DocumentFlows: React.FC = () => {
         loadedTenancies,
         loadedJournalTypes,
         loadedContactLogTypes,
+        loadedTagTypes,
       ] = await Promise.all([
         documentHubService.getWorkflowRules(),
         documentHubService.getLabelSets(),
@@ -135,6 +138,7 @@ const DocumentFlows: React.FC = () => {
         propertyAdminService.getTenancies(),
         propertyAdminService.getJournalTypes(),
         propertyAdminService.getContactLogTypes(),
+        propertyAdminService.getTagTypes(),
       ]);
       setWorkflowRules(loadedRules);
       setLabelSets(loadedLabelSets);
@@ -146,6 +150,7 @@ const DocumentFlows: React.FC = () => {
       setTenancies(loadedTenancies);
       setJournalTypes(loadedJournalTypes);
       setContactLogTypes(loadedContactLogTypes);
+      setTagTypes(loadedTagTypes);
     } catch (error) {
       setFeedback(getFriendlyError(error));
     } finally {
@@ -330,6 +335,28 @@ const DocumentFlows: React.FC = () => {
     const rawNum = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(rawNum) || rawNum <= 0) return '';
     return String(rawNum);
+  };
+
+  const parseTagIdListFromCsv = (csvRaw: string): number[] => {
+    return csvRaw
+      .split(',')
+      .map((part) => Number(part.trim()))
+      .filter((id) => Number.isInteger(id) && id > 0);
+  };
+
+  const toTagCsv = (ids: number[]): string => Array.from(new Set(ids)).sort((a, b) => a - b).join(',');
+
+  const toggleWorkflowStepTagType = (idx: number, tagTypeId: number, checked: boolean) => {
+    setWorkflowSteps((prev) =>
+      prev.map((step, index) => {
+        if (index !== idx) return step;
+        const config = parseStepConfig(step.stepConfigJson);
+        const current = parseTagIdListFromCsv(String(config.tagTypeIdsCsv ?? ''));
+        const next = checked ? [...current, tagTypeId] : current.filter((id) => id !== tagTypeId);
+        config.tagTypeIdsCsv = toTagCsv(next);
+        return { ...step, stepOrder: index + 1, stepConfigJson: stringifyStepConfig(config) };
+      })
+    );
   };
 
   return (
@@ -624,6 +651,77 @@ const DocumentFlows: React.FC = () => {
                           />
                           Add rows to `tblJournalLogAttachment` for each email attachment.
                         </label>
+                        <label className="md:col-span-2 inline-flex items-center gap-2 text-[11px] text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(config.addToCalendar)}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'addToCalendar', e.target.checked)}
+                          />
+                          Add this journal to calendar appointments.
+                        </label>
+                        <input
+                          value={String(config.calendarDateOffsetDays ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarDateOffsetDays', e.target.value === '' ? '' : Number(e.target.value))}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarDateOffsetDays (e.g. 0, 1, -1)"
+                        />
+                        <input
+                          value={String(config.calendarTitleTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarTitleTemplate', e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarTitleTemplate (optional)"
+                        />
+                        <input
+                          value={String(config.calendarNotesTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarNotesTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarNotesTemplate (optional)"
+                        />
+                        <div className="md:col-span-2 rounded border border-slate-200 bg-slate-50 p-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Tag types (fixed IDs)</label>
+                          {tagTypes.length === 0 ? (
+                            <p className="mt-1 text-[10px] text-slate-500">No tag types available yet.</p>
+                          ) : (
+                            <div className="mt-1 grid gap-1 md:grid-cols-2">
+                              {tagTypes.map((tagType) => {
+                                const selected = parseTagIdListFromCsv(String(config.tagTypeIdsCsv ?? '')).includes(tagType.tagTypeId);
+                                return (
+                                  <label key={tagType.tagTypeId} className="inline-flex items-center gap-2 rounded border border-slate-200 bg-white px-2 py-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={selected}
+                                      onChange={(e) => toggleWorkflowStepTagType(idx, tagType.tagTypeId, e.target.checked)}
+                                    />
+                                    <span
+                                      className="inline-block h-2.5 w-2.5 rounded border border-slate-300"
+                                      style={{ backgroundColor: tagType.color || 'transparent' }}
+                                    />
+                                    <span className="text-[11px] text-slate-700">
+                                      {tagType.tagTypeName} (ID: {tagType.tagTypeId})
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            Uses <span className="font-semibold">tagTypeIdsCsv</span>. If <span className="font-semibold">tagTypeIdsCsvTemplate</span> is provided, template output takes precedence.
+                          </p>
+                        </div>
+                        <details className="md:col-span-2 rounded border border-slate-200 bg-slate-50 p-2">
+                          <summary className="cursor-pointer text-[11px] font-medium text-slate-700">
+                            Advanced tag options (template override)
+                          </summary>
+                          <input
+                            value={String(config.tagTypeIdsCsvTemplate ?? '')}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tagTypeIdsCsvTemplate', e.target.value)}
+                            className="mt-2 w-full rounded border border-slate-300 px-2 py-1"
+                            placeholder="tagTypeIdsCsvTemplate (e.g. 3,5 or {field:journal_tag_ids})"
+                          />
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            Use this when tags should come dynamically from extracted fields. When this resolves to a value, it overrides fixed tag selections.
+                          </p>
+                        </details>
                         <input
                           value={String(config.attachmentAddedByTemplate ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'attachmentAddedByTemplate', e.target.value)}
@@ -770,6 +868,77 @@ const DocumentFlows: React.FC = () => {
                           />
                           Add rows to `tblContactLogAttachment` for each email attachment.
                         </label>
+                        <label className="md:col-span-2 inline-flex items-center gap-2 text-[11px] text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(config.addToCalendar)}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'addToCalendar', e.target.checked)}
+                          />
+                          Add this contact log to calendar appointments.
+                        </label>
+                        <input
+                          value={String(config.calendarDateOffsetDays ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarDateOffsetDays', e.target.value === '' ? '' : Number(e.target.value))}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarDateOffsetDays (e.g. 0, 1, -1)"
+                        />
+                        <input
+                          value={String(config.calendarTitleTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarTitleTemplate', e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarTitleTemplate (optional)"
+                        />
+                        <input
+                          value={String(config.calendarNotesTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarNotesTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarNotesTemplate (optional)"
+                        />
+                        <div className="md:col-span-2 rounded border border-slate-200 bg-slate-50 p-2">
+                          <label className="block text-[11px] font-medium text-slate-600">Tag types (fixed IDs)</label>
+                          {tagTypes.length === 0 ? (
+                            <p className="mt-1 text-[10px] text-slate-500">No tag types available yet.</p>
+                          ) : (
+                            <div className="mt-1 grid gap-1 md:grid-cols-2">
+                              {tagTypes.map((tagType) => {
+                                const selected = parseTagIdListFromCsv(String(config.tagTypeIdsCsv ?? '')).includes(tagType.tagTypeId);
+                                return (
+                                  <label key={tagType.tagTypeId} className="inline-flex items-center gap-2 rounded border border-slate-200 bg-white px-2 py-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={selected}
+                                      onChange={(e) => toggleWorkflowStepTagType(idx, tagType.tagTypeId, e.target.checked)}
+                                    />
+                                    <span
+                                      className="inline-block h-2.5 w-2.5 rounded border border-slate-300"
+                                      style={{ backgroundColor: tagType.color || 'transparent' }}
+                                    />
+                                    <span className="text-[11px] text-slate-700">
+                                      {tagType.tagTypeName} (ID: {tagType.tagTypeId})
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            Uses <span className="font-semibold">tagTypeIdsCsv</span>. If <span className="font-semibold">tagTypeIdsCsvTemplate</span> is provided, template output takes precedence.
+                          </p>
+                        </div>
+                        <details className="md:col-span-2 rounded border border-slate-200 bg-slate-50 p-2">
+                          <summary className="cursor-pointer text-[11px] font-medium text-slate-700">
+                            Advanced tag options (template override)
+                          </summary>
+                          <input
+                            value={String(config.tagTypeIdsCsvTemplate ?? '')}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'tagTypeIdsCsvTemplate', e.target.value)}
+                            className="mt-2 w-full rounded border border-slate-300 px-2 py-1"
+                            placeholder="tagTypeIdsCsvTemplate (e.g. 3,5 or {field:contact_tag_ids})"
+                          />
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            Use this when tags should come dynamically from extracted fields. When this resolves to a value, it overrides fixed tag selections.
+                          </p>
+                        </details>
                         <input
                           value={String(config.attachmentDescriptionTemplate ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'attachmentDescriptionTemplate', e.target.value)}

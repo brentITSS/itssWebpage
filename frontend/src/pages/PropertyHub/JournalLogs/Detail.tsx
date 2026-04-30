@@ -6,6 +6,7 @@ import Tag from '../../../components/Tag';
 import TagAssignmentModal from '../../../components/TagAssignmentModal';
 import JournalLogForm from './Form';
 import { formatDateTimeUk, formatDateUk } from '../../../dateFormat';
+import DeleteImpactModal from '../../../components/DeleteImpactModal';
 
 const JournalLogDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +34,9 @@ const JournalLogDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteProcessing, setDeleteProcessing] = useState(false);
+  const [deleteImpact, setDeleteImpact] = useState<{ attachments: number; tags: number; calendar: number } | null>(null);
 
   const loadJournalLog = useCallback(async () => {
     if (!id) return;
@@ -127,6 +131,20 @@ const JournalLogDetail: React.FC = () => {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
+  const confirmDeleteJournalLog = async () => {
+    if (!id) return;
+    try {
+      setDeleteProcessing(true);
+      await journalService.deleteJournalLog(parseInt(id, 10));
+      navigateBack();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete journal log');
+    } finally {
+      setDeleteProcessing(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -147,6 +165,20 @@ const JournalLogDetail: React.FC = () => {
 
   return (
     <div>
+      <DeleteImpactModal
+        isOpen={showDeleteModal}
+        title="Delete Journal Log?"
+        subjectLabel="this journal log"
+        impacts={[
+          { label: 'Calendar appointments', count: deleteImpact?.calendar ?? 0 },
+          { label: 'Tags', count: deleteImpact?.tags ?? 0 },
+          { label: 'Attachments', count: deleteImpact?.attachments ?? 0 },
+        ]}
+        confirmText="Delete journal log"
+        isProcessing={deleteProcessing}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteJournalLog}
+      />
       <div className="flex justify-between items-center mb-6">
         <div>
           <button
@@ -170,12 +202,16 @@ const JournalLogDetail: React.FC = () => {
           </button>
           <button
             onClick={async () => {
-              if (!window.confirm('Are you sure you want to delete this journal log?')) return;
               try {
-                await journalService.deleteJournalLog(parseInt(id!));
-                navigateBack();
+                const impact = await journalService.getDeleteImpact(parseInt(id!, 10));
+                setDeleteImpact({
+                  attachments: impact.attachmentCount,
+                  tags: impact.tagCount,
+                  calendar: impact.calendarAppointmentCount,
+                });
+                setShowDeleteModal(true);
               } catch (err: any) {
-                setError(err.message || 'Failed to delete journal log');
+                setError(err.message || 'Failed to load delete impact.');
               }
             }}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
@@ -288,6 +324,9 @@ const JournalLogDetail: React.FC = () => {
           ) : (
             <div className="space-y-2">
               {journalLog.attachments.map((attachment) => (
+                (() => {
+                  const canDownload = attachment.fileSize > 0;
+                  return (
                 <div
                   key={attachment.attachmentId}
                   className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-gray-50"
@@ -300,11 +339,10 @@ const JournalLogDetail: React.FC = () => {
                   </div>
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => {
-                        // Placeholder for download - would need a download endpoint
-                        console.log('Download attachment:', attachment.attachmentId);
-                      }}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      type="button"
+                      disabled={!canDownload}
+                      title={canDownload ? 'Download not yet implemented' : 'Workflow metadata attachment (no file stored for download)'}
+                      className={`text-sm ${canDownload ? 'text-blue-600 hover:text-blue-800' : 'cursor-not-allowed text-gray-400'}`}
                     >
                       Download
                     </button>
@@ -316,6 +354,8 @@ const JournalLogDetail: React.FC = () => {
                     </button>
                   </div>
                 </div>
+                  );
+                })()
               ))}
             </div>
           )}

@@ -65,6 +65,13 @@ export interface TagDto {
   createdDate: string;
 }
 
+export interface DeleteImpactDto {
+  entityId: number;
+  attachmentCount: number;
+  tagCount: number;
+  calendarAppointmentCount: number;
+}
+
 export const contactLogService = {
   // Contact Logs
   getContactLogs: async (): Promise<ContactLogResponseDto[]> => {
@@ -101,6 +108,10 @@ export const contactLogService = {
     await apiClient<void>(`/contact-logs/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  getDeleteImpact: async (id: number): Promise<DeleteImpactDto> => {
+    return await apiClient<DeleteImpactDto>(`/contact-logs/${id}/delete-impact`);
   },
 
   // Contact Log Types

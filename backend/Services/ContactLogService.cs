@@ -306,6 +306,24 @@ public class ContactLogService : IContactLogService
         return await _contactLogRepository.DeleteAttachmentAsync(attachmentId);
     }
 
+    public async Task<DeleteImpactResponseDto?> GetDeleteImpactAsync(int contactLogId)
+    {
+        var contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);
+        if (contactLog == null) return null;
+
+        var attachmentCount = await _contactLogRepository.CountAttachmentsAsync(contactLogId);
+        var tagCount = await _contactLogRepository.CountTagsAsync(contactLogId);
+        var calendar = await _calendarAppointmentRepository.GetBySourceAsync(SourceType, contactLogId);
+
+        return new DeleteImpactResponseDto
+        {
+            EntityId = contactLogId,
+            AttachmentCount = attachmentCount,
+            TagCount = tagCount,
+            CalendarAppointmentCount = calendar == null ? 0 : 1
+        };
+    }
+
     private ContactLogResponseDto MapToContactLogResponseDto(ContactLog contactLog)
     {
         return new ContactLogResponseDto

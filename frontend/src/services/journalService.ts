@@ -70,6 +70,13 @@ export interface AttachmentDto {
   createdDate: string;
 }
 
+export interface DeleteImpactDto {
+  entityId: number;
+  attachmentCount: number;
+  tagCount: number;
+  calendarAppointmentCount: number;
+}
+
 export const journalService = {
   // Journal Logs
   getJournalLogs: async (): Promise<JournalLogResponseDto[]> => {
@@ -102,6 +109,10 @@ export const journalService = {
     await apiClient<void>(`/journals/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  getDeleteImpact: async (id: number): Promise<DeleteImpactDto> => {
+    return await apiClient<DeleteImpactDto>(`/journals/${id}/delete-impact`);
   },
 
   // Journal Types

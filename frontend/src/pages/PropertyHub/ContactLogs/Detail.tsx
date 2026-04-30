@@ -6,6 +6,7 @@ import Tag from '../../../components/Tag';
 import TagAssignmentModal from '../../../components/TagAssignmentModal';
 import ContactLogForm from './Form';
 import { formatDateTimeUk, formatDateUk } from '../../../dateFormat';
+import DeleteImpactModal from '../../../components/DeleteImpactModal';
 
 const ContactLogDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +34,9 @@ const ContactLogDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteProcessing, setDeleteProcessing] = useState(false);
+  const [deleteImpact, setDeleteImpact] = useState<{ attachments: number; tags: number; calendar: number } | null>(null);
 
   const loadContactLog = useCallback(async () => {
     if (!id) return;
@@ -120,6 +124,20 @@ const ContactLogDetail: React.FC = () => {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
+  const confirmDeleteContactLog = async () => {
+    if (!id) return;
+    try {
+      setDeleteProcessing(true);
+      await contactLogService.deleteContactLog(parseInt(id, 10));
+      navigateBack();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete contact log');
+    } finally {
+      setDeleteProcessing(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -140,6 +158,20 @@ const ContactLogDetail: React.FC = () => {
 
   return (
     <div>
+      <DeleteImpactModal
+        isOpen={showDeleteModal}
+        title="Delete Contact Log?"
+        subjectLabel="this contact log"
+        impacts={[
+          { label: 'Calendar appointments', count: deleteImpact?.calendar ?? 0 },
+          { label: 'Tags', count: deleteImpact?.tags ?? 0 },
+          { label: 'Attachments', count: deleteImpact?.attachments ?? 0 },
+        ]}
+        confirmText="Delete contact log"
+        isProcessing={deleteProcessing}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteContactLog}
+      />
       <div className="flex justify-between items-center mb-6">
         <div>
           <button
@@ -163,12 +195,16 @@ const ContactLogDetail: React.FC = () => {
           </button>
           <button
             onClick={async () => {
-              if (!window.confirm('Are you sure you want to delete this contact log?')) return;
               try {
-                await contactLogService.deleteContactLog(parseInt(id!));
-                navigateBack();
+                const impact = await contactLogService.getDeleteImpact(parseInt(id!, 10));
+                setDeleteImpact({
+                  attachments: impact.attachmentCount,
+                  tags: impact.tagCount,
+                  calendar: impact.calendarAppointmentCount,
+                });
+                setShowDeleteModal(true);
               } catch (err: any) {
-                setError(err.message || 'Failed to delete contact log');
+                setError(err.message || 'Failed to load delete impact.');
               }
             }}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"

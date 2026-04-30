@@ -67,7 +67,9 @@ public class JournalLogService : IJournalLogService
 
         // Filter journal logs to only those for accessible properties
         var rows = allJournalLogs
-            .Where(jl => jl.PropertyId.HasValue && accessiblePropertyIds.Contains(jl.PropertyId.Value))
+            .Where(jl =>
+                (jl.PropertyId.HasValue && accessiblePropertyIds.Contains(jl.PropertyId.Value)) ||
+                (jl.PropertyGroupId.HasValue && userPropertyGroupIds.Contains(jl.PropertyGroupId.Value)))
             .Select(MapToJournalLogResponseDto)
             .ToList();
         await AttachCalendarLinksAsync(rows);
@@ -369,6 +371,24 @@ public class JournalLogService : IJournalLogService
         return await _journalLogRepository.DeleteAttachmentAsync(attachmentId);
     }
 
+    public async Task<DeleteImpactResponseDto?> GetDeleteImpactAsync(int journalLogId)
+    {
+        var journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
+        if (journalLog == null) return null;
+
+        var attachmentCount = await _journalLogRepository.CountAttachmentsAsync(journalLogId);
+        var tagCount = await _journalLogRepository.CountTagsAsync(journalLogId);
+        var calendar = await _calendarAppointmentRepository.GetBySourceAsync(SourceType, journalLogId);
+
+        return new DeleteImpactResponseDto
+        {
+            EntityId = journalLogId,
+            AttachmentCount = attachmentCount,
+            TagCount = tagCount,
+            CalendarAppointmentCount = calendar == null ? 0 : 1
+        };
+    }
+
     private JournalLogResponseDto MapToJournalLogResponseDto(JournalLog journalLog)
     {
         return new JournalLogResponseDto
@@ -376,8 +396,8 @@ public class JournalLogService : IJournalLogService
             JournalLogId = journalLog.JournalLogId,
             PropertyId = journalLog.PropertyId ?? 0,
             PropertyName = journalLog.Property?.PropertyName ?? string.Empty,
-            PropertyGroupId = journalLog.Property?.PropertyGroupId,
-            PropertyGroupName = journalLog.Property?.PropertyGroup?.PropertyGroupName,
+            PropertyGroupId = journalLog.PropertyGroupId ?? journalLog.Property?.PropertyGroupId,
+            PropertyGroupName = journalLog.PropertyGroup?.PropertyGroupName ?? journalLog.Property?.PropertyGroup?.PropertyGroupName,
             TenancyId = journalLog.TenancyId,
             TenantId = journalLog.TenantId,
             TenantName = journalLog.Tenant != null ? $"{journalLog.Tenant.FirstName} {journalLog.Tenant.LastName}".Trim() : null,
@@ -392,12 +412,39 @@ public class JournalLogService : IJournalLogService
             Attachments = journalLog.Attachments.Select(a => new AttachmentDto
             {
                 AttachmentId = a.JournalLogAttachmentId,
-                FileName = a.FileName ?? "Unknown",
+                FileName = ResolveAttachmentDisplayName(a),
                 FileType = a.FileType,
                 FileSize = a.FileSize ?? 0,
                 CreatedDate = a.DateAttached ?? DateTime.UtcNow
             }).ToList()
         };
+    }
+
+    private static string ResolveAttachmentDisplayName(JournalLogAttachment attachment)
+    {
+        if (!string.IsNullOrWhiteSpace(attachment.FileName))
+        {
+            return attachment.FileName;
+        }
+
+        var attachedBy = attachment.AttachedBy?.Trim();
+        if (string.IsNullOrWhiteSpace(attachedBy))
+        {
+            return "Unknown";
+        }
+
+        var openParen = attachedBy.LastIndexOf('(');
+        var closeParen = attachedBy.LastIndexOf(')');
+        if (openParen >= 0 && closeParen > openParen)
+        {
+            var inner = attachedBy[(openParen + 1)..closeParen].Trim();
+            if (!string.IsNullOrWhiteSpace(inner))
+            {
+                return inner;
+            }
+        }
+
+        return attachedBy;
     }
 
     private async Task AttachCalendarLinksAsync(List<JournalLogResponseDto> rows)

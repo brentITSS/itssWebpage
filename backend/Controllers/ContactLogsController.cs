@@ -221,6 +221,24 @@ public class ContactLogsController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("{id}/delete-impact")]
+    public async Task<ActionResult<DeleteImpactResponseDto>> GetDeleteImpact(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub workstream access required");
+        }
+
+        var impact = await _contactLogService.GetDeleteImpactAsync(id);
+        if (impact == null) return NotFound();
+        return Ok(impact);
+    }
+
     /// <summary>
     /// Upload attachment to contact log. Only accessible to Property Hub workstream users or Global Admins.
     /// Stores file metadata in tblContactLogAttachment.

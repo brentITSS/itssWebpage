@@ -4,6 +4,7 @@ import { journalService, JournalLogResponseDto } from '../../../services/journal
 import { propertyService, PropertyResponseDto } from '../../../services/propertyService';
 import { formatDateUk } from '../../../dateFormat';
 import EntityActionButtons from '../../../components/EntityActionButtons';
+import DeleteImpactModal from '../../../components/DeleteImpactModal';
 
 const JournalLogsList: React.FC = () => {
   const navigate = useNavigate();
@@ -14,10 +15,18 @@ const JournalLogsList: React.FC = () => {
   const [journalTypes, setJournalTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: number;
+    attachments: number;
+    tags: number;
+    calendar: number;
+  } | null>(null);
+  const [deleteProcessing, setDeleteProcessing] = useState(false);
 
   // Filters - initialize from URL query parameter if present
   const propertyIdFromUrl = searchParams.get('propertyId');
   const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(propertyIdFromUrl ? parseInt(propertyIdFromUrl) : '');
+  const [filterPropertyGroupId, setFilterPropertyGroupId] = useState<number | ''>('');
   const [filterJournalTypeId, setFilterJournalTypeId] = useState<number | ''>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
@@ -62,8 +71,29 @@ const JournalLogsList: React.FC = () => {
     }
   };
 
+  const propertyGroups = useMemo(
+    () =>
+      Array.from(
+        new Map(properties.map((p) => [p.propertyGroupId, { propertyGroupId: p.propertyGroupId, propertyGroupName: p.propertyGroupName }])).values()
+      ).sort((a, b) => a.propertyGroupName.localeCompare(b.propertyGroupName)),
+    [properties]
+  );
+
+  const propertyToGroup = useMemo(
+    () => new Map(properties.map((p) => [p.propertyId, p.propertyGroupId])),
+    [properties]
+  );
+
   const applyFilters = useCallback(() => {
     let filtered = [...journalLogs];
+
+    if (filterPropertyGroupId) {
+      filtered = filtered.filter(log => {
+        const groupFromProperty = log.propertyId ? propertyToGroup.get(log.propertyId) : undefined;
+        const effectiveGroupId = log.propertyGroupId ?? groupFromProperty;
+        return effectiveGroupId === filterPropertyGroupId;
+      });
+    }
 
     if (filterPropertyId) {
       filtered = filtered.filter(log => log.propertyId === filterPropertyId);
@@ -82,20 +112,37 @@ const JournalLogsList: React.FC = () => {
     }
 
     setFilteredLogs(filtered);
-  }, [journalLogs, filterPropertyId, filterJournalTypeId, filterDateFrom, filterDateTo]);
+  }, [journalLogs, filterPropertyId, filterPropertyGroupId, filterJournalTypeId, filterDateFrom, filterDateTo, propertyToGroup]);
 
   useEffect(() => {
     applyFilters();
   }, [applyFilters]);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this journal log?')) return;
-
     try {
-      await journalService.deleteJournalLog(id);
-      loadData();
+      const impact = await journalService.getDeleteImpact(id);
+      setPendingDelete({
+        id,
+        attachments: impact.attachmentCount,
+        tags: impact.tagCount,
+        calendar: impact.calendarAppointmentCount,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to load delete impact.');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      setDeleteProcessing(true);
+      await journalService.deleteJournalLog(pendingDelete.id);
+      setPendingDelete(null);
+      await loadData();
     } catch (err: any) {
       setError(err.message || 'Failed to delete journal log');
+    } finally {
+      setDeleteProcessing(false);
     }
   };
 
@@ -112,6 +159,20 @@ const JournalLogsList: React.FC = () => {
 
   return (
     <div>
+      <DeleteImpactModal
+        isOpen={pendingDelete !== null}
+        title="Delete Journal Log?"
+        subjectLabel="this journal log"
+        impacts={[
+          { label: 'Calendar appointments', count: pendingDelete?.calendar ?? 0 },
+          { label: 'Tags', count: pendingDelete?.tags ?? 0 },
+          { label: 'Attachments', count: pendingDelete?.attachments ?? 0 },
+        ]}
+        confirmText="Delete journal log"
+        isProcessing={deleteProcessing}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Journal Logs</h2>
         <button
@@ -148,16 +209,49 @@ const JournalLogsList: React.FC = () => {
         </div>
         {showFilters && (
           <>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Property Group</label>
+                <select
+                  value={filterPropertyGroupId === '' ? '' : filterPropertyGroupId.toString()}
+                  onChange={(e) => {
+                    const nextGroup = e.target.value ? parseInt(e.target.value, 10) : '';
+                    setFilterPropertyGroupId(nextGroup);
+                    if (nextGroup && filterPropertyId) {
+                      const currentProp = properties.find((p) => p.propertyId === filterPropertyId);
+                      if (currentProp && currentProp.propertyGroupId !== nextGroup) {
+                        setFilterPropertyId('');
+                      }
+                    }
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">All Groups</option>
+                  {propertyGroups.map((g) => (
+                    <option key={g.propertyGroupId} value={g.propertyGroupId}>{g.propertyGroupName}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
                 <select
                   value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
-                  onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value) : '')}
+                  onChange={(e) => {
+                    const nextPropertyId = e.target.value ? parseInt(e.target.value, 10) : '';
+                    setFilterPropertyId(nextPropertyId);
+                    if (nextPropertyId) {
+                      const nextProperty = properties.find((p) => p.propertyId === nextPropertyId);
+                      if (nextProperty) {
+                        setFilterPropertyGroupId(nextProperty.propertyGroupId);
+                      }
+                    }
+                  }}
                   className="w-full rounded-md border border-gray-300 px-3 py-2"
                 >
                   <option value="">All Properties</option>
-                  {properties.map(p => (
+                  {properties
+                    .filter((p) => !filterPropertyGroupId || p.propertyGroupId === filterPropertyGroupId)
+                    .map(p => (
                     <option key={p.propertyId} value={p.propertyId}>{p.propertyName}</option>
                   ))}
                 </select>
@@ -194,11 +288,12 @@ const JournalLogsList: React.FC = () => {
                 />
               </div>
             </div>
-            {(filterPropertyId || filterJournalTypeId || filterDateFrom || filterDateTo) && (
+            {(filterPropertyId || filterPropertyGroupId || filterJournalTypeId || filterDateFrom || filterDateTo) && (
               <button
                 type="button"
                 onClick={() => {
                   setFilterPropertyId('');
+                  setFilterPropertyGroupId('');
                   setFilterJournalTypeId('');
                   setFilterDateFrom('');
                   setFilterDateTo('');

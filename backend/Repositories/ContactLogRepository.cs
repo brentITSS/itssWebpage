@@ -148,4 +148,14 @@ public class ContactLogRepository : IContactLogRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<int> CountAttachmentsAsync(int contactLogId)
+    {
+        return await _context.ContactLogAttachments.CountAsync(a => a.ContactLogId == contactLogId);
+    }
+
+    public async Task<int> CountTagsAsync(int contactLogId)
+    {
+        return await _context.TagLogs.CountAsync(t => t.ContactLogId == contactLogId);
+    }
 }

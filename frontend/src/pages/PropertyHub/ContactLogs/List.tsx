@@ -6,6 +6,7 @@ import HubScopedHeader from '../HubScopedHeader';
 import { countContactLogsForProperty } from '../propertyHubMetrics';
 import { formatDateUk } from '../../../dateFormat';
 import EntityActionButtons from '../../../components/EntityActionButtons';
+import DeleteImpactModal from '../../../components/DeleteImpactModal';
 
 const ContactLogsList: React.FC = () => {
   const navigate = useNavigate();
@@ -20,10 +21,18 @@ const ContactLogsList: React.FC = () => {
   const [contactLogTypes, setContactLogTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: number;
+    attachments: number;
+    tags: number;
+    calendar: number;
+  } | null>(null);
+  const [deleteProcessing, setDeleteProcessing] = useState(false);
 
   const [filterPropertyId, setFilterPropertyId] = useState<number | ''>(
     propertyIdFromUrl ? parseInt(propertyIdFromUrl, 10) : ''
   );
+  const [filterPropertyGroupId, setFilterPropertyGroupId] = useState<number | ''>('');
   const [filterContactLogTypeId, setFilterContactLogTypeId] = useState<number | ''>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
@@ -65,8 +74,29 @@ const ContactLogsList: React.FC = () => {
     }
   };
 
+  const propertyGroups = useMemo(
+    () =>
+      Array.from(
+        new Map(properties.map((p) => [p.propertyGroupId, { propertyGroupId: p.propertyGroupId, propertyGroupName: p.propertyGroupName }])).values()
+      ).sort((a, b) => a.propertyGroupName.localeCompare(b.propertyGroupName)),
+    [properties]
+  );
+
+  const propertyToGroup = useMemo(
+    () => new Map(properties.map((p) => [p.propertyId, p.propertyGroupId])),
+    [properties]
+  );
+
   const applyFilters = useCallback(() => {
     let filtered = [...contactLogs];
+
+    if (filterPropertyGroupId) {
+      filtered = filtered.filter((log) => {
+        const groupFromProperty = log.propertyId ? propertyToGroup.get(log.propertyId) : undefined;
+        const effectiveGroupId = log.propertyGroupId ?? groupFromProperty;
+        return effectiveGroupId === filterPropertyGroupId;
+      });
+    }
 
     if (filterPropertyId) {
       filtered = filtered.filter((log) => log.propertyId === filterPropertyId);
@@ -85,20 +115,37 @@ const ContactLogsList: React.FC = () => {
     }
 
     setFilteredLogs(filtered);
-  }, [contactLogs, filterPropertyId, filterContactLogTypeId, filterDateFrom, filterDateTo]);
+  }, [contactLogs, filterPropertyId, filterPropertyGroupId, filterContactLogTypeId, filterDateFrom, filterDateTo, propertyToGroup]);
 
   useEffect(() => {
     applyFilters();
   }, [applyFilters]);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this contact log?')) return;
-
     try {
-      await contactLogService.deleteContactLog(id);
-      loadData();
+      const impact = await contactLogService.getDeleteImpact(id);
+      setPendingDelete({
+        id,
+        attachments: impact.attachmentCount,
+        tags: impact.tagCount,
+        calendar: impact.calendarAppointmentCount,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to load delete impact.');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      setDeleteProcessing(true);
+      await contactLogService.deleteContactLog(pendingDelete.id);
+      setPendingDelete(null);
+      await loadData();
     } catch (err: any) {
       setError(err.message || 'Failed to delete contact log');
+    } finally {
+      setDeleteProcessing(false);
     }
   };
 
@@ -259,6 +306,20 @@ const ContactLogsList: React.FC = () => {
 
   return (
     <div>
+      <DeleteImpactModal
+        isOpen={pendingDelete !== null}
+        title="Delete Contact Log?"
+        subjectLabel="this contact log"
+        impacts={[
+          { label: 'Calendar appointments', count: pendingDelete?.calendar ?? 0 },
+          { label: 'Tags', count: pendingDelete?.tags ?? 0 },
+          { label: 'Attachments', count: pendingDelete?.attachments ?? 0 },
+        ]}
+        confirmText="Delete contact log"
+        isProcessing={deleteProcessing}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Contact Logs</h2>
         <button
@@ -294,16 +355,51 @@ const ContactLogsList: React.FC = () => {
         </div>
         {showFilters && (
           <>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Property Group</label>
+                <select
+                  value={filterPropertyGroupId === '' ? '' : String(filterPropertyGroupId)}
+                  onChange={(e) => {
+                    const nextGroup = e.target.value ? parseInt(e.target.value, 10) : '';
+                    setFilterPropertyGroupId(nextGroup);
+                    if (nextGroup && filterPropertyId) {
+                      const selectedProperty = properties.find((p) => p.propertyId === filterPropertyId);
+                      if (selectedProperty && selectedProperty.propertyGroupId !== nextGroup) {
+                        setFilterPropertyId('');
+                      }
+                    }
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">All Groups</option>
+                  {propertyGroups.map((g) => (
+                    <option key={g.propertyGroupId} value={g.propertyGroupId}>
+                      {g.propertyGroupName}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Property</label>
                 <select
                   value={filterPropertyId === '' ? '' : filterPropertyId.toString()}
-                  onChange={(e) => setFilterPropertyId(e.target.value ? parseInt(e.target.value, 10) : '')}
+                  onChange={(e) => {
+                    const nextPropertyId = e.target.value ? parseInt(e.target.value, 10) : '';
+                    setFilterPropertyId(nextPropertyId);
+                    if (nextPropertyId) {
+                      const nextProperty = properties.find((p) => p.propertyId === nextPropertyId);
+                      if (nextProperty) {
+                        setFilterPropertyGroupId(nextProperty.propertyGroupId);
+                      }
+                    }
+                  }}
                   className="w-full rounded-md border border-gray-300 px-3 py-2"
                 >
                   <option value="">All Properties</option>
-                  {properties.map((p) => (
+                  {properties
+                    .filter((p) => !filterPropertyGroupId || p.propertyGroupId === filterPropertyGroupId)
+                    .map((p) => (
                     <option key={p.propertyId} value={p.propertyId}>
                       {p.propertyName}
                     </option>
@@ -344,11 +440,12 @@ const ContactLogsList: React.FC = () => {
                 />
               </div>
             </div>
-            {(filterPropertyId || filterContactLogTypeId || filterDateFrom || filterDateTo) && (
+            {(filterPropertyId || filterPropertyGroupId || filterContactLogTypeId || filterDateFrom || filterDateTo) && (
               <button
                 type="button"
                 onClick={() => {
                   setFilterPropertyId('');
+                  setFilterPropertyGroupId('');
                   setFilterContactLogTypeId('');
                   setFilterDateFrom('');
                   setFilterDateTo('');
