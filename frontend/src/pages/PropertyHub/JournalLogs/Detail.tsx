@@ -118,6 +118,23 @@ const JournalLogDetail: React.FC = () => {
     }
   };
 
+  const handleDownloadAttachment = async (attachmentId: number) => {
+    try {
+      setError(null);
+      const { blob, fileName } = await journalService.downloadAttachment(attachmentId);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || 'Failed to download attachment');
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-ZA', {
       style: 'currency',
@@ -340,9 +357,9 @@ const JournalLogDetail: React.FC = () => {
                   <div className="flex space-x-2">
                     <button
                       type="button"
-                      disabled={!canDownload}
-                      title={canDownload ? 'Download not yet implemented' : 'Workflow metadata attachment (no file stored for download)'}
-                      className={`text-sm ${canDownload ? 'text-blue-600 hover:text-blue-800' : 'cursor-not-allowed text-gray-400'}`}
+                      title={canDownload ? 'Download attachment' : 'No file payload is stored for this attachment'}
+                      onClick={() => handleDownloadAttachment(attachment.attachmentId)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
                     >
                       Download
                     </button>

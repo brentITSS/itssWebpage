@@ -1,6 +1,7 @@
 using backend.DTOs;
 using backend.Models;
 using backend.Repositories;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace backend.Services;
 
@@ -336,7 +337,17 @@ public class JournalLogService : IJournalLogService
         var uploadsFolder = Path.Combine(_environment.ContentRootPath, "uploads", "journals");
         Directory.CreateDirectory(uploadsFolder);
 
-        var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+        var attachment = new JournalLogAttachment
+        {
+            JournalLogId = journalLogId,
+            // Persist the original file name in attachedBy so we can display and resolve it later.
+            AttachedBy = file.FileName
+        };
+
+        attachment = await _journalLogRepository.AddAttachmentAsync(attachment);
+
+        var safeName = SanitizeFileName(file.FileName);
+        var fileName = $"{attachment.JournalLogAttachmentId}_{safeName}";
         var filePath = Path.Combine(uploadsFolder, fileName);
 
         using (var stream = new FileStream(filePath, FileMode.Create))
@@ -344,31 +355,66 @@ public class JournalLogService : IJournalLogService
             await file.CopyToAsync(stream);
         }
 
-        var attachment = new JournalLogAttachment
-        {
-            JournalLogId = journalLogId,
-            FileName = file.FileName,
-            FilePath = filePath,
-            FileType = file.ContentType,
-            FileSize = file.Length
-        };
-
-        attachment = await _journalLogRepository.AddAttachmentAsync(attachment);
-
         return new AttachmentDto
         {
             AttachmentId = attachment.JournalLogAttachmentId,
-            FileName = attachment.FileName,
-            FileType = attachment.FileType,
-            FileSize = attachment.FileSize ?? 0,
+            FileName = file.FileName,
+            FileType = file.ContentType,
+            FileSize = file.Length,
             CreatedDate = DateTime.UtcNow
         };
     }
 
     public async Task<bool> DeleteAttachmentAsync(int attachmentId, int deletedByUserId)
     {
-        // Note: File deletion from disk should be handled here as well
-        return await _journalLogRepository.DeleteAttachmentAsync(attachmentId);
+        var deleted = await _journalLogRepository.DeleteAttachmentAsync(attachmentId);
+        if (!deleted) return false;
+
+        var uploadsFolder = Path.Combine(_environment.ContentRootPath, "uploads", "journals");
+        DeleteAttachmentFilesByPrefix(uploadsFolder, attachmentId);
+        return true;
+    }
+
+    public async Task<AttachmentDownloadDto?> GetAttachmentDownloadAsync(int attachmentId)
+    {
+        var attachment = await _journalLogRepository.GetAttachmentByIdAsync(attachmentId);
+        if (attachment == null) return null;
+
+        var uploadsFolder = Path.Combine(_environment.ContentRootPath, "uploads", "journals");
+        if (!Directory.Exists(uploadsFolder))
+        {
+            return null;
+        }
+
+        var prefix = $"{attachmentId}_";
+        var filePath = Directory
+            .EnumerateFiles(uploadsFolder, $"{prefix}*")
+            .OrderByDescending(File.GetCreationTimeUtc)
+            .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            return null;
+        }
+
+        var fileName = Path.GetFileName(filePath);
+        if (fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            fileName = fileName[prefix.Length..];
+        }
+
+        var provider = new FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType(fileName, out var contentType))
+        {
+            contentType = "application/octet-stream";
+        }
+
+        return new AttachmentDownloadDto
+        {
+            FilePath = filePath,
+            FileName = fileName,
+            ContentType = contentType
+        };
     }
 
     public async Task<DeleteImpactResponseDto?> GetDeleteImpactAsync(int journalLogId)
@@ -445,6 +491,34 @@ public class JournalLogService : IJournalLogService
         }
 
         return attachedBy;
+    }
+
+    private static string SanitizeFileName(string fileName)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var cleaned = new string(fileName.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
+        return string.IsNullOrWhiteSpace(cleaned) ? "attachment.bin" : cleaned;
+    }
+
+    private static void DeleteAttachmentFilesByPrefix(string folder, int attachmentId)
+    {
+        if (!Directory.Exists(folder))
+        {
+            return;
+        }
+
+        var prefix = $"{attachmentId}_";
+        foreach (var file in Directory.EnumerateFiles(folder, $"{prefix}*"))
+        {
+            try
+            {
+                File.Delete(file);
+            }
+            catch
+            {
+                // Best-effort file cleanup; DB row already removed.
+            }
+        }
     }
 
     private async Task AttachCalendarLinksAsync(List<JournalLogResponseDto> rows)

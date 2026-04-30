@@ -149,4 +149,25 @@ export const journalService = {
       method: 'DELETE',
     });
   },
+
+  downloadAttachment: async (attachmentId: number): Promise<{ blob: Blob; fileName: string }> => {
+    const token = localStorage.getItem('token');
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://localhost:5001/api';
+    const response = await fetch(`${API_BASE_URL}/journals/attachments/${attachmentId}/download`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(err.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+    const raw = match?.[1]?.trim();
+    const fileName = raw ? decodeURIComponent(raw.replace(/"/g, '')) : `journal-attachment-${attachmentId}`;
+    return { blob, fileName };
+  },
 };

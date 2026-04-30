@@ -132,6 +132,11 @@ public class ContactLogRepository : IContactLogRepository
         return attachment;
     }
 
+    public async Task<ContactLogAttachment?> GetAttachmentByIdAsync(int attachmentId)
+    {
+        return await _context.ContactLogAttachments.FindAsync(attachmentId);
+    }
+
     public async Task<List<ContactLogAttachment>> GetAttachmentsByContactLogIdAsync(int contactLogId)
     {
         return await _context.ContactLogAttachments

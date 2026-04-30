@@ -158,6 +158,11 @@ public class JournalLogRepository : IJournalLogRepository
         return attachment;
     }
 
+    public async Task<JournalLogAttachment?> GetAttachmentByIdAsync(int attachmentId)
+    {
+        return await _context.JournalLogAttachments.FindAsync(attachmentId);
+    }
+
     public async Task<List<JournalLogAttachment>> GetAttachmentsByJournalLogIdAsync(int journalLogId)
     {
         return await _context.JournalLogAttachments

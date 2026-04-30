@@ -21,5 +21,6 @@ public interface IJournalLogService
     Task<bool> DeleteJournalSubTypeAsync(int journalSubTypeId);
     Task<AttachmentDto> AddAttachmentAsync(int journalLogId, IFormFile file, int createdByUserId);
     Task<bool> DeleteAttachmentAsync(int attachmentId, int deletedByUserId);
+    Task<AttachmentDownloadDto?> GetAttachmentDownloadAsync(int attachmentId);
     Task<DeleteImpactResponseDto?> GetDeleteImpactAsync(int journalLogId);
 }

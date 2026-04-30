@@ -19,6 +19,7 @@ public interface IContactLogRepository
     Task<bool> DeleteContactLogTypeAsync(int contactLogTypeId);
     
     Task<ContactLogAttachment> AddAttachmentAsync(ContactLogAttachment attachment);
+    Task<ContactLogAttachment?> GetAttachmentByIdAsync(int attachmentId);
     Task<List<ContactLogAttachment>> GetAttachmentsByContactLogIdAsync(int contactLogId);
     Task<bool> DeleteAttachmentAsync(int attachmentId);
     Task<int> CountAttachmentsAsync(int contactLogId);

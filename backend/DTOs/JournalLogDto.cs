@@ -105,3 +105,10 @@ public class AttachmentDto
     public long FileSize { get; set; }
     public DateTime CreatedDate { get; set; }
 }
+
+public class AttachmentDownloadDto
+{
+    public string FilePath { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = "application/octet-stream";
+}

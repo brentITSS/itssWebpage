@@ -304,6 +304,28 @@ public class ContactLogsController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("attachments/{attachmentId}/download")]
+    public async Task<ActionResult> DownloadAttachment(int attachmentId)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized();
+
+        var currentUser = await _authService.GetCurrentUserAsync(currentUserId.Value);
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser))
+        {
+            return Forbid("Access denied: Property Hub workstream access required");
+        }
+
+        var download = await _contactLogService.GetAttachmentDownloadAsync(attachmentId);
+        if (download == null)
+        {
+            return NotFound(new { message = "No downloadable file is stored for this attachment." });
+        }
+
+        return PhysicalFile(download.FilePath, download.ContentType, download.FileName);
+    }
+
     /// <summary>
     /// Check if user has Property Hub workstream access.
     /// </summary>

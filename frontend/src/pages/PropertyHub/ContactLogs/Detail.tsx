@@ -118,6 +118,23 @@ const ContactLogDetail: React.FC = () => {
     }
   };
 
+  const handleDownloadAttachment = async (attachmentId: number) => {
+    try {
+      setError(null);
+      const { blob, fileName } = await contactLogService.downloadAttachment(attachmentId);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || 'Failed to download attachment');
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
@@ -300,10 +317,9 @@ const ContactLogDetail: React.FC = () => {
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => {
-                          // Placeholder for download - would need a download endpoint
-                          console.log('Download attachment:', attachment.attachmentId);
-                        }}
+                        type="button"
+                        title={(attachment.fileSize ?? 0) > 0 ? 'Download attachment' : 'No file payload is stored for this attachment'}
+                        onClick={() => handleDownloadAttachment(attachment.attachmentId)}
                         className="text-sm text-blue-600 hover:text-blue-800"
                       >
                         Download
