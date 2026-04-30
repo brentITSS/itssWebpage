@@ -185,11 +185,15 @@ public class ContactLogService : IContactLogService
         var contactLog = await _contactLogRepository.GetByIdAsync(contactLogId);
         if (contactLog == null) return false;
 
+        // Deterministic child cleanup: do not rely solely on DB FK cascade.
+        await _contactLogRepository.DeleteAttachmentsByContactLogIdAsync(contactLogId);
+        await _contactLogRepository.DeleteTagsByContactLogIdAsync(contactLogId);
+        await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, contactLogId);
+
         var result = await _contactLogRepository.DeleteAsync(contactLogId);
 
         if (result)
         {
-            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, contactLogId);
             await _auditLogRepository.CreateAsync(new AuditLog
             {
                 UserId = deletedByUserId,

@@ -26,6 +26,8 @@ public interface IJournalLogRepository
     Task<JournalLogAttachment?> GetAttachmentByIdAsync(int attachmentId);
     Task<List<JournalLogAttachment>> GetAttachmentsByJournalLogIdAsync(int journalLogId);
     Task<bool> DeleteAttachmentAsync(int attachmentId);
+    Task<int> DeleteAttachmentsByJournalLogIdAsync(int journalLogId);
+    Task<int> DeleteTagsByJournalLogIdAsync(int journalLogId);
     Task<int> CountAttachmentsAsync(int journalLogId);
     Task<int> CountTagsAsync(int journalLogId);
 }

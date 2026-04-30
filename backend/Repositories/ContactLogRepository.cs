@@ -154,6 +154,30 @@ public class ContactLogRepository : IContactLogRepository
         return true;
     }
 
+    public async Task<int> DeleteAttachmentsByContactLogIdAsync(int contactLogId)
+    {
+        var rows = await _context.ContactLogAttachments
+            .Where(a => a.ContactLogId == contactLogId)
+            .ToListAsync();
+        if (rows.Count == 0) return 0;
+
+        _context.ContactLogAttachments.RemoveRange(rows);
+        await _context.SaveChangesAsync();
+        return rows.Count;
+    }
+
+    public async Task<int> DeleteTagsByContactLogIdAsync(int contactLogId)
+    {
+        var rows = await _context.TagLogs
+            .Where(t => t.ContactLogId == contactLogId)
+            .ToListAsync();
+        if (rows.Count == 0) return 0;
+
+        _context.TagLogs.RemoveRange(rows);
+        await _context.SaveChangesAsync();
+        return rows.Count;
+    }
+
     public async Task<int> CountAttachmentsAsync(int contactLogId)
     {
         return await _context.ContactLogAttachments.CountAsync(a => a.ContactLogId == contactLogId);

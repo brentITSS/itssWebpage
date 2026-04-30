@@ -183,11 +183,15 @@ public class JournalLogService : IJournalLogService
         var journalLog = await _journalLogRepository.GetByIdAsync(journalLogId);
         if (journalLog == null) return false;
 
+        // Deterministic child cleanup: do not rely solely on DB FK cascade.
+        await _journalLogRepository.DeleteAttachmentsByJournalLogIdAsync(journalLogId);
+        await _journalLogRepository.DeleteTagsByJournalLogIdAsync(journalLogId);
+        await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, journalLogId);
+
         var result = await _journalLogRepository.DeleteAsync(journalLogId);
 
         if (result)
         {
-            await _calendarAppointmentRepository.DeleteBySourceAsync(SourceType, journalLogId);
             await _auditLogRepository.CreateAsync(new AuditLog
             {
                 UserId = deletedByUserId,

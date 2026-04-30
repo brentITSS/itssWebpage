@@ -180,6 +180,30 @@ public class JournalLogRepository : IJournalLogRepository
         return true;
     }
 
+    public async Task<int> DeleteAttachmentsByJournalLogIdAsync(int journalLogId)
+    {
+        var rows = await _context.JournalLogAttachments
+            .Where(a => a.JournalLogId == journalLogId)
+            .ToListAsync();
+        if (rows.Count == 0) return 0;
+
+        _context.JournalLogAttachments.RemoveRange(rows);
+        await _context.SaveChangesAsync();
+        return rows.Count;
+    }
+
+    public async Task<int> DeleteTagsByJournalLogIdAsync(int journalLogId)
+    {
+        var rows = await _context.TagLogs
+            .Where(t => t.JournalLogId == journalLogId)
+            .ToListAsync();
+        if (rows.Count == 0) return 0;
+
+        _context.TagLogs.RemoveRange(rows);
+        await _context.SaveChangesAsync();
+        return rows.Count;
+    }
+
     public async Task<int> CountAttachmentsAsync(int journalLogId)
     {
         return await _context.JournalLogAttachments.CountAsync(a => a.JournalLogId == journalLogId);
