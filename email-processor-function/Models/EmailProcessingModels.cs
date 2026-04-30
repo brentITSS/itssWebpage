@@ -1,4 +1,5 @@
 namespace email_processor_function.Models;
+using System.Text.Json.Serialization;
 
 public class ProcessPropertyHubEmailsRequest
 {
@@ -40,6 +41,8 @@ public class AttachmentPreview
     public string Name { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
     public string ExtractionStatus { get; set; } = "not_processed";
+    [JsonIgnore]
+    public byte[]? ContentBytes { get; set; }
 }
 
 public class ClassificationTemplate

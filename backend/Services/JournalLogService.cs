@@ -1,6 +1,7 @@
 using backend.DTOs;
 using backend.Models;
 using backend.Repositories;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.StaticFiles;
 
 namespace backend.Services;
@@ -398,7 +399,13 @@ public class JournalLogService : IJournalLogService
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            return null;
+            var blobKey = ExtractBlobKey(attachment.AttachedBy);
+            if (string.IsNullOrWhiteSpace(blobKey))
+            {
+                return null;
+            }
+
+            return await DownloadFromBlobAsync(blobKey, fileNameHint: attachment.AttachedBy);
         }
 
         var fileName = Path.GetFileName(filePath);
@@ -502,6 +509,71 @@ public class JournalLogService : IJournalLogService
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(fileName.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
         return string.IsNullOrWhiteSpace(cleaned) ? "attachment.bin" : cleaned;
+    }
+
+    private static string? ExtractBlobKey(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return null;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(source, @"\[blob:([^\]]+)\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var key = match.Groups[1].Value.Trim();
+        return string.IsNullOrWhiteSpace(key) ? null : key;
+    }
+
+    private async Task<AttachmentDownloadDto?> DownloadFromBlobAsync(string blobKey, string? fileNameHint)
+    {
+        var connectionString =
+            Environment.GetEnvironmentVariable("AttachmentStorage__ConnectionString");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return null;
+        }
+
+        var containerName =
+            Environment.GetEnvironmentVariable("AttachmentStorage__ContainerName") ??
+            "propertyhub-attachments";
+
+        try
+        {
+            var container = new BlobContainerClient(connectionString, containerName);
+            var blob = container.GetBlobClient(blobKey);
+            if (!await blob.ExistsAsync())
+            {
+                return null;
+            }
+
+            var downloaded = await blob.DownloadContentAsync();
+            var fileName = Path.GetFileName(blobKey);
+            var underscore = fileName.IndexOf('_');
+            if (underscore > 0 && underscore < fileName.Length - 1)
+            {
+                fileName = fileName[(underscore + 1)..];
+            }
+
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                fileName = fileNameHint ?? "attachment.bin";
+            }
+
+            return new AttachmentDownloadDto
+            {
+                FileName = fileName,
+                ContentType = downloaded.Value.Details.ContentType ?? "application/octet-stream",
+                ContentBytes = downloaded.Value.Content.ToArray()
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static void DeleteAttachmentFilesByPrefix(string folder, int attachmentId)

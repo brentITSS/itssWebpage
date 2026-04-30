@@ -731,6 +731,7 @@ const DocumentFlows: React.FC = () => {
                         <p className="md:col-span-2 text-[10px] text-slate-500">
                           Token helpers: {'{field:meter_number}'}, {'{field:account_number}'}, {'{field:invoice_total}'},{' '}
                           {'{extractionJson}'}, {'{classificationLabel}'}, {'{classificationScore}'}, {'{summary}'}.
+                          If using {'{field:...}'} for amounts, ensure <span className="font-semibold">RunExtraction</span> is before <span className="font-semibold">CreateJournalLog</span> in step order.
                           Numeric templates support math: +, -, *, /, brackets, and percentages (e.g. {'{field:total_incl_vat}*3.8%'}). To trigger live FX fetch, set rate source to <span className="font-semibold">Live</span> and provide a ZAR amount template. The flow then fetches current ZAR-&gt;GBP and calculates GBP as ZAR x rate.
                         </p>
                       </>

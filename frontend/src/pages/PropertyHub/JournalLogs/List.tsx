@@ -6,6 +6,13 @@ import { formatDateUk } from '../../../dateFormat';
 import EntityActionButtons from '../../../components/EntityActionButtons';
 import DeleteImpactModal from '../../../components/DeleteImpactModal';
 
+const decodeHtmlEntities = (value?: string): string => {
+  if (!value) return '';
+  const el = document.createElement('textarea');
+  el.innerHTML = value;
+  return el.value.replace(/\u00A0/g, ' ').trim();
+};
+
 const JournalLogsList: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -349,7 +356,7 @@ const JournalLogsList: React.FC = () => {
                     {formatCurrency(log.amount)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    <div className="max-w-xs truncate">{log.description || '-'}</div>
+                    <div className="max-w-xs truncate">{decodeHtmlEntities(log.description) || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <EntityActionButtons

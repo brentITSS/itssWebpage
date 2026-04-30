@@ -8,6 +8,13 @@ import JournalLogForm from './Form';
 import { formatDateTimeUk, formatDateUk } from '../../../dateFormat';
 import DeleteImpactModal from '../../../components/DeleteImpactModal';
 
+const decodeHtmlEntities = (value?: string): string => {
+  if (!value) return '';
+  const el = document.createElement('textarea');
+  el.innerHTML = value;
+  return el.value.replace(/\u00A0/g, ' ').trim();
+};
+
 const JournalLogDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -283,7 +290,7 @@ const JournalLogDetail: React.FC = () => {
             {journalLog.description && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Description</dt>
-                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{journalLog.description}</dd>
+                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{decodeHtmlEntities(journalLog.description)}</dd>
               </div>
             )}
             <div>

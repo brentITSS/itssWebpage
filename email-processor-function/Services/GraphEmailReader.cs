@@ -1,7 +1,9 @@
 using System.Globalization;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Azure.Storage.Blobs;
 using Azure.Identity;
 using DocumentFormat.OpenXml.Packaging;
 using email_processor_function.Models;
@@ -772,6 +774,7 @@ public class GraphEmailReader : IGraphEmailReader
             classificationLabel,
             classificationScore,
             workflowContext);
+        renderedDescription = WebUtility.HtmlDecode(renderedDescription).Replace('\u00A0', ' ').Trim();
         var renderedReference = ApplyTemplateTokens(journalReferenceTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
         var renderedAmountRand = ApplyTemplateTokens(amountRandTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
         var renderedAmountGbp = ApplyTemplateTokens(amountGbpTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
@@ -996,13 +999,15 @@ public class GraphEmailReader : IGraphEmailReader
         command.Parameters.AddWithValue("@tenantId", (object?)tenantId ?? DBNull.Value);
         command.Parameters.AddWithValue("@contactDate", effectiveDate);
         command.Parameters.AddWithValue("@contactBy", string.IsNullOrWhiteSpace(contactBy) ? "Workflow" : contactBy.Trim());
-        command.Parameters.AddWithValue("@contactNotes", ApplyTemplateTokens(
+        var renderedContactNotes = ApplyTemplateTokens(
             notesTemplate ??
             "Workflow auto-created contact log for {classificationLabel} (score {classificationScore}) from '{from}' re '{subject}'.",
             message,
             classificationLabel,
             classificationScore,
-            workflowContext));
+            workflowContext);
+        renderedContactNotes = WebUtility.HtmlDecode(renderedContactNotes).Replace('\u00A0', ' ').Trim();
+        command.Parameters.AddWithValue("@contactNotes", renderedContactNotes);
         command.Parameters.AddWithValue("@contactLogTypeId", contactLogTypeId);
 
         var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
@@ -1656,8 +1661,8 @@ public class GraphEmailReader : IGraphEmailReader
         {
             return null;
         }
-
-        return TryEvaluateDecimalExpression(value, out var parsed) ? parsed : null;
+        var decoded = WebUtility.HtmlDecode(value).Replace('\u00A0', ' ').Trim();
+        return TryEvaluateDecimalExpression(decoded, out var parsed) ? parsed : null;
     }
 
     private static bool TryEvaluateDecimalExpression(string rawValue, out decimal parsed)
@@ -1670,12 +1675,19 @@ public class GraphEmailReader : IGraphEmailReader
 
         var normalized = rawValue
             .Trim()
+            .Replace('\u00A0', ' ')
             .Replace(",", string.Empty, StringComparison.Ordinal)
             .Replace("R", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("ZAR", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("GBP", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("£", string.Empty, StringComparison.Ordinal)
             .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        // Handle decimal-comma locales when there is no dot.
+        if (normalized.Contains(',', StringComparison.Ordinal) && !normalized.Contains('.', StringComparison.Ordinal))
+        {
+            normalized = normalized.Replace(",", ".", StringComparison.Ordinal);
+        }
 
         if (string.IsNullOrWhiteSpace(normalized))
         {
@@ -1871,7 +1883,7 @@ public class GraphEmailReader : IGraphEmailReader
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }
 
-    private static async Task CreateJournalAttachmentRowsAsync(
+    private async Task CreateJournalAttachmentRowsAsync(
         SqlConnection connection,
         int journalLogId,
         IReadOnlyList<AttachmentPreview> attachmentPreviews,
@@ -1901,10 +1913,6 @@ public class GraphEmailReader : IGraphEmailReader
                 continue;
             }
 
-            await using var command = new SqlCommand(insertSql, connection);
-            command.Parameters.AddWithValue("@journalLogId", journalLogId);
-            command.Parameters.AddWithValue("@dateAttached", DateTime.UtcNow);
-
             var attachedByValue = NullIfEmpty(attachedBy);
             if (!string.IsNullOrWhiteSpace(attachment.Name))
             {
@@ -1913,17 +1921,31 @@ public class GraphEmailReader : IGraphEmailReader
                     : $"{attachedByValue} ({attachment.Name})";
             }
 
+            var blobKey = await TryUploadAttachmentToBlobAsync(
+                folder: "journals/workflow",
+                originalFileName: attachment.Name,
+                contentBytes: attachment.ContentBytes,
+                cancellationToken);
+            if (!string.IsNullOrWhiteSpace(blobKey))
+            {
+                attachedByValue = $"{attachedByValue} [blob:{blobKey}]";
+            }
+
             var safeAttachedBy = attachedByValue;
             if (!string.IsNullOrWhiteSpace(safeAttachedBy) && safeAttachedBy.Length > 255)
             {
                 safeAttachedBy = safeAttachedBy[..255];
             }
+
+            await using var command = new SqlCommand(insertSql, connection);
+            command.Parameters.AddWithValue("@journalLogId", journalLogId);
+            command.Parameters.AddWithValue("@dateAttached", DateTime.UtcNow);
             command.Parameters.AddWithValue("@attachedBy", (object?)safeAttachedBy ?? DBNull.Value);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
     }
 
-    private static async Task CreateContactAttachmentRowsAsync(
+    private async Task CreateContactAttachmentRowsAsync(
         SqlConnection connection,
         int contactLogId,
         IReadOnlyList<AttachmentPreview> attachmentPreviews,
@@ -1947,19 +1969,83 @@ public class GraphEmailReader : IGraphEmailReader
 
         foreach (var attachment in attachmentPreviews)
         {
-            await using var command = new SqlCommand(insertSql, connection);
-            command.Parameters.AddWithValue("@contactId", (object?)NullIfEmpty(contactId) ?? DBNull.Value);
-            command.Parameters.AddWithValue("@contactLogId", contactLogId);
-
             var description = ApplyTemplateTokens(
                 attachmentDescriptionTemplate ?? $"Attachment: {attachment.Name}",
                 message,
                 classificationLabel,
                 classificationScore,
                 workflowContext);
+
+            var blobKey = await TryUploadAttachmentToBlobAsync(
+                folder: "contacts/workflow",
+                originalFileName: attachment.Name,
+                contentBytes: attachment.ContentBytes,
+                cancellationToken);
+            if (!string.IsNullOrWhiteSpace(blobKey))
+            {
+                description = $"{description} [blob:{blobKey}]";
+            }
+            if (description.Length > 500)
+            {
+                description = description[..500];
+            }
+
+            await using var command = new SqlCommand(insertSql, connection);
+            command.Parameters.AddWithValue("@contactId", (object?)NullIfEmpty(contactId) ?? DBNull.Value);
+            command.Parameters.AddWithValue("@contactLogId", contactLogId);
             command.Parameters.AddWithValue("@attachmentDescription", (object?)NullIfEmpty(description) ?? DBNull.Value);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
+    }
+
+    private async Task<string?> TryUploadAttachmentToBlobAsync(
+        string folder,
+        string? originalFileName,
+        byte[]? contentBytes,
+        CancellationToken cancellationToken)
+    {
+        if (contentBytes == null || contentBytes.Length == 0)
+        {
+            return null;
+        }
+
+        var connectionString =
+            _configuration["AttachmentStorage:ConnectionString"] ??
+            Environment.GetEnvironmentVariable("AttachmentStorage__ConnectionString");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return null;
+        }
+
+        var containerName =
+            _configuration["AttachmentStorage:ContainerName"] ??
+            Environment.GetEnvironmentVariable("AttachmentStorage__ContainerName") ??
+            "propertyhub-attachments";
+        var safeName = SanitizeFileName(originalFileName);
+        var blobKey = $"{folder}/{DateTime.UtcNow:yyyy/MM/dd}/{Guid.NewGuid()}_{safeName}";
+
+        try
+        {
+            var container = new BlobContainerClient(connectionString, containerName);
+            await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
+            var blob = container.GetBlobClient(blobKey);
+            await using var stream = new MemoryStream(contentBytes, writable: false);
+            await blob.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken);
+            return blobKey;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist workflow attachment to blob storage.");
+            return null;
+        }
+    }
+
+    private static string SanitizeFileName(string? fileName)
+    {
+        var fallback = string.IsNullOrWhiteSpace(fileName) ? "attachment.bin" : fileName;
+        var invalid = Path.GetInvalidFileNameChars();
+        var cleaned = new string(fallback.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
+        return string.IsNullOrWhiteSpace(cleaned) ? "attachment.bin" : cleaned;
     }
 
     private static Dictionary<string, string> ExtractFieldsFromContent(
@@ -2222,6 +2308,8 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         var text = Regex.Replace(rawBody, "<[^>]+>", " ");
+        text = WebUtility.HtmlDecode(text);
+        text = text.Replace('\u00A0', ' ');
         text = Regex.Replace(text, @"\s+", " ").Trim();
 
         var signatureMarkers = new[]
@@ -2310,6 +2398,8 @@ public class GraphEmailReader : IGraphEmailReader
                 attachmentPreviews.Add(preview);
                 continue;
             }
+
+            preview.ContentBytes = contentBytes;
 
             try
             {

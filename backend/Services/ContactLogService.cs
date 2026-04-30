@@ -1,6 +1,7 @@
 using backend.DTOs;
 using backend.Models;
 using backend.Repositories;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.StaticFiles;
 
 namespace backend.Services;
@@ -331,7 +332,13 @@ public class ContactLogService : IContactLogService
             .FirstOrDefault();
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            return null;
+            var blobKey = ExtractBlobKey(attachment.Description) ?? ExtractBlobKey(attachment.ContactId);
+            if (string.IsNullOrWhiteSpace(blobKey))
+            {
+                return null;
+            }
+
+            return await DownloadFromBlobAsync(blobKey, fileNameHint: attachment.Description);
         }
 
         var fileName = Path.GetFileName(filePath);
@@ -392,7 +399,7 @@ public class ContactLogService : IContactLogService
             Attachments = contactLog.Attachments.Select(a => new AttachmentDto
             {
                 AttachmentId = a.ContactLogAttachmentId,
-                FileName = a.FileName ?? a.Description ?? "Unknown",
+                FileName = StripBlobMarker(a.FileName ?? a.Description) ?? "Unknown",
                 FileType = a.FileType,
                 FileSize = a.FileSize ?? 0,
                 CreatedDate = DateTime.UtcNow
@@ -449,6 +456,84 @@ public class ContactLogService : IContactLogService
             contactLogId,
             calendarDate.Value.Date,
             isAllDay: true);
+    }
+
+    private static string? StripBlobMarker(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var cleaned = System.Text.RegularExpressions.Regex
+            .Replace(value, @"\s*\[blob:[^\]]+\]\s*$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            .Trim();
+        return cleaned;
+    }
+
+    private static string? ExtractBlobKey(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return null;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(source, @"\[blob:([^\]]+)\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var key = match.Groups[1].Value.Trim();
+        return string.IsNullOrWhiteSpace(key) ? null : key;
+    }
+
+    private async Task<AttachmentDownloadDto?> DownloadFromBlobAsync(string blobKey, string? fileNameHint)
+    {
+        var connectionString =
+            Environment.GetEnvironmentVariable("AttachmentStorage__ConnectionString");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return null;
+        }
+
+        var containerName =
+            Environment.GetEnvironmentVariable("AttachmentStorage__ContainerName") ??
+            "propertyhub-attachments";
+
+        try
+        {
+            var container = new BlobContainerClient(connectionString, containerName);
+            var blob = container.GetBlobClient(blobKey);
+            if (!await blob.ExistsAsync())
+            {
+                return null;
+            }
+
+            var downloaded = await blob.DownloadContentAsync();
+            var fileName = Path.GetFileName(blobKey);
+            var underscore = fileName.IndexOf('_');
+            if (underscore > 0 && underscore < fileName.Length - 1)
+            {
+                fileName = fileName[(underscore + 1)..];
+            }
+
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                fileName = StripBlobMarker(fileNameHint) ?? "attachment.bin";
+            }
+
+            return new AttachmentDownloadDto
+            {
+                FileName = fileName,
+                ContentType = downloaded.Value.Details.ContentType ?? "application/octet-stream",
+                ContentBytes = downloaded.Value.Content.ToArray()
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string SanitizeFileName(string fileName)

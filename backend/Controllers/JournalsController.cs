@@ -301,6 +301,11 @@ public class JournalsController : ControllerBase
             return NotFound(new { message = "No downloadable file is stored for this attachment." });
         }
 
+        if (download.ContentBytes is { Length: > 0 })
+        {
+            return File(download.ContentBytes, download.ContentType, download.FileName);
+        }
+
         return PhysicalFile(download.FilePath, download.ContentType, download.FileName);
     }
 
