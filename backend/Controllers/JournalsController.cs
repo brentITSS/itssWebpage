@@ -303,10 +303,40 @@ public class JournalsController : ControllerBase
 
         if (download.ContentBytes is { Length: > 0 })
         {
-            return File(download.ContentBytes, download.ContentType, download.FileName);
+            var safeFileName = EnsureFileNameHasExtension(download.FileName, download.ContentType);
+            return File(download.ContentBytes, download.ContentType, safeFileName);
         }
 
-        return PhysicalFile(download.FilePath, download.ContentType, download.FileName);
+        var safePhysicalFileName = EnsureFileNameHasExtension(download.FileName, download.ContentType);
+        return PhysicalFile(download.FilePath, download.ContentType, safePhysicalFileName);
+    }
+
+    private static string EnsureFileNameHasExtension(string? fileName, string? contentType)
+    {
+        var name = string.IsNullOrWhiteSpace(fileName) ? "attachment" : fileName.Trim();
+        if (Path.HasExtension(name))
+        {
+            return name;
+        }
+
+        var ext = contentType?.ToLowerInvariant() switch
+        {
+            "application/pdf" => ".pdf",
+            "application/json" => ".json",
+            "text/csv" => ".csv",
+            "text/plain" => ".txt",
+            "application/xml" => ".xml",
+            "image/png" => ".png",
+            "image/jpeg" => ".jpg",
+            "image/gif" => ".gif",
+            "application/msword" => ".doc",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
+            "application/vnd.ms-excel" => ".xls",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
+            _ => ".bin"
+        };
+
+        return $"{name}{ext}";
     }
 
     /// <summary>
