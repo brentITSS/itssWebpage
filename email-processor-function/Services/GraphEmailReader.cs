@@ -1701,10 +1701,10 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         // Template references extracted fields but no value was resolved.
+        // Keep workflow resilient: allow insert to continue with null amount instead of failing the whole rule.
         if (usesFieldTokens)
         {
-            throw new InvalidOperationException(
-                "CreateJournalLog amount template resolved to empty. Ensure RunExtraction is before CreateJournalLog and the extracted field contains a numeric amount.");
+            return null;
         }
 
         return null;
