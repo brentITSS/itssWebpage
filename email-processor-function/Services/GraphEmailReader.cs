@@ -2022,8 +2022,14 @@ public class GraphEmailReader : IGraphEmailReader
             _configuration["AttachmentStorage:ContainerName"] ??
             Environment.GetEnvironmentVariable("AttachmentStorage__ContainerName") ??
             "propertyhub-attachments";
-        var safeName = SanitizeFileName(originalFileName);
-        var blobKey = $"{folder}/{DateTime.UtcNow:yyyy/MM/dd}/{Guid.NewGuid()}_{safeName}";
+        var extension = Path.GetExtension(SanitizeFileName(originalFileName));
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".bin";
+        }
+
+        // Keep blob key compact so marker always fits into DB varchar columns.
+        var blobKey = $"{folder}/{DateTime.UtcNow:yyyyMMdd}/{Guid.NewGuid():N}{extension}";
 
         try
         {

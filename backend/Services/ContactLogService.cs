@@ -13,6 +13,7 @@ public class ContactLogService : IContactLogService
     private readonly IPropertyRepository _propertyRepository;
     private readonly ICalendarAppointmentRepository _calendarAppointmentRepository;
     private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
     private const string SourceType = "contactlog";
 
     public ContactLogService(
@@ -20,13 +21,15 @@ public class ContactLogService : IContactLogService
         IAuditLogRepository auditLogRepository,
         IPropertyRepository propertyRepository,
         ICalendarAppointmentRepository calendarAppointmentRepository,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IConfiguration configuration)
     {
         _contactLogRepository = contactLogRepository;
         _auditLogRepository = auditLogRepository;
         _propertyRepository = propertyRepository;
         _calendarAppointmentRepository = calendarAppointmentRepository;
         _environment = environment;
+        _configuration = configuration;
     }
 
     public async Task<List<ContactLogResponseDto>> GetAllContactLogsAsync()
@@ -494,6 +497,7 @@ public class ContactLogService : IContactLogService
     private async Task<AttachmentDownloadDto?> DownloadFromBlobAsync(string blobKey, string? fileNameHint)
     {
         var connectionString =
+            _configuration["AttachmentStorage:ConnectionString"] ??
             Environment.GetEnvironmentVariable("AttachmentStorage__ConnectionString");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -501,6 +505,7 @@ public class ContactLogService : IContactLogService
         }
 
         var containerName =
+            _configuration["AttachmentStorage:ContainerName"] ??
             Environment.GetEnvironmentVariable("AttachmentStorage__ContainerName") ??
             "propertyhub-attachments";
 
