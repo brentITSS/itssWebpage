@@ -78,6 +78,7 @@ const DocumentHub: React.FC = () => {
   const [editingExtractionTemplateId, setEditingExtractionTemplateId] = useState<number | null>(null);
   const [extractionTestFile, setExtractionTestFile] = useState<File | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreviewResponse | null>(null);
+  const [extractionTestFeedback, setExtractionTestFeedback] = useState<string | null>(null);
   const [showExtractionTrainer, setShowExtractionTrainer] = useState(false);
   const [stagedExtractionFields, setStagedExtractionFields] = useState<TrainerField[]>([]);
   const [suggestedExtractionFields, setSuggestedExtractionFields] = useState<DocumentExtractionSuggestedFieldDto[]>([]);
@@ -559,6 +560,27 @@ const DocumentHub: React.FC = () => {
       setFeedback('Extraction preview ready. Highlight text directly on the PDF to build fields.');
     } catch (error) {
       setFeedback(getFriendlyError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRunExtractionTest = async () => {
+    if (!extractionTestFile) {
+      setExtractionTestFeedback('Upload a PDF to test entity extraction.');
+      return;
+    }
+
+    setLoading(true);
+    setFeedback(null);
+    setExtractionTestFeedback(null);
+    try {
+      const preview = await documentHubService.previewExtraction(extractionTestFile);
+      setExtractionPreview(preview);
+      setSuggestedExtractionFields(preview.suggestedFields ?? []);
+      setExtractionTestFeedback(`Entity extraction test complete for ${preview.fileName}.`);
+    } catch (error) {
+      setExtractionTestFeedback(getFriendlyError(error));
     } finally {
       setLoading(false);
     }
@@ -1252,6 +1274,40 @@ const DocumentHub: React.FC = () => {
               >
                 {loading ? 'Preparing...' : 'Open Extraction Trainer'}
               </button>
+              <button
+                type="button"
+                onClick={handleRunExtractionTest}
+                disabled={loading}
+                className="ml-2 inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+              >
+                {loading ? 'Testing...' : 'Test Entity Extraction'}
+              </button>
+              {extractionTestFeedback && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                  {extractionTestFeedback}
+                </div>
+              )}
+              {extractionPreview && (
+                <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-900">
+                  <p className="font-semibold">Extraction Test Preview ({extractionPreview.fileName})</p>
+                  <p className="mt-1">
+                    Suggested fields: {(extractionPreview.suggestedFields ?? []).length}
+                  </p>
+                  <div className="mt-2 max-h-40 overflow-auto rounded border border-indigo-200 bg-white p-2">
+                    {(extractionPreview.suggestedFields ?? []).length === 0 ? (
+                      <p className="text-slate-500">No fields suggested.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {(extractionPreview.suggestedFields ?? []).map((field, idx) => (
+                          <li key={`${field.fieldName}-${idx}`}>
+                            <span className="font-semibold">{field.fieldName}:</span> {field.exampleValue}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
