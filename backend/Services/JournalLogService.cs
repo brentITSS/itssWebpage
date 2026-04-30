@@ -481,10 +481,10 @@ public class JournalLogService : IJournalLogService
     {
         if (!string.IsNullOrWhiteSpace(attachment.FileName))
         {
-            return attachment.FileName;
+            return StripBlobMarker(attachment.FileName) ?? attachment.FileName;
         }
 
-        var attachedBy = attachment.AttachedBy?.Trim();
+        var attachedBy = StripBlobMarker(attachment.AttachedBy)?.Trim();
         if (string.IsNullOrWhiteSpace(attachedBy))
         {
             return "Unknown";
@@ -518,7 +518,10 @@ public class JournalLogService : IJournalLogService
             return null;
         }
 
-        var match = System.Text.RegularExpressions.Regex.Match(source, @"\[blob:([^\]]+)\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var match = System.Text.RegularExpressions.Regex.Match(
+            source,
+            @"\[blob:([^\]\s]+)(?:\]|$)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         if (!match.Success)
         {
             return null;
@@ -526,6 +529,19 @@ public class JournalLogService : IJournalLogService
 
         var key = match.Groups[1].Value.Trim();
         return string.IsNullOrWhiteSpace(key) ? null : key;
+    }
+
+    private static string? StripBlobMarker(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var cleaned = System.Text.RegularExpressions.Regex
+            .Replace(value, @"\s*\[blob:[^\]]+\]?\s*$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            .Trim();
+        return cleaned;
     }
 
     private async Task<AttachmentDownloadDto?> DownloadFromBlobAsync(string blobKey, string? fileNameHint)

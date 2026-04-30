@@ -150,6 +150,7 @@ const JournalLogDetail: React.FC = () => {
   };
 
   const formatFileSize = (bytes: number) => {
+    if (bytes <= 0) return 'Stored file';
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
@@ -349,7 +350,6 @@ const JournalLogDetail: React.FC = () => {
             <div className="space-y-2">
               {journalLog.attachments.map((attachment) => (
                 (() => {
-                  const canDownload = attachment.fileSize > 0;
                   return (
                 <div
                   key={attachment.attachmentId}
@@ -364,7 +364,7 @@ const JournalLogDetail: React.FC = () => {
                   <div className="flex space-x-2">
                     <button
                       type="button"
-                      title={canDownload ? 'Download attachment' : 'No file payload is stored for this attachment'}
+                      title="Download attachment"
                       onClick={() => handleDownloadAttachment(attachment.attachmentId)}
                       className="text-sm text-blue-600 hover:text-blue-800"
                     >

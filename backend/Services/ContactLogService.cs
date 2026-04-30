@@ -466,7 +466,7 @@ public class ContactLogService : IContactLogService
         }
 
         var cleaned = System.Text.RegularExpressions.Regex
-            .Replace(value, @"\s*\[blob:[^\]]+\]\s*$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            .Replace(value, @"\s*\[blob:[^\]]+\]?\s*$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase)
             .Trim();
         return cleaned;
     }
@@ -478,7 +478,10 @@ public class ContactLogService : IContactLogService
             return null;
         }
 
-        var match = System.Text.RegularExpressions.Regex.Match(source, @"\[blob:([^\]]+)\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var match = System.Text.RegularExpressions.Regex.Match(
+            source,
+            @"\[blob:([^\]\s]+)(?:\]|$)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         if (!match.Success)
         {
             return null;

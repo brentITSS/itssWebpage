@@ -1676,16 +1676,33 @@ public class GraphEmailReader : IGraphEmailReader
         var normalized = rawValue
             .Trim()
             .Replace('\u00A0', ' ')
-            .Replace(",", string.Empty, StringComparison.Ordinal)
             .Replace("R", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("ZAR", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("GBP", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("£", string.Empty, StringComparison.Ordinal)
             .Replace(" ", string.Empty, StringComparison.Ordinal);
 
-        // Handle decimal-comma locales when there is no dot.
-        if (normalized.Contains(',', StringComparison.Ordinal) && !normalized.Contains('.', StringComparison.Ordinal))
+        var hasComma = normalized.Contains(',', StringComparison.Ordinal);
+        var hasDot = normalized.Contains('.', StringComparison.Ordinal);
+        if (hasComma && hasDot)
         {
+            // If comma appears after dot (e.g. 1.234,56), treat dot as thousands and comma as decimal.
+            var lastComma = normalized.LastIndexOf(',');
+            var lastDot = normalized.LastIndexOf('.');
+            if (lastComma > lastDot)
+            {
+                normalized = normalized.Replace(".", string.Empty, StringComparison.Ordinal);
+                normalized = normalized.Replace(",", ".", StringComparison.Ordinal);
+            }
+            else
+            {
+                // e.g. 1,234.56
+                normalized = normalized.Replace(",", string.Empty, StringComparison.Ordinal);
+            }
+        }
+        else if (hasComma)
+        {
+            // e.g. 1234,56
             normalized = normalized.Replace(",", ".", StringComparison.Ordinal);
         }
 
@@ -1926,16 +1943,7 @@ public class GraphEmailReader : IGraphEmailReader
                 originalFileName: attachment.Name,
                 contentBytes: attachment.ContentBytes,
                 cancellationToken);
-            if (!string.IsNullOrWhiteSpace(blobKey))
-            {
-                attachedByValue = $"{attachedByValue} [blob:{blobKey}]";
-            }
-
-            var safeAttachedBy = attachedByValue;
-            if (!string.IsNullOrWhiteSpace(safeAttachedBy) && safeAttachedBy.Length > 255)
-            {
-                safeAttachedBy = safeAttachedBy[..255];
-            }
+            var safeAttachedBy = BuildPersistedTextWithBlobMarker(attachedByValue, blobKey, 255);
 
             await using var command = new SqlCommand(insertSql, connection);
             command.Parameters.AddWithValue("@journalLogId", journalLogId);
@@ -1981,14 +1989,7 @@ public class GraphEmailReader : IGraphEmailReader
                 originalFileName: attachment.Name,
                 contentBytes: attachment.ContentBytes,
                 cancellationToken);
-            if (!string.IsNullOrWhiteSpace(blobKey))
-            {
-                description = $"{description} [blob:{blobKey}]";
-            }
-            if (description.Length > 500)
-            {
-                description = description[..500];
-            }
+            description = BuildPersistedTextWithBlobMarker(description, blobKey, 500);
 
             await using var command = new SqlCommand(insertSql, connection);
             command.Parameters.AddWithValue("@contactId", (object?)NullIfEmpty(contactId) ?? DBNull.Value);
@@ -2038,6 +2039,32 @@ public class GraphEmailReader : IGraphEmailReader
             _logger.LogWarning(ex, "Failed to persist workflow attachment to blob storage.");
             return null;
         }
+    }
+
+    private static string? BuildPersistedTextWithBlobMarker(string? baseValue, string? blobKey, int maxLength)
+    {
+        var value = string.IsNullOrWhiteSpace(baseValue) ? null : baseValue.Trim();
+        if (string.IsNullOrWhiteSpace(blobKey))
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return value.Length <= maxLength ? value : value[..maxLength];
+        }
+
+        var marker = $" [blob:{blobKey}]";
+        if (marker.Length >= maxLength)
+        {
+            return marker[..maxLength];
+        }
+
+        var prefixMax = maxLength - marker.Length;
+        var prefix = string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : (value.Length <= prefixMax ? value : value[..prefixMax]);
+        return $"{prefix}{marker}";
     }
 
     private static string SanitizeFileName(string? fileName)
