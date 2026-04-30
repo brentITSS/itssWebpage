@@ -715,6 +715,7 @@ public class GraphEmailReader : IGraphEmailReader
         var utcNow = DateTime.UtcNow;
         var effectiveDate = message.ReceivedDateTime?.UtcDateTime ?? utcNow;
 
+        int? propertyGroupId = null;
         int? propertyId = null;
         int? tenancyId = null;
         int? tenantId = null;
@@ -734,6 +735,7 @@ public class GraphEmailReader : IGraphEmailReader
         {
             using var config = JsonDocument.Parse(stepConfigJson);
             var root = config.RootElement;
+            propertyGroupId = GetOptionalInt(root, "propertyGroupId");
             propertyId = GetOptionalInt(root, "propertyId");
             tenancyId = GetOptionalInt(root, "tenancyId");
             tenantId = GetOptionalInt(root, "tenantId");
@@ -825,9 +827,12 @@ public class GraphEmailReader : IGraphEmailReader
             SELECT CAST(SCOPE_IDENTITY() AS int);
             """;
         await using var command = new SqlCommand(insertSql, connection);
-        var propertyGroupIdForInsert = propertyId.HasValue
-            ? await ResolvePropertyGroupIdAsync(connection, propertyId.Value, cancellationToken)
-            : null;
+        // Prefer explicit propertyGroupId from workflow config; if absent and propertyId exists, derive it from property.
+        var propertyGroupIdForInsert = propertyGroupId;
+        if (!propertyGroupIdForInsert.HasValue && propertyId.HasValue)
+        {
+            propertyGroupIdForInsert = await ResolvePropertyGroupIdAsync(connection, propertyId.Value, cancellationToken);
+        }
         command.Parameters.AddWithValue("@propertyGroupId", (object?)propertyGroupIdForInsert ?? DBNull.Value);
         command.Parameters.AddWithValue("@propertyId", (object?)propertyId ?? DBNull.Value);
         command.Parameters.AddWithValue("@tenancyId", (object?)tenancyId ?? DBNull.Value);
