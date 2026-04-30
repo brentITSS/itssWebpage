@@ -1,5 +1,35 @@
 import apiClient from './api';
 
+const extensionFromContentType = (contentType: string | null): string => {
+  const normalized = (contentType || '').toLowerCase();
+  if (normalized.includes('pdf')) return '.pdf';
+  if (normalized.includes('json')) return '.json';
+  if (normalized.includes('csv')) return '.csv';
+  if (normalized.includes('xml')) return '.xml';
+  if (normalized.includes('plain')) return '.txt';
+  if (normalized.includes('msword')) return '.doc';
+  if (normalized.includes('wordprocessingml')) return '.docx';
+  if (normalized.includes('excel')) return '.xls';
+  if (normalized.includes('spreadsheetml')) return '.xlsx';
+  if (normalized.includes('png')) return '.png';
+  if (normalized.includes('jpeg')) return '.jpg';
+  if (normalized.includes('gif')) return '.gif';
+  return '.bin';
+};
+
+const parseDownloadFileName = (
+  disposition: string,
+  fallbackBaseName: string,
+  contentType: string | null
+): string => {
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+  const raw = (utf8Match?.[1] || plainMatch?.[1] || '').trim();
+  const decoded = raw ? decodeURIComponent(raw.replace(/"/g, '')) : '';
+  if (decoded) return decoded;
+  return `${fallbackBaseName}${extensionFromContentType(contentType)}`;
+};
+
 // Contact Log DTOs
 export interface ContactLogResponseDto {
   contactLogId: number;
@@ -164,9 +194,11 @@ export const contactLogService = {
 
     const blob = await response.blob();
     const disposition = response.headers.get('Content-Disposition') || '';
-    const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
-    const raw = match?.[1]?.trim();
-    const fileName = raw ? decodeURIComponent(raw.replace(/"/g, '')) : `contact-attachment-${attachmentId}`;
+    const fileName = parseDownloadFileName(
+      disposition,
+      `contact-attachment-${attachmentId}`,
+      blob.type || response.headers.get('Content-Type')
+    );
     return { blob, fileName };
   },
 };
