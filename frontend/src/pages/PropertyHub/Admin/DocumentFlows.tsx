@@ -112,6 +112,11 @@ const DocumentFlows: React.FC = () => {
     return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b));
   }, [labelSets]);
 
+  const refreshExtractionTemplates = useCallback(async () => {
+    const loadedExtractionTemplates = await documentHubService.getExtractionTemplates();
+    setExtractionTemplates(loadedExtractionTemplates);
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -214,7 +219,12 @@ const DocumentFlows: React.FC = () => {
     );
   };
 
-  const handleEditWorkflowRule = (rule: DocumentWorkflowRuleDto) => {
+  const handleEditWorkflowRule = async (rule: DocumentWorkflowRuleDto) => {
+    try {
+      await refreshExtractionTemplates();
+    } catch {
+      // Keep editing flow resilient even if refresh fails.
+    }
     setEditingWorkflowRuleId(rule.documentWorkflowRuleId);
     setWorkflowName(rule.workflowName);
     setWorkflowClassificationLabel(rule.classificationLabel);
@@ -972,18 +982,34 @@ const DocumentFlows: React.FC = () => {
 
                     return (
                       <>
-                  <select
-                    value={String(config.extractionTemplateId ?? '')}
-                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'extractionTemplateId', Number(e.target.value || 0))}
-                    className="rounded border border-slate-300 px-2 py-1"
-                  >
-                    <option value="">Select extraction template</option>
-                    {extractionTemplates.map((template) => (
-                      <option key={template.documentExtractionTemplateId} value={template.documentExtractionTemplateId}>
-                        {template.extractionTemplateName}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={String(config.extractionTemplateId ?? '')}
+                      onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'extractionTemplateId', Number(e.target.value || 0))}
+                      className="flex-1 rounded border border-slate-300 px-2 py-1"
+                    >
+                      <option value="">Select extraction template</option>
+                      {extractionTemplates.map((template) => (
+                        <option key={template.documentExtractionTemplateId} value={template.documentExtractionTemplateId}>
+                          {template.extractionTemplateName}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await refreshExtractionTemplates();
+                          setFeedback('Extraction templates refreshed.');
+                        } catch (error) {
+                          setFeedback(getFriendlyError(error));
+                        }
+                      }}
+                      className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                    >
+                      Refresh fields
+                    </button>
+                  </div>
                   <p className="text-[11px] text-slate-500">
                     This runs entity extraction and makes fields available to later steps as {`{field:<field_name>}`}.
                   </p>
@@ -1077,7 +1103,7 @@ const DocumentFlows: React.FC = () => {
                       <p className="text-[11px] text-slate-600">Label: {rule.classificationLabel} | Min: {rule.minimumScore} | Priority: {rule.priority}</p>
                     </div>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => handleEditWorkflowRule(rule)} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-700 hover:border-slate-400">Edit</button>
+                      <button type="button" onClick={() => { void handleEditWorkflowRule(rule); }} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-700 hover:border-slate-400">Edit</button>
                       <button type="button" onClick={() => handleDeleteWorkflowRule(rule.documentWorkflowRuleId, rule.workflowName)} className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">Delete</button>
                     </div>
                   </div>

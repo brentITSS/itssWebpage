@@ -779,7 +779,11 @@ public class GraphEmailReader : IGraphEmailReader
         var renderedAmountRand = ApplyTemplateTokens(amountRandTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
         var renderedAmountGbp = ApplyTemplateTokens(amountGbpTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
         var renderedExchange = ApplyTemplateTokens(exchangeRateTemplate ?? string.Empty, message, classificationLabel, classificationScore, workflowContext);
-        var amountRand = ParseDecimalOrNull(renderedAmountRand);
+        var amountRand = ResolveJournalAmountRand(
+            amountRandTemplate,
+            renderedAmountRand,
+            workflowContext,
+            message);
         var amountGbp = ParseDecimalOrNull(renderedAmountGbp);
         var exchangeRate = ParseDecimalOrNull(renderedExchange);
         var shouldFetchLiveRate =
@@ -1663,6 +1667,124 @@ public class GraphEmailReader : IGraphEmailReader
         }
         var decoded = WebUtility.HtmlDecode(value).Replace('\u00A0', ' ').Trim();
         return TryEvaluateDecimalExpression(decoded, out var parsed) ? parsed : null;
+    }
+
+    private static decimal? ResolveJournalAmountRand(
+        string? amountRandTemplate,
+        string? renderedAmountRand,
+        IReadOnlyDictionary<string, string> workflowContext,
+        Message message)
+    {
+        var parsed = ParseDecimalOrNull(renderedAmountRand);
+        if (parsed.HasValue)
+        {
+            return parsed;
+        }
+
+        var template = amountRandTemplate?.Trim() ?? string.Empty;
+        var rendered = renderedAmountRand?.Trim() ?? string.Empty;
+        var usesFieldTokens = template.Contains("{field:", StringComparison.OrdinalIgnoreCase);
+
+        // If a template rendered some text but we still cannot parse it, fail fast with a helpful error.
+        if (!string.IsNullOrWhiteSpace(template) && !string.IsNullOrWhiteSpace(rendered))
+        {
+            throw new InvalidOperationException(
+                $"CreateJournalLog amount could not be parsed from template result '{rendered}'.");
+        }
+
+        // Attempt fallback inference so workflows without explicit amount templates can still populate value.
+        var inferred = TryInferAmountFromWorkflowContext(workflowContext)
+                       ?? TryInferAmountFromMessage(message);
+        if (inferred.HasValue)
+        {
+            return inferred;
+        }
+
+        // Template references extracted fields but no value was resolved.
+        if (usesFieldTokens)
+        {
+            throw new InvalidOperationException(
+                "CreateJournalLog amount template resolved to empty. Ensure RunExtraction is before CreateJournalLog and the extracted field contains a numeric amount.");
+        }
+
+        return null;
+    }
+
+    private static decimal? TryInferAmountFromWorkflowContext(IReadOnlyDictionary<string, string> workflowContext)
+    {
+        static decimal? TryParseFromValue(string? value) => ParseDecimalOrNull(value);
+
+        var preferredKeys = new[]
+        {
+            "total_incl_vat", "invoice_total", "amount_due", "total_due", "statement_total",
+            "amount", "journalamountrand", "total", "balance_due"
+        };
+
+        foreach (var key in preferredKeys)
+        {
+            if (workflowContext.TryGetValue(key, out var value))
+            {
+                var parsed = TryParseFromValue(value);
+                if (parsed.HasValue && parsed.Value > 0)
+                {
+                    return parsed.Value;
+                }
+            }
+        }
+
+        foreach (var pair in workflowContext)
+        {
+            var k = pair.Key ?? string.Empty;
+            if (!(k.Contains("amount", StringComparison.OrdinalIgnoreCase) ||
+                  k.Contains("total", StringComparison.OrdinalIgnoreCase) ||
+                  k.Contains("balance", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var parsed = TryParseFromValue(pair.Value);
+            if (parsed.HasValue && parsed.Value > 0)
+            {
+                return parsed.Value;
+            }
+        }
+
+        return null;
+    }
+
+    private static decimal? TryInferAmountFromMessage(Message message)
+    {
+        var body = CleanupEmailBody(message.Body?.Content ?? string.Empty);
+        var subject = message.Subject ?? string.Empty;
+        var text = $"{subject} {body}";
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var matches = Regex.Matches(
+            text,
+            @"(?ix)
+            (?:\b(?:R|ZAR)\s*)?\d{1,3}(?:[ ,.]?\d{3})*(?:[.,]\d{2,4})
+            |
+            (?:\b(?:R|ZAR)\s*\d+(?:[.,]\d+)?)
+            ");
+        decimal? best = null;
+        foreach (Match match in matches)
+        {
+            var parsed = ParseDecimalOrNull(match.Value);
+            if (!parsed.HasValue || parsed.Value <= 0)
+            {
+                continue;
+            }
+
+            if (!best.HasValue || parsed.Value > best.Value)
+            {
+                best = parsed.Value;
+            }
+        }
+
+        return best;
     }
 
     private static bool TryEvaluateDecimalExpression(string rawValue, out decimal parsed)
