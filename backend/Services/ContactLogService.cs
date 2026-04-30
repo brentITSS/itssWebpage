@@ -491,6 +491,28 @@ public class ContactLogService : IContactLogService
         return string.IsNullOrWhiteSpace(key) ? null : key;
     }
 
+    private static string? InferFileNameFromHint(string? hint)
+    {
+        var cleaned = StripBlobMarker(hint)?.Trim();
+        if (string.IsNullOrWhiteSpace(cleaned))
+        {
+            return null;
+        }
+
+        var openParen = cleaned.LastIndexOf('(');
+        var closeParen = cleaned.LastIndexOf(')');
+        if (openParen >= 0 && closeParen > openParen)
+        {
+            var inner = cleaned[(openParen + 1)..closeParen].Trim();
+            if (!string.IsNullOrWhiteSpace(inner))
+            {
+                cleaned = inner;
+            }
+        }
+
+        return Path.GetFileName(cleaned);
+    }
+
     private async Task<AttachmentDownloadDto?> DownloadFromBlobAsync(string blobKey, string? fileNameHint)
     {
         var connectionString =
@@ -516,6 +538,7 @@ public class ContactLogService : IContactLogService
             }
 
             var downloaded = await blob.DownloadContentAsync();
+            var contentType = downloaded.Value.Details.ContentType ?? "application/octet-stream";
             var fileName = Path.GetFileName(blobKey);
             var underscore = fileName.IndexOf('_');
             if (underscore > 0 && underscore < fileName.Length - 1)
@@ -523,15 +546,36 @@ public class ContactLogService : IContactLogService
                 fileName = fileName[(underscore + 1)..];
             }
 
+            var hintedFileName = InferFileNameFromHint(fileNameHint);
             if (string.IsNullOrWhiteSpace(fileName))
             {
-                fileName = StripBlobMarker(fileNameHint) ?? "attachment.bin";
+                fileName = hintedFileName ?? "attachment.bin";
+            }
+
+            var currentExt = Path.GetExtension(fileName);
+            var hintedExt = Path.GetExtension(hintedFileName ?? string.Empty);
+            if (string.Equals(currentExt, ".bin", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(hintedExt))
+            {
+                fileName = hintedFileName!;
+            }
+            else if (string.IsNullOrWhiteSpace(currentExt) && !string.IsNullOrWhiteSpace(hintedExt))
+            {
+                fileName = $"{fileName}{hintedExt}";
+            }
+
+            if (string.Equals(contentType, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
+            {
+                var provider = new FileExtensionContentTypeProvider();
+                if (provider.TryGetContentType(fileName, out var inferredContentType))
+                {
+                    contentType = inferredContentType;
+                }
             }
 
             return new AttachmentDownloadDto
             {
                 FileName = fileName,
-                ContentType = downloaded.Value.Details.ContentType ?? "application/octet-stream",
+                ContentType = contentType,
                 ContentBytes = downloaded.Value.Content.ToArray()
             };
         }
