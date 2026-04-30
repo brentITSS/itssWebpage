@@ -323,16 +323,13 @@ public class ContactLogService : IContactLogService
         if (attachment == null) return null;
 
         var uploadsFolder = Path.Combine(_environment.ContentRootPath, "uploads", "contacts");
-        if (!Directory.Exists(uploadsFolder))
-        {
-            return null;
-        }
-
         var prefix = $"{attachmentId}_";
-        var filePath = Directory
-            .EnumerateFiles(uploadsFolder, $"{prefix}*")
-            .OrderByDescending(File.GetCreationTimeUtc)
-            .FirstOrDefault();
+        var filePath = Directory.Exists(uploadsFolder)
+            ? Directory
+                .EnumerateFiles(uploadsFolder, $"{prefix}*")
+                .OrderByDescending(File.GetCreationTimeUtc)
+                .FirstOrDefault()
+            : null;
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
             var blobKey = ExtractBlobKey(attachment.Description) ?? ExtractBlobKey(attachment.ContactId);
