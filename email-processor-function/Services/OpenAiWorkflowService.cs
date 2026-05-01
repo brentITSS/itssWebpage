@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using email_processor_function.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -75,6 +77,175 @@ public sealed class OpenAiWorkflowService : IOpenAiWorkflowService
             _logger.LogWarning(ex, "OpenAI workflow summarisation failed.");
             return null;
         }
+    }
+
+    public async Task<(string Label, double Score, string Explainability)?> ClassifyWithTemplatesAsync(
+        string consolidatedText,
+        IReadOnlyList<ClassificationTemplate> templates,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured ||
+            templates.Count == 0 ||
+            string.IsNullOrWhiteSpace(consolidatedText))
+        {
+            return null;
+        }
+
+        var labelLookup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in templates)
+        {
+            if (string.IsNullOrWhiteSpace(t.ClassificationLabel))
+            {
+                continue;
+            }
+
+            labelLookup.TryAdd(t.ClassificationLabel.Trim(), t.ClassificationLabel.Trim());
+        }
+
+        if (labelLookup.Count == 0)
+        {
+            return null;
+        }
+
+        var descriptorList = templates
+            .Where(t => !string.IsNullOrWhiteSpace(t.ClassificationLabel))
+            .DistinctBy(t => t.ClassificationLabel.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(t => new
+            {
+                label = t.ClassificationLabel.Trim(),
+                description = TrimDescriptor(t.ClassificationDescription, 400),
+                cues = TrimDescriptor(string.IsNullOrWhiteSpace(t.ClassificationPrompt)
+                    ? t.ClassificationDescription
+                    : $"{t.ClassificationDescription}\n{t.ClassificationPrompt}", 600),
+            })
+            .ToList();
+
+        var defsJson = JsonSerializer.Serialize(descriptorList);
+        var allowedLabelsJson = JsonSerializer.Serialize(labelLookup.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList());
+
+        var systemPrompt =
+            "You classify inbound property-related emails against a closed set of workflow labels stored in SQL. " +
+            "Respond with one JSON object only (no markdown). " +
+            "The \"label\" value MUST be exactly one entry from allowedLabels (same spelling and capitalization as in that list). " +
+            "\"confidence\" MUST be a number between 0 and 1 (your calibrated probability that the label is correct). " +
+            "\"reason\" MUST be one short factual sentence referencing evidence from the email. " +
+            "If none of the templates apply, use label \"Unclassified\" with appropriately low confidence and explain why.";
+        var userPayload =
+            "allowedLabels:\n" +
+            allowedLabelsJson +
+            "\n\nclassificationDefinitions (hints and cues):\n" +
+            defsJson +
+            "\n\nEmail and attachment-derived text:\n" +
+            TrimForModel(consolidatedText.Trim(), 14_000);
+
+        try
+        {
+            var content = await CreateChatCompletionAsync(
+                    ApiKey!,
+                    Model,
+                    systemPrompt,
+                    userPayload,
+                    maxTokens: 256,
+                    expectJsonObject: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return null;
+            }
+
+            using var doc = JsonDocument.Parse(content);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("label", out var labelEl) ||
+                labelEl.ValueKind != JsonValueKind.String)
+            {
+                return null;
+            }
+
+            var rawChosen = labelEl.GetString()?.Trim();
+            if (string.IsNullOrWhiteSpace(rawChosen))
+            {
+                return null;
+            }
+
+            double confidence = 0d;
+            if (root.TryGetProperty("confidence", out var confEl))
+            {
+                confidence = confEl.ValueKind switch
+                {
+                    JsonValueKind.Number => TryParsePositiveFraction(confEl) ?? 0d,
+                    JsonValueKind.String =>
+                        double.TryParse((confEl.GetString() ?? string.Empty).Trim(), NumberStyles.Float,
+                            CultureInfo.InvariantCulture, out var d)
+                            ? Math.Clamp(d, 0d, 1d)
+                            : 0d,
+                    _ => 0d,
+                };
+            }
+
+            confidence = Math.Clamp(confidence, 0d, 1d);
+
+            var reason =
+                root.TryGetProperty("reason", out var reasonEl) &&
+                reasonEl.ValueKind == JsonValueKind.String
+                    ? reasonEl.GetString()?.Trim() ?? string.Empty
+                    : string.Empty;
+
+            if (rawChosen.Equals("Unclassified", StringComparison.OrdinalIgnoreCase))
+            {
+                var explainUnc =
+                    $"OpenAI classification: Unclassified (model confidence={Math.Round(confidence, 4)}). " +
+                    (string.IsNullOrWhiteSpace(reason) ? "No reason supplied." : reason);
+                return ("Unclassified", Math.Round(confidence, 4), explainUnc);
+            }
+
+            if (!labelLookup.TryGetValue(rawChosen, out var canonical))
+            {
+                _logger.LogInformation(
+                    "OpenAI classification returned unknown label '{Label}' (not in templates). Falling back.",
+                    rawChosen);
+                return null;
+            }
+
+            var explainOk =
+                $"OpenAI classification: '{canonical}' (model confidence={Math.Round(confidence, 4)}). " +
+                (string.IsNullOrWhiteSpace(reason) ? "No reason supplied." : reason);
+            return (canonical, Math.Round(confidence, 4), explainOk);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "OpenAI template classification failed; caller should fall back to heuristics.");
+            return null;
+        }
+    }
+
+    private static double? TryParsePositiveFraction(JsonElement el)
+    {
+        if (el.ValueKind != JsonValueKind.Number)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Math.Clamp(el.GetDouble(), 0d, 1d);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string TrimDescriptor(string? text, int maxChars)
+    {
+        var s = text?.Trim() ?? string.Empty;
+        return s.Length <= maxChars ? s : s[..maxChars];
     }
 
     public async Task<Dictionary<string, string>> ExtractWithTemplateFieldsAsync(

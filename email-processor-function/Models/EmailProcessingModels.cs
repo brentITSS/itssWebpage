@@ -33,6 +33,8 @@ public class EmailMessagePreview
     public string ClassificationLabel { get; set; } = "Unclassified";
     public double ClassificationScore { get; set; }
     public string ClassificationExplainability { get; set; } = string.Empty;
+    /// <summary>How the label was chosen: openai, heuristic, or heuristic_fallback when OpenAI is configured but did not yield a usable result.</summary>
+    public string ClassificationSource { get; set; } = "heuristic";
     public List<AttachmentPreview> Attachments { get; set; } = new();
     /// <summary>Populated after a matched workflow: summarisation/extraction tokens, extractionJson preview, etc.</summary>
     public Dictionary<string, string>? WorkflowContextPreview { get; set; }

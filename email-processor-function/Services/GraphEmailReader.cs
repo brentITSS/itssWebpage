@@ -136,7 +136,7 @@ public class GraphEmailReader : IGraphEmailReader
                 cleanedBody,
                 attachmentExtraction.ExtractedTextChunks);
 
-            var classification = ClassifyAgainstTemplates(consolidatedContent, templates);
+            var classification = await ClassifyDocumentAsync(consolidatedContent, templates, cancellationToken);
             if (classification.Label.Equals("Unclassified", StringComparison.OrdinalIgnoreCase))
             {
                 unclassifiedCount++;
@@ -152,6 +152,7 @@ public class GraphEmailReader : IGraphEmailReader
                 attachmentExtraction.ExtractionDocumentsBundled,
                 classification.Label,
                 classification.Score,
+                classification.Source,
                 workflowRules,
                 cancellationToken);
 
@@ -167,6 +168,7 @@ public class GraphEmailReader : IGraphEmailReader
                 ClassificationLabel = classification.Label,
                 ClassificationScore = classification.Score,
                 ClassificationExplainability = classification.Explainability,
+                ClassificationSource = classification.Source,
                 Attachments = attachmentExtraction.Attachments,
                 WorkflowContextPreview = workflowPreview
             });
@@ -295,6 +297,7 @@ public class GraphEmailReader : IGraphEmailReader
         string extractionDocumentsBundled,
         string classificationLabel,
         double classificationScore,
+        string classificationSource,
         List<WorkflowRule> rules,
         CancellationToken cancellationToken)
     {
@@ -360,6 +363,8 @@ public class GraphEmailReader : IGraphEmailReader
                         : $"processed|audit_unavailable:{auditUnavailableReason}",
                     null);
             }
+
+            workflowContext["workflowMeta_classificationSource"] = classificationSource;
 
             var currentMessageId = message.Id;
             foreach (var step in matchedRule.Steps.OrderBy(s => s.StepOrder))
@@ -1351,6 +1356,28 @@ public class GraphEmailReader : IGraphEmailReader
         "have", "has", "had", "will", "shall", "would", "could", "should", "about", "over", "under", "between", "per",
         "each", "any", "all", "not", "but", "can", "may", "might", "than", "then", "also", "such", "via"
     };
+
+    private async Task<(string Label, double Score, string Explainability, string Source)> ClassifyDocumentAsync(
+        string content,
+        List<ClassificationTemplate> templates,
+        CancellationToken cancellationToken)
+    {
+        var openAiTried = false;
+        if (_openAi.IsConfigured && templates.Count > 0 && !string.IsNullOrWhiteSpace(content))
+        {
+            var ai = await _openAi.ClassifyWithTemplatesAsync(content, templates, cancellationToken)
+                .ConfigureAwait(false);
+            if (ai != null)
+            {
+                return (ai.Value.Label, ai.Value.Score, ai.Value.Explainability, "openai");
+            }
+
+            openAiTried = true;
+        }
+
+        var h = ClassifyAgainstTemplates(content, templates);
+        return (h.Label, h.Score, h.Explainability, openAiTried ? "heuristic_fallback" : "heuristic");
+    }
 
     private static (string Label, double Score, string Explainability) ClassifyAgainstTemplates(string content, List<ClassificationTemplate> templates)
     {
