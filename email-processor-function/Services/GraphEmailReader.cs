@@ -137,7 +137,7 @@ public class GraphEmailReader : IGraphEmailReader
                 unclassifiedCount++;
             }
 
-            var postActions = await ExecuteWorkflowAsync(
+            var (postActions, workflowPreview) = await ExecuteWorkflowAsync(
                 graphClient,
                 mailboxUser,
                 propertyHubFolder.Id,
@@ -161,7 +161,8 @@ public class GraphEmailReader : IGraphEmailReader
                 ClassificationLabel = classification.Label,
                 ClassificationScore = classification.Score,
                 ClassificationExplainability = classification.Explainability,
-                Attachments = attachmentExtraction.Attachments
+                Attachments = attachmentExtraction.Attachments,
+                WorkflowContextPreview = workflowPreview
             });
         }
 
@@ -278,7 +279,7 @@ public class GraphEmailReader : IGraphEmailReader
         return rules.Values.ToList();
     }
 
-    private async Task<string> ExecuteWorkflowAsync(
+    private async Task<(string ProcessingStatus, Dictionary<string, string>? WorkflowContextPreview)> ExecuteWorkflowAsync(
         GraphServiceClient graphClient,
         string mailboxUser,
         string propertyHubFolderId,
@@ -292,7 +293,7 @@ public class GraphEmailReader : IGraphEmailReader
     {
         if (message.Id == null)
         {
-            return "processed";
+            return ("processed", null);
         }
 
         var matchedRule = rules
@@ -346,9 +347,11 @@ public class GraphEmailReader : IGraphEmailReader
                         null,
                         cancellationToken);
                 }
-                return string.IsNullOrWhiteSpace(auditUnavailableReason)
-                    ? "processed"
-                    : $"processed|audit_unavailable:{auditUnavailableReason}";
+                return (
+                    string.IsNullOrWhiteSpace(auditUnavailableReason)
+                        ? "processed"
+                        : $"processed|audit_unavailable:{auditUnavailableReason}",
+                    null);
             }
 
             var currentMessageId = message.Id;
@@ -498,9 +501,11 @@ public class GraphEmailReader : IGraphEmailReader
                         }
                         var safeError = SanitizeStatusSegment(ex.Message);
                         var baseStatus = $"workflow_failed:{step.StepType}:{safeError}";
-                        return string.IsNullOrWhiteSpace(auditUnavailableReason)
-                            ? baseStatus
-                            : $"{baseStatus}|audit_unavailable:{SanitizeStatusSegment(auditUnavailableReason)}";
+                        return (
+                            string.IsNullOrWhiteSpace(auditUnavailableReason)
+                                ? baseStatus
+                                : $"{baseStatus}|audit_unavailable:{SanitizeStatusSegment(auditUnavailableReason)}",
+                            CloneWorkflowContextForPreview(workflowContext));
                     }
                 }
             }
@@ -515,9 +520,11 @@ public class GraphEmailReader : IGraphEmailReader
                     cancellationToken);
             }
 
-            return string.IsNullOrWhiteSpace(auditUnavailableReason)
-                ? "workflow_applied"
-                : $"workflow_applied|audit_unavailable:{auditUnavailableReason}";
+            return (
+                string.IsNullOrWhiteSpace(auditUnavailableReason)
+                    ? "workflow_applied"
+                    : $"workflow_applied|audit_unavailable:{auditUnavailableReason}",
+                CloneWorkflowContextForPreview(workflowContext));
         }
         finally
         {
@@ -2258,6 +2265,20 @@ public class GraphEmailReader : IGraphEmailReader
                 continue;
             }
 
+            var inlinePattern =
+                "(?i)" + Regex.Escape(field.FieldName) + @"\s*[:\-]\s*" +
+                @"(?<val>.+?)(?=\s+(?:\r?\n)?[A-Za-z][\w]*\s*[:\-]|$)";
+            var inlineMatch = Regex.Match(content, inlinePattern, RegexOptions.Singleline);
+            if (inlineMatch.Success)
+            {
+                var inlineVal = inlineMatch.Groups["val"].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(inlineVal))
+                {
+                    extracted[normalizedName] = inlineVal;
+                    continue;
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(field.ExampleValue))
             {
                 var idx = content.IndexOf(field.ExampleValue, StringComparison.OrdinalIgnoreCase);
@@ -2638,11 +2659,10 @@ public class GraphEmailReader : IGraphEmailReader
         var builder = new StringBuilder();
         foreach (var page in pdf.GetPages())
         {
-            builder.Append(' ');
-            builder.Append(page.Text);
+            builder.AppendLine(page.Text);
         }
 
-        return NormalizeWhitespace(builder.ToString());
+        return NormalizeWhitespacePreserveLineBreaks(builder.ToString());
     }
 
     private static string ExtractDocxText(byte[] content)
@@ -2674,6 +2694,48 @@ public class GraphEmailReader : IGraphEmailReader
     private static string NormalizeWhitespace(string value)
     {
         return Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim();
+    }
+
+    private static string NormalizeWhitespacePreserveLineBreaks(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Replace("\r\n", "\n").Replace('\r', '\n');
+        var sb = new StringBuilder(capacity: Math.Min(normalized.Length, 512 * 1024));
+        foreach (var line in normalized.Split('\n'))
+        {
+            var collapsed = Regex.Replace(line, @"[ \t]+", " ").Trim();
+            if (collapsed.Length > 0)
+            {
+                sb.AppendLine(collapsed);
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static Dictionary<string, string>? CloneWorkflowContextForPreview(Dictionary<string, string> source)
+    {
+        if (source.Count == 0)
+        {
+            return null;
+        }
+
+        var preview = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in source)
+        {
+            var limit = kv.Key.Equals("extractionJson", StringComparison.OrdinalIgnoreCase) ? 12000 :
+                kv.Key.Equals("summary", StringComparison.OrdinalIgnoreCase) ||
+                kv.Key.Equals("summarisation", StringComparison.OrdinalIgnoreCase) ? 8000 :
+                4000;
+            var v = kv.Value ?? string.Empty;
+            preview[kv.Key] = v.Length <= limit ? v : $"{v[..limit]} …(truncated)";
+        }
+
+        return preview;
     }
 
     private string GetRequired(string configKey, string envKey)

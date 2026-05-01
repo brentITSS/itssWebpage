@@ -34,6 +34,8 @@ public class EmailMessagePreview
     public double ClassificationScore { get; set; }
     public string ClassificationExplainability { get; set; } = string.Empty;
     public List<AttachmentPreview> Attachments { get; set; } = new();
+    /// <summary>Populated after a matched workflow: summarisation/extraction tokens, extractionJson preview, etc.</summary>
+    public Dictionary<string, string>? WorkflowContextPreview { get; set; }
 }
 
 public class AttachmentPreview

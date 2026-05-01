@@ -1408,6 +1408,20 @@ public class DocumentHubController : ControllerBase
                 continue;
             }
 
+            var inlinePattern =
+                "(?i)" + Regex.Escape(field.FieldName) + @"\s*[:\-]\s*" +
+                @"(?<val>.+?)(?=\s+(?:\r?\n)?[A-Za-z][\w]*\s*[:\-]|$)";
+            var inlineMatch = Regex.Match(content, inlinePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            if (inlineMatch.Success)
+            {
+                var inlineVal = inlineMatch.Groups["val"].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(inlineVal))
+                {
+                    extracted[token] = inlineVal;
+                    continue;
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(field.ExampleValue))
             {
                 var idx = content.IndexOf(field.ExampleValue, StringComparison.OrdinalIgnoreCase);

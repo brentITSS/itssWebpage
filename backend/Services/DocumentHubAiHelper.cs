@@ -18,7 +18,7 @@ public static class DocumentHubAiHelper
             }
 
             var raw = sb.ToString();
-            return NormalizeWhitespace(raw);
+            return NormalizeWhitespacePreservingLines(raw);
         }
         catch
         {
@@ -34,6 +34,30 @@ public static class DocumentHubAiHelper
         }
 
         return Regex.Replace(input, "\\s+", " ").Trim();
+    }
+
+    /// <summary>
+    /// Collapses horizontal whitespace per line but keeps line breaks so line-anchored field extraction (?m^FieldName\s*:) still works after PDF/text extraction.
+    /// </summary>
+    public static string NormalizeWhitespacePreservingLines(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return string.Empty;
+        }
+
+        var normalized = input.Replace("\r\n", "\n").Replace('\r', '\n');
+        var sb = new StringBuilder(capacity: Math.Min(normalized.Length, 512 * 1024));
+        foreach (var line in normalized.Split('\n'))
+        {
+            var collapsed = Regex.Replace(line, @"[ \t]+", " ").Trim();
+            if (collapsed.Length > 0)
+            {
+                sb.AppendLine(collapsed);
+            }
+        }
+
+        return sb.ToString().TrimEnd();
     }
 
     public static string BuildTwoWordLabel(string fileName, string extractedText)

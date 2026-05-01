@@ -894,9 +894,17 @@ const DocumentHub: React.FC = () => {
           </button>
         </div>
         {emailProcessingResult !== null && (
-          <pre className="mt-2 max-h-48 overflow-auto rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
-            {JSON.stringify(emailProcessingResult, null, 2)}
-          </pre>
+          <>
+            <p className="mt-2 text-[11px] text-slate-500">
+              Each message may include{' '}
+              <code className="rounded bg-slate-100 px-1">workflowContextPreview</code> (summarisation, extracted field
+              tokens, and a truncated <code className="rounded bg-slate-100 px-1">extractionJson</code>). Classification
+              stays on the existing top-level fields on each message.
+            </p>
+            <pre className="mt-2 max-h-[36rem] overflow-auto rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
+              {JSON.stringify(emailProcessingResult, null, 2)}
+            </pre>
+          </>
         )}
       </div>
 
