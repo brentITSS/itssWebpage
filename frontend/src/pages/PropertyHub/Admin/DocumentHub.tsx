@@ -903,8 +903,9 @@ const DocumentHub: React.FC = () => {
               <code className="rounded bg-slate-100 px-1">workflowMeta_extractionCorpus</code> ({' '}
               <code className="rounded bg-slate-100 px-1">attachments_bundle</code> vs{' '}
               <code className="rounded bg-slate-100 px-1">full_email_fallback</code>), and truncated{' '}
-              <code className="rounded bg-slate-100 px-1">extractionJson</code>). Partial or noisy values usually mean the
-              line/inline patterns matched the wrong stretch of the email+PDF bundle, not that a generic extractor ran.
+              <code className="rounded bg-slate-100 px-1">extractionJson</code>).               When OpenAI credentials are configured on the email processor function, workflows use GPT for extraction
+              (template fields + examples) with regex fills for gaps (<code className="rounded bg-slate-100 px-1">workflowMeta_openAiFilledFields</code>
+              ).
             </p>
             <pre className="mt-2 max-h-[36rem] overflow-auto rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
               {JSON.stringify(emailProcessingResult, null, 2)}

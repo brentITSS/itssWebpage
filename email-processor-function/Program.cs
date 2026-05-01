@@ -11,6 +11,7 @@ builder.ConfigureFunctionsWebApplication();
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
     .ConfigureFunctionsApplicationInsights();
+builder.Services.AddHttpClient<IOpenAiWorkflowService, OpenAiWorkflowService>();
 builder.Services.AddScoped<IGraphEmailReader, GraphEmailReader>();
 
 builder.Build().Run();

@@ -34,11 +34,16 @@ public class GraphEmailReader : IGraphEmailReader
         Timeout = TimeSpan.FromSeconds(10)
     };
     private readonly IConfiguration _configuration;
+    private readonly IOpenAiWorkflowService _openAi;
     private readonly ILogger<GraphEmailReader> _logger;
 
-    public GraphEmailReader(IConfiguration configuration, ILogger<GraphEmailReader> logger)
+    public GraphEmailReader(
+        IConfiguration configuration,
+        IOpenAiWorkflowService openAi,
+        ILogger<GraphEmailReader> logger)
     {
         _configuration = configuration;
+        _openAi = openAi;
         _logger = logger;
     }
 
@@ -1217,26 +1222,62 @@ public class GraphEmailReader : IGraphEmailReader
             return;
         }
 
-        var extracted = ExtractFieldsFromContent(extractionCorpus, fields);
-        foreach (var item in extracted)
+        var allowedTokens = fields
+            .Select(f => NormalizeFieldToken(f.FieldName))
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var regexMap = ExtractFieldsFromContent(extractionCorpus, fields);
+        var aiMap = _openAi.IsConfigured
+            ? await _openAi.ExtractWithTemplateFieldsAsync(extractionCorpus, fields, allowedTokens, cancellationToken)
+                .ConfigureAwait(false)
+            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        workflowContext["workflowMeta_openAiExtractionConfigured"] = _openAi.IsConfigured ? "true" : "false";
+        workflowContext["workflowMeta_openAiExtractionSuggestedKeys"] = aiMap.Count.ToString(CultureInfo.InvariantCulture);
+
+        var extracted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var openAiFilled = 0;
+        var regexOnlyFilled = 0;
+        foreach (var token in allowedTokens)
         {
-            workflowContext[item.Key] = item.Value;
+            if (aiMap.TryGetValue(token, out var aiVal) && !string.IsNullOrWhiteSpace(aiVal))
+            {
+                extracted[token] = aiVal.Trim();
+                openAiFilled++;
+                continue;
+            }
+
+            if (regexMap.TryGetValue(token, out var rxVal) && !string.IsNullOrWhiteSpace(rxVal))
+            {
+                extracted[token] = rxVal.Trim();
+                regexOnlyFilled++;
+            }
+        }
+
+        foreach (var kv in extracted)
+        {
+            workflowContext[kv.Key] = kv.Value;
         }
 
         workflowContext["extractionJson"] = JsonSerializer.Serialize(extracted);
         workflowContext["workflowMeta_extractionCorpus"] = extractionCorpusSource;
-        // Transparent diagnostics for Property Hub preview (won't collide with sane user field tokens).
         workflowContext["workflowMeta_extractionTemplateId"] =
             extractionTemplateId.Value.ToString(CultureInfo.InvariantCulture);
         workflowContext["workflowMeta_extractionFieldsDefined"] =
             fields.Count.ToString(CultureInfo.InvariantCulture);
         workflowContext["workflowMeta_extractionFieldsCaptured"] =
-            extracted.Count.ToString(CultureInfo.InvariantCulture);
+            extracted.Count(kv => !string.IsNullOrWhiteSpace(kv.Value)).ToString(CultureInfo.InvariantCulture);
+        workflowContext["workflowMeta_openAiFilledFields"] = openAiFilled.ToString(CultureInfo.InvariantCulture);
+        workflowContext["workflowMeta_regexOnlyFilledFields"] = regexOnlyFilled.ToString(CultureInfo.InvariantCulture);
 
         _logger.LogInformation(
-            "RunExtraction template {TemplateId} extracted {Count} field(s).",
+            "RunExtraction template {TemplateId} captured {Captured} fields (OpenAI non-empty={Ai}, regex-only fills={RegexOnly}).",
             extractionTemplateId.Value,
-            extracted.Count);
+            extracted.Count(kv => !string.IsNullOrWhiteSpace(kv.Value)),
+            openAiFilled,
+            regexOnlyFilled);
     }
 
     private async Task RunSummarisationStepAsync(
@@ -1271,11 +1312,37 @@ public class GraphEmailReader : IGraphEmailReader
                 "RunSummarisation step requires stepConfigJson with summarisationTemplateId or prompt.");
         }
 
-        var summary = BuildHeuristicSummary(consolidatedContent, prompt, maxSentences);
+        string summary;
+        string summarisationSource;
+        if (_openAi.IsConfigured)
+        {
+            var aiSummary = await _openAi.SummariseDocumentAsync(consolidatedContent, prompt.Trim(), cancellationToken)
+                .ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(aiSummary))
+            {
+                summary = aiSummary.Trim();
+                summarisationSource = "openai";
+            }
+            else
+            {
+                summary = BuildHeuristicSummary(consolidatedContent, prompt, maxSentences);
+                summarisationSource = "heuristic_fallback";
+            }
+        }
+        else
+        {
+            summary = BuildHeuristicSummary(consolidatedContent, prompt, maxSentences);
+            summarisationSource = "heuristic";
+        }
+
         workflowContext["summary"] = summary;
         workflowContext["summarisation"] = summary;
         workflowContext["summaryPrompt"] = prompt.Trim();
-        _logger.LogInformation("RunSummarisation generated summary length {Length}.", summary.Length);
+        workflowContext["workflowMeta_summarisationSource"] = summarisationSource;
+        _logger.LogInformation(
+            "RunSummarisation source={Source} length={Length}",
+            summarisationSource,
+            summary.Length);
     }
 
     private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
