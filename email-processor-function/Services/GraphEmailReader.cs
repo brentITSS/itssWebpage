@@ -93,14 +93,17 @@ public class GraphEmailReader : IGraphEmailReader
             {
                 cfg.QueryParameters.Top = maxEmails;
                 cfg.QueryParameters.Orderby = new[] { "receivedDateTime desc" };
-                cfg.QueryParameters.Select = new[] { "id", "subject", "from", "receivedDateTime", "hasAttachments", "categories" };
-                cfg.QueryParameters.Filter = $"not(categories/any(c:c eq '{CompletedCategory}'))";
+                cfg.QueryParameters.Select = new[] { "id", "subject", "from", "receivedDateTime", "hasAttachments", "categories", "flag" };
+                // Skip legacy "Completed" category from older runs, and native follow-up "Mark complete" state.
+                cfg.QueryParameters.Filter =
+                    $"not(categories/any(c:c eq '{CompletedCategory}')) and not(flag/flagStatus eq 'complete')";
             }, cancellationToken);
 
         var allFetched = messagesPage?.Value ?? new List<Message>();
         // Extra in-code guard in case mailbox categories are case-variant or filter behavior differs.
         var eligibleMessages = allFetched
             .Where(x => !(x.Categories?.Any(c => c.Equals(CompletedCategory, StringComparison.OrdinalIgnoreCase)) ?? false))
+            .Where(x => x.Flag?.FlagStatus != FollowupFlagStatus.Complete)
             .ToList();
 
         var processedPreviews = new List<EmailMessagePreview>();
@@ -111,7 +114,8 @@ public class GraphEmailReader : IGraphEmailReader
                 .Messages[message.Id!]
                 .GetAsync(cfg =>
                 {
-                    cfg.QueryParameters.Select = new[] { "id", "subject", "from", "receivedDateTime", "hasAttachments", "body", "categories" };
+                    cfg.QueryParameters.Select =
+                        new[] { "id", "subject", "from", "receivedDateTime", "hasAttachments", "body", "categories", "flag" };
                     cfg.QueryParameters.Expand = new[] { "attachments($select=id,name,contentType,size)" };
                 }, cancellationToken);
 
@@ -385,7 +389,8 @@ public class GraphEmailReader : IGraphEmailReader
                     }
                     else if (stepType == "markcompleted")
                     {
-                    await ApplyCategoryAsync(graphClient, mailboxUser, currentMessageId, null, CompletedCategory, null, cancellationToken);
+                        // Outlook "Mark Complete" follows the native follow-up flag, not an Outlook Category named "Completed".
+                        await MarkMessageFlagCompleteAsync(graphClient, mailboxUser, currentMessageId, cancellationToken);
                     }
                     else if (stepType == "movetofolder")
                     {
@@ -1449,6 +1454,35 @@ public class GraphEmailReader : IGraphEmailReader
             {
                 Categories = categories
             }, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets the message follow-up flag to <see cref="FollowupFlagStatus.Complete"/> (Outlook ribbon "Mark Complete"),
+    /// without adding an Outlook Category.
+    /// </summary>
+    private static async Task MarkMessageFlagCompleteAsync(
+        GraphServiceClient graphClient,
+        string mailboxUser,
+        string messageId,
+        CancellationToken cancellationToken)
+    {
+        var utcNow = DateTimeOffset.UtcNow;
+        await graphClient.Users[mailboxUser]
+            .Messages[messageId]
+            .PatchAsync(
+                new Message
+                {
+                    Flag = new FollowupFlag
+                    {
+                        FlagStatus = FollowupFlagStatus.Complete,
+                        CompletedDateTime = new DateTimeTimeZone
+                        {
+                            DateTime = utcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture),
+                            TimeZone = "UTC"
+                        }
+                    }
+                },
+                cancellationToken: cancellationToken);
     }
 
     private async Task EnsureMasterCategoryAsync(

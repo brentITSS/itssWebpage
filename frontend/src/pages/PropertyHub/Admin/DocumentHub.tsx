@@ -77,6 +77,7 @@ const DocumentHub: React.FC = () => {
   const [extractionTemplateDescription, setExtractionTemplateDescription] = useState('');
   const [editingExtractionTemplateId, setEditingExtractionTemplateId] = useState<number | null>(null);
   const [extractionTestFile, setExtractionTestFile] = useState<File | null>(null);
+  const [extractionTestTemplateId, setExtractionTestTemplateId] = useState<number | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreviewResponse | null>(null);
   const [extractionTestFeedback, setExtractionTestFeedback] = useState<string | null>(null);
   const [showExtractionTrainer, setShowExtractionTrainer] = useState(false);
@@ -332,6 +333,7 @@ const DocumentHub: React.FC = () => {
 
   const handleEditExtractionTemplate = (template: DocumentExtractionTemplateDto) => {
     setEditingExtractionTemplateId(template.documentExtractionTemplateId);
+    setExtractionTestTemplateId(template.documentExtractionTemplateId);
     setExtractionTemplateName(template.extractionTemplateName);
     setExtractionTemplateDescription(template.extractionTemplateDescription ?? '');
     setStagedExtractionFields(
@@ -372,6 +374,9 @@ const DocumentHub: React.FC = () => {
       await documentHubService.deleteExtractionTemplate(templateId);
       if (editingExtractionTemplateId === templateId) {
         handleCancelEditExtraction();
+      }
+      if (extractionTestTemplateId === templateId) {
+        setExtractionTestTemplateId(null);
       }
       setFeedback(`Deleted extraction template "${templateName}".`);
       await loadData();
@@ -575,10 +580,14 @@ const DocumentHub: React.FC = () => {
     setFeedback(null);
     setExtractionTestFeedback(null);
     try {
-      const preview = await documentHubService.previewExtraction(extractionTestFile);
+      const preview = await documentHubService.previewExtraction(extractionTestFile, extractionTestTemplateId);
       setExtractionPreview(preview);
       setSuggestedExtractionFields(preview.suggestedFields ?? []);
-      setExtractionTestFeedback(`Entity extraction test complete for ${preview.fileName}.`);
+      const suffix =
+        preview.previewMode === 'template_fields'
+          ? ' Matches workflow extraction against your chosen template.'
+          : ' Generic AI guesses only—pick a saved template above to preview real field extraction.';
+      setExtractionTestFeedback(`Entity extraction test complete for ${preview.fileName}.${suffix}`);
     } catch (error) {
       setExtractionTestFeedback(getFriendlyError(error));
     } finally {
@@ -1266,6 +1275,29 @@ const DocumentHub: React.FC = () => {
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
               </label>
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">
+                  Template for &quot;Test Entity Extraction&quot;
+                </span>
+                <select
+                  value={extractionTestTemplateId ?? ''}
+                  onChange={(event) =>
+                    setExtractionTestTemplateId(event.target.value ? Number(event.target.value) : null)
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">Generic AI suggestions (does not match saved extraction fields)</option>
+                  {extractionTemplates.map((item) => (
+                    <option key={item.documentExtractionTemplateId} value={item.documentExtractionTemplateId}>
+                      {item.extractionTemplateName}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Choose one of your saved templates to preview the same line-based extraction that workflows and email
+                  processing use. Leave empty only if you want rough AI guesses.
+                </p>
+              </label>
               <button
                 type="button"
                 onClick={handlePrepareExtractionPreview}
@@ -1290,9 +1322,21 @@ const DocumentHub: React.FC = () => {
               {extractionPreview && (
                 <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-900">
                   <p className="font-semibold">Extraction Test Preview ({extractionPreview.fileName})</p>
-                  <p className="mt-1">
-                    Suggested fields: {(extractionPreview.suggestedFields ?? []).length}
+                  <p className="mt-1 text-slate-700">
+                    {extractionPreview.previewMode === 'template_fields'
+                      ? `Template-backed extraction (${(extractionPreview.suggestedFields ?? []).length} fields from template #${
+                          extractionPreview.extractionTemplateId ?? '?'
+                        })`
+                      : `AI-suggested fields: ${(extractionPreview.suggestedFields ?? []).length}`}
                   </p>
+                  {extractionPreview.previewMode === 'template_fields' &&
+                    extractionPreview.extractionTemplateId != null &&
+                    extractionTestTemplateId !== extractionPreview.extractionTemplateId && (
+                      <p className="mt-1 text-amber-800">
+                        These results are for template #{extractionPreview.extractionTemplateId}. Your dropdown selection
+                        does not match—pick that template or run the test again.
+                      </p>
+                    )}
                   <div className="mt-2 max-h-40 overflow-auto rounded border border-indigo-200 bg-white p-2">
                     {(extractionPreview.suggestedFields ?? []).length === 0 ? (
                       <p className="text-slate-500">No fields suggested.</p>
@@ -1300,7 +1344,15 @@ const DocumentHub: React.FC = () => {
                       <ul className="space-y-1">
                         {(extractionPreview.suggestedFields ?? []).map((field, idx) => (
                           <li key={`${field.fieldName}-${idx}`}>
-                            <span className="font-semibold">{field.fieldName}:</span> {field.exampleValue}
+                            <span className="font-semibold">{field.fieldName}:</span>{' '}
+                            {field.exampleValue || (
+                              <span className="text-amber-700">(empty—no matching line in extracted text)</span>
+                            )}
+                            {field.normalizedToken ? (
+                              <span className="ml-1 text-slate-500">
+                                <code className="rounded bg-slate-100 px-1">{`{field:${field.normalizedToken}}`}</code>
+                              </span>
+                            ) : null}
                           </li>
                         ))}
                       </ul>

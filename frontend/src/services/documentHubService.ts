@@ -158,11 +158,15 @@ export interface DocumentExtractionPreviewResponse {
   extractedText: string;
   textPreview: string;
   suggestedFields: DocumentExtractionSuggestedFieldDto[];
+  extractionTemplateId?: number;
+  /** template_fields matches saved template + workflows; ai_suggestions is generic guessing */
+  previewMode?: string;
 }
 
 export interface DocumentExtractionSuggestedFieldDto {
   fieldName: string;
   exampleValue: string;
+  normalizedToken?: string;
 }
 
 export interface SuggestExtractionFromSelectionRequest {
@@ -379,9 +383,15 @@ export const documentHubService = {
     });
   },
 
-  previewExtraction: async (file: File): Promise<DocumentExtractionPreviewResponse> => {
+  previewExtraction: async (
+    file: File,
+    extractionTemplateId?: number | null
+  ): Promise<DocumentExtractionPreviewResponse> => {
     const formData = new FormData();
     formData.append('file', file);
+    if (extractionTemplateId != null && extractionTemplateId > 0) {
+      formData.append('extractionTemplateId', String(extractionTemplateId));
+    }
 
     return await apiClient<DocumentExtractionPreviewResponse>('/document-hub/extraction/preview', {
       method: 'POST',

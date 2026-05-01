@@ -187,12 +187,18 @@ public class DocumentExtractionPreviewResponse
     public string ExtractedText { get; set; } = string.Empty;
     public string TextPreview { get; set; } = string.Empty;
     public List<DocumentExtractionSuggestedFieldDto> SuggestedFields { get; set; } = new();
+    /// <summary>When preview uses saved template extraction, identifies which template ran.</summary>
+    public int? ExtractionTemplateId { get; set; }
+    /// <summary>"template_fields" uses saved fields (same path as workflows); "ai_suggestions" is heuristic/AI guesses.</summary>
+    public string PreviewMode { get; set; } = string.Empty;
 }
 
 public class DocumentExtractionSuggestedFieldDto
 {
     public string FieldName { get; set; } = string.Empty;
     public string ExampleValue { get; set; } = string.Empty;
+    /// <summary>Optional: normalized token for {field:&lt;token&gt;} substitutions (same as workflows).</summary>
+    public string? NormalizedToken { get; set; }
 }
 
 public class SuggestExtractionFromSelectionRequest

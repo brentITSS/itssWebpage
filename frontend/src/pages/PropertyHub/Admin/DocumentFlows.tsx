@@ -413,6 +413,11 @@ const DocumentFlows: React.FC = () => {
                 <button type="button" onClick={() => handleRemoveWorkflowStep(idx)} className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">Remove</button>
               </div>
               <input value={step.stepConfigJson ?? ''} onChange={(e) => handleUpdateWorkflowStep(idx, { stepConfigJson: e.target.value })} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder="Optional JSON config" />
+              {step.stepType === 'MarkCompleted' && (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Applies Outlook &quot;Mark Complete&quot; on the follow-up flag (not an Outlook Category).
+                </p>
+              )}
               {step.stepType === 'SetCategory' && (() => {
                 const setCategoryConfig = parseStepConfig(step.stepConfigJson);
                 const selectedCategoryColor = String(setCategoryConfig.categoryColor ?? '');

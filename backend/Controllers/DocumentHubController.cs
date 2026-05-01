@@ -989,7 +989,9 @@ public class DocumentHubController : ControllerBase
     }
 
     [HttpPost("extraction/preview")]
-    public async Task<ActionResult<DocumentExtractionPreviewResponse>> PreviewExtraction([FromForm] IFormFile file)
+    public async Task<ActionResult<DocumentExtractionPreviewResponse>> PreviewExtraction(
+        [FromForm] IFormFile file,
+        [FromForm] int? extractionTemplateId)
     {
         var currentUser = await GetCurrentUserAsync();
         if (currentUser == null) return Unauthorized();
@@ -1001,14 +1003,62 @@ public class DocumentHubController : ControllerBase
         }
 
         var extractedText = await ExtractTextAsync(file);
+        var textPreview = extractedText.Length > 800 ? extractedText[..800] + "..." : extractedText;
+
+        if (extractionTemplateId.HasValue && extractionTemplateId.Value > 0)
+        {
+            var templateExists = await _context.DocumentExtractionTemplates
+                .AsNoTracking()
+                .AnyAsync(x => x.DocumentExtractionTemplateId == extractionTemplateId.Value);
+            if (!templateExists)
+            {
+                return BadRequest(new { message = "Extraction template not found." });
+            }
+
+            var consolidatedContent = $"File name: {file.FileName}\n\nContent:\n{extractedText}";
+            var templateFields = await _context.DocumentExtractionFields
+                .AsNoTracking()
+                .Where(f => f.IsActive && f.DocumentExtractionTemplateId == extractionTemplateId.Value)
+                .OrderBy(f => f.DocumentExtractionFieldId)
+                .Select(f => new { f.FieldName, f.ExampleValue })
+                .ToListAsync();
+
+            var extracted = ExtractFieldsFromContent(
+                consolidatedContent,
+                templateFields.Select(f => (f.FieldName, f.ExampleValue)).ToList());
+
+            var mappedFields = templateFields.Select(f =>
+            {
+                var token = NormalizeFieldToken(f.FieldName);
+                extracted.TryGetValue(token, out var parsed);
+                return new DocumentExtractionSuggestedFieldDto
+                {
+                    FieldName = f.FieldName,
+                    ExampleValue = parsed ?? string.Empty,
+                    NormalizedToken = string.IsNullOrWhiteSpace(token) ? null : token
+                };
+            }).ToList();
+
+            return Ok(new DocumentExtractionPreviewResponse
+            {
+                FileName = file.FileName,
+                ExtractedText = extractedText,
+                TextPreview = textPreview,
+                SuggestedFields = mappedFields,
+                ExtractionTemplateId = extractionTemplateId.Value,
+                PreviewMode = "template_fields"
+            });
+        }
+
         var suggestedFields = await _documentAiService.SuggestExtractionFieldsAsync(extractedText, HttpContext.RequestAborted);
 
         return Ok(new DocumentExtractionPreviewResponse
         {
             FileName = file.FileName,
             ExtractedText = extractedText,
-            TextPreview = extractedText.Length > 800 ? extractedText[..800] + "..." : extractedText,
-            SuggestedFields = suggestedFields
+            TextPreview = textPreview,
+            SuggestedFields = suggestedFields,
+            PreviewMode = "ai_suggestions"
         });
     }
 
