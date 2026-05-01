@@ -144,6 +144,7 @@ public class GraphEmailReader : IGraphEmailReader
                 detailedMessage,
                 attachmentExtraction.Attachments,
                 consolidatedContent,
+                attachmentExtraction.ExtractionDocumentsBundled,
                 classification.Label,
                 classification.Score,
                 workflowRules,
@@ -286,6 +287,7 @@ public class GraphEmailReader : IGraphEmailReader
         Message message,
         List<AttachmentPreview> attachmentPreviews,
         string consolidatedContent,
+        string extractionDocumentsBundled,
         string classificationLabel,
         double classificationScore,
         List<WorkflowRule> rules,
@@ -451,11 +453,22 @@ public class GraphEmailReader : IGraphEmailReader
                     }
                     else if (stepType == "runextraction")
                     {
+                        var useAttachmentBundle = !string.IsNullOrWhiteSpace(extractionDocumentsBundled);
+                        var extractionCorpus = useAttachmentBundle
+                            ? extractionDocumentsBundled!
+                            : consolidatedContent;
+                        if (!useAttachmentBundle)
+                        {
+                            _logger.LogInformation(
+                                "RunExtraction: no extractable attachment text; using subject+body envelope as fallback.");
+                        }
+
                         await RunExtractionStepAsync(
-                            consolidatedContent,
+                            extractionCorpus,
                             step.StepConfigJson,
                             workflowContext,
-                            cancellationToken);
+                            cancellationToken,
+                            useAttachmentBundle ? "attachments_bundle" : "full_email_fallback");
                     }
                     else if (stepType == "runsummarisation")
                     {
@@ -1178,10 +1191,11 @@ public class GraphEmailReader : IGraphEmailReader
     }
 
     private async Task RunExtractionStepAsync(
-        string consolidatedContent,
+        string extractionCorpus,
         string? stepConfigJson,
         Dictionary<string, string> workflowContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string extractionCorpusSource)
     {
         if (string.IsNullOrWhiteSpace(stepConfigJson))
         {
@@ -1203,13 +1217,14 @@ public class GraphEmailReader : IGraphEmailReader
             return;
         }
 
-        var extracted = ExtractFieldsFromContent(consolidatedContent, fields);
+        var extracted = ExtractFieldsFromContent(extractionCorpus, fields);
         foreach (var item in extracted)
         {
             workflowContext[item.Key] = item.Value;
         }
 
         workflowContext["extractionJson"] = JsonSerializer.Serialize(extracted);
+        workflowContext["workflowMeta_extractionCorpus"] = extractionCorpusSource;
         // Transparent diagnostics for Property Hub preview (won't collide with sane user field tokens).
         workflowContext["workflowMeta_extractionTemplateId"] =
             extractionTemplateId.Value.ToString(CultureInfo.InvariantCulture);
@@ -2572,7 +2587,42 @@ public class GraphEmailReader : IGraphEmailReader
         return builder.ToString();
     }
 
-    private async Task<(List<AttachmentPreview> Attachments, List<string> ExtractedTextChunks)> ExtractAttachmentContentAsync(
+    /// <summary>
+    /// Text passed to RunExtraction: same envelope as Document Hub workflow tests ("File name" + "Content") so templates match uploaded PDF previews.
+    /// </summary>
+    private static string BuildExtractionBundledAttachments(IReadOnlyList<(string FileName, string Text)> documents)
+    {
+        if (documents.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        for (var i = 0; i < documents.Count; i++)
+        {
+            var (fileName, text) = documents[i];
+            sb.AppendLine($"File name: {fileName.Trim()}");
+            sb.AppendLine();
+            sb.AppendLine("Content:");
+            sb.AppendLine((text ?? string.Empty).Trim());
+            if (i < documents.Count - 1)
+            {
+                sb.AppendLine();
+                sb.AppendLine();
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static bool IsNonInspectableAttachmentPlaceholder(string extracted)
+    {
+        var t = extracted.TrimStart();
+        return t.StartsWith("[Image attachment detected:", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("[Attachment ", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<(List<AttachmentPreview> Attachments, List<string> ExtractedTextChunks, string ExtractionDocumentsBundled)> ExtractAttachmentContentAsync(
         GraphServiceClient graphClient,
         string mailboxUser,
         Message message,
@@ -2580,6 +2630,7 @@ public class GraphEmailReader : IGraphEmailReader
     {
         var attachmentPreviews = new List<AttachmentPreview>();
         var extractedTextChunks = new List<string>();
+        var documentsForEntityExtraction = new List<(string FileName, string Text)>();
         var attachments = message.Attachments?.ToList() ?? new List<Attachment>();
 
         foreach (var attachment in attachments)
@@ -2626,6 +2677,10 @@ public class GraphEmailReader : IGraphEmailReader
                 {
                     extractedTextChunks.Add($"Attachment {preview.Name}: {extracted}");
                     preview.ExtractionStatus = "extracted";
+                    if (!IsNonInspectableAttachmentPlaceholder(extracted))
+                    {
+                        documentsForEntityExtraction.Add((preview.Name, extracted));
+                    }
                 }
                 else
                 {
@@ -2641,7 +2696,8 @@ public class GraphEmailReader : IGraphEmailReader
             attachmentPreviews.Add(preview);
         }
 
-        return (attachmentPreviews, extractedTextChunks);
+        var extractionBundled = BuildExtractionBundledAttachments(documentsForEntityExtraction);
+        return (attachmentPreviews, extractedTextChunks, extractionBundled);
     }
 
     private static string ExtractTextFromAttachment(string fileName, string contentType, byte[] content)

@@ -899,7 +899,10 @@ const DocumentHub: React.FC = () => {
               Each message may include{' '}
               <code className="rounded bg-slate-100 px-1">workflowContextPreview</code> (summarisation, template-driven
               field tokens from <code className="rounded bg-slate-100 px-1">RunExtraction</code>,{' '}
-              <code className="rounded bg-slate-100 px-1">workflowMeta_extractionTemplateId</code>, and truncated{' '}
+              <code className="rounded bg-slate-100 px-1">workflowMeta_extractionTemplateId</code>,{' '}
+              <code className="rounded bg-slate-100 px-1">workflowMeta_extractionCorpus</code> ({' '}
+              <code className="rounded bg-slate-100 px-1">attachments_bundle</code> vs{' '}
+              <code className="rounded bg-slate-100 px-1">full_email_fallback</code>), and truncated{' '}
               <code className="rounded bg-slate-100 px-1">extractionJson</code>). Partial or noisy values usually mean the
               line/inline patterns matched the wrong stretch of the email+PDF bundle, not that a generic extractor ran.
             </p>
