@@ -87,6 +87,27 @@ const ContactLogsList: React.FC = () => {
     [properties]
   );
 
+  const propertyIdToGroupName = useMemo(
+    () => new Map(properties.map((p) => [p.propertyId, p.propertyGroupName])),
+    [properties]
+  );
+
+  const groupNameByPropertyGroupId = useMemo(
+    () => new Map(propertyGroups.map((g) => [g.propertyGroupId, g.propertyGroupName])),
+    [propertyGroups]
+  );
+
+  const contactPropertyGroupDisplay = useCallback(
+    (log: ContactLogResponseDto) => {
+      if (log.propertyGroupName?.trim()) return log.propertyGroupName.trim();
+      if (log.propertyGroupId)
+        return groupNameByPropertyGroupId.get(log.propertyGroupId)?.trim() || '—';
+      if (log.propertyId) return propertyIdToGroupName.get(log.propertyId) ?? '—';
+      return '—';
+    },
+    [propertyIdToGroupName, groupNameByPropertyGroupId]
+  );
+
   const applyFilters = useCallback(() => {
     let filtered = [...contactLogs];
 
@@ -193,7 +214,7 @@ const ContactLogsList: React.FC = () => {
           propertyId={scopedProperty.propertyId}
           propertyName={scopedProperty.propertyName}
           title="Contact logs"
-          subtitle={`${scopedTotal} total for this property`}
+          subtitle={`${scopedProperty.propertyGroupName} · ${scopedTotal} total for this property`}
           actions={
             <button
               type="button"
@@ -285,6 +306,15 @@ const ContactLogsList: React.FC = () => {
                   </div>
                   <p className="mt-1 line-clamp-2 text-sm text-slate-600">{log.notes || '—'}</p>
                   <p className="mt-2 text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">{contactPropertyGroupDisplay(log)}</span>
+                    {scopedProperty.propertyName ? (
+                      <>
+                        {' · '}
+                        <span>{scopedProperty.propertyName}</span>
+                      </>
+                    ) : null}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
                     {formatDateUk(log.contactDate)}
                     {log.tenantName ? ` · ${log.tenantName}` : ''}
                   </p>
@@ -465,6 +495,7 @@ const ContactLogsList: React.FC = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Property Group</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Property</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Tenant</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Type</th>
@@ -476,7 +507,7 @@ const ContactLogsList: React.FC = () => {
           <tbody className="divide-y divide-gray-200 bg-white">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                   No contact logs found
                 </td>
               </tr>
@@ -489,6 +520,9 @@ const ContactLogsList: React.FC = () => {
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                     {formatDateUk(log.contactDate)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                    {contactPropertyGroupDisplay(log)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{log.propertyName}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{log.tenantName || '-'}</td>

@@ -91,6 +91,27 @@ const JournalLogsList: React.FC = () => {
     [properties]
   );
 
+  const propertyIdToGroupName = useMemo(
+    () => new Map(properties.map((p) => [p.propertyId, p.propertyGroupName])),
+    [properties]
+  );
+
+  const groupNameByPropertyGroupId = useMemo(
+    () => new Map(propertyGroups.map((g) => [g.propertyGroupId, g.propertyGroupName])),
+    [propertyGroups]
+  );
+
+  const journalPropertyGroupDisplay = useCallback(
+    (log: JournalLogResponseDto) => {
+      if (log.propertyGroupName?.trim()) return log.propertyGroupName.trim();
+      if (log.propertyGroupId)
+        return groupNameByPropertyGroupId.get(log.propertyGroupId)?.trim() || '—';
+      if (log.propertyId) return propertyIdToGroupName.get(log.propertyId) ?? '—';
+      return '—';
+    },
+    [propertyIdToGroupName, groupNameByPropertyGroupId]
+  );
+
   const applyFilters = useCallback(() => {
     let filtered = [...journalLogs];
 
@@ -321,6 +342,7 @@ const JournalLogsList: React.FC = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property Group</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
@@ -332,7 +354,7 @@ const JournalLogsList: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                   No journal logs found
                 </td>
               </tr>
@@ -345,6 +367,9 @@ const JournalLogsList: React.FC = () => {
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDateUk(log.transactionDate)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {journalPropertyGroupDisplay(log)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.propertyName}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.tenantName || '-'}</td>

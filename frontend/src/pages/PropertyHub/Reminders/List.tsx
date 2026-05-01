@@ -62,6 +62,27 @@ const RemindersList: React.FC = () => {
     [properties]
   );
 
+  const propertyIdToGroupName = useMemo(
+    () => new Map(properties.map((p) => [p.propertyId, p.propertyGroupName])),
+    [properties]
+  );
+
+  const groupNameByPropertyGroupId = useMemo(
+    () => new Map(propertyGroups.map((g) => [g.propertyGroupId, g.propertyGroupName])),
+    [propertyGroups]
+  );
+
+  const reminderPropertyGroupDisplay = useCallback(
+    (r: ReminderResponseDto) => {
+      if (r.propertyGroupName?.trim()) return r.propertyGroupName.trim();
+      if (r.propertyGroupId)
+        return groupNameByPropertyGroupId.get(r.propertyGroupId)?.trim() || '—';
+      if (r.propertyId) return propertyIdToGroupName.get(r.propertyId) ?? '—';
+      return '—';
+    },
+    [propertyIdToGroupName, groupNameByPropertyGroupId]
+  );
+
   const applyFilters = useCallback(() => {
     let list = [...reminders];
     if (filterPropertyGroupId) {
@@ -201,7 +222,11 @@ const RemindersList: React.FC = () => {
             {r.notes}
           </p>
         )}
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-slate-600">
+          <span className="font-medium">{reminderPropertyGroupDisplay(r)}</span>
+          {r.propertyName ? <span>{` · ${r.propertyName}`}</span> : null}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
           {r.reminderDate ? `Reminder ${formatDateUk(r.reminderDate)}` : 'No reminder date'}
           {r.createdDate ? ` · Created ${formatDateUk(r.createdDate)}` : ''}
           {r.tenantName ? ` · ${r.tenantName}` : ''}
@@ -224,7 +249,7 @@ const RemindersList: React.FC = () => {
           propertyId={scopedProperty.propertyId}
           propertyName={scopedProperty.propertyName}
           title="Reminders"
-          subtitle={`${openCount} open · ${scopedForList.length} total for this property`}
+          subtitle={`${scopedProperty.propertyGroupName} · ${openCount} open · ${scopedForList.length} total for this property`}
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -397,6 +422,7 @@ const RemindersList: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Created</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Reminder</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Priority</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Property Group</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Property</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Tenant</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Tenancy</th>
@@ -407,7 +433,7 @@ const RemindersList: React.FC = () => {
           <tbody className="divide-y divide-gray-200 bg-white">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={10} className="px-6 py-4 text-center text-sm text-gray-500">
                   No reminders found
                 </td>
               </tr>
@@ -436,6 +462,9 @@ const RemindersList: React.FC = () => {
                     ) : (
                       '—'
                     )}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                    {reminderPropertyGroupDisplay(r)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.propertyName || '—'}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{r.tenantName || '—'}</td>
