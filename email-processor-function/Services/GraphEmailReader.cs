@@ -2267,12 +2267,61 @@ public class GraphEmailReader : IGraphEmailReader
         return string.IsNullOrWhiteSpace(cleaned) ? "attachment.bin" : cleaned;
     }
 
+    /// <summary>Maps template keys such as total_incl_vat to PDF text variants: same string or spaced words.</summary>
+    private static string AlternateLabelMatchers(string fieldNameTrimmed)
+    {
+        var raw = fieldNameTrimmed.Trim();
+        var esc = Regex.Escape(raw);
+        if (!raw.Contains('_'))
+        {
+            return esc;
+        }
+
+        var segs = raw.Split('_', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segs.Length < 2)
+        {
+            return esc;
+        }
+
+        var flex = string.Join(@"[\s._\u2013\-]{0,8}", segs.Select(Regex.Escape));
+        return flex == esc ? esc : $@"(?:{esc}|{flex})";
+    }
+
+    private static string BuildSiblingLabelStopAhead(string currentFieldTrimmed, IReadOnlyList<string> allSiblingNamesTrimmed)
+    {
+        var clauses = new List<string>();
+        foreach (var s in allSiblingNamesTrimmed.Where(x => x.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.Equals(s.Trim(), currentFieldTrimmed.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var pat = AlternateLabelMatchers(s.Trim());
+            clauses.Add(@$"\s+(?:{pat})\s*[:\u003a\u2013\-]");
+        }
+
+        if (clauses.Count == 0)
+        {
+            return @"(?=$)";
+        }
+
+        return $@"(?=(?:{string.Join("|", clauses)}|$))";
+    }
+
     private static Dictionary<string, string> ExtractFieldsFromContent(
         string content,
         IEnumerable<(string FieldName, string? ExampleValue)> fields)
     {
+        var rows = fields.ToList();
+        var allNamesTrimmed = rows
+            .Select(f => f.FieldName.Trim())
+            .Where(x => x.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var extracted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var field in fields)
+        foreach (var field in rows)
         {
             var normalizedName = NormalizeFieldToken(field.FieldName);
             if (string.IsNullOrWhiteSpace(normalizedName))
@@ -2280,26 +2329,40 @@ public class GraphEmailReader : IGraphEmailReader
                 continue;
             }
 
-            var pattern = $@"(?im)^\s*{Regex.Escape(field.FieldName)}\s*[:\-]\s*(.+)$";
-            var match = Regex.Match(content, pattern);
-            if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+            var rawLabel = field.FieldName.Trim();
+
+            var strictLineRx = $@"(?im)^\s*{Regex.Escape(rawLabel)}\s*[:\u003a\u2013\-]+\s*(?<lv>[^\r\n]+)\s*$";
+            var strictLm = Regex.Match(content, strictLineRx);
+            if (strictLm.Success && !string.IsNullOrWhiteSpace(strictLm.Groups["lv"].Value))
             {
-                extracted[normalizedName] = match.Groups[1].Value.Trim();
+                extracted[normalizedName] = strictLm.Groups["lv"].Value.Trim();
                 continue;
             }
 
-            var inlinePattern =
-                "(?i)" + Regex.Escape(field.FieldName) + @"\s*[:\-]\s*" +
-                @"(?<val>.+?)(?=\s+(?:\r?\n)?[A-Za-z][\w]*\s*[:\-]|$)";
-            var inlineMatch = Regex.Match(content, inlinePattern, RegexOptions.Singleline);
-            if (inlineMatch.Success)
+            var labelAlt = AlternateLabelMatchers(rawLabel);
+            var flexLineRx = $@"(?im)^\s*(?:{labelAlt})\s*[:\u003a\u2013\-]+\s*(?<lv>[^\r\n]+)\s*$";
+            var flexLm = Regex.Match(content, flexLineRx);
+            if (flexLm.Success && !string.IsNullOrWhiteSpace(flexLm.Groups["lv"].Value))
             {
-                var inlineVal = inlineMatch.Groups["val"].Value.Trim();
-                if (!string.IsNullOrWhiteSpace(inlineVal))
-                {
-                    extracted[normalizedName] = inlineVal;
-                    continue;
-                }
+                extracted[normalizedName] = flexLm.Groups["lv"].Value.Trim();
+                continue;
+            }
+
+            var siblingStop = BuildSiblingLabelStopAhead(rawLabel, allNamesTrimmed);
+            var strictInlineRx = $@"(?is)(?:^|[\s,;])(?:{Regex.Escape(rawLabel)})\s*[:\u003a\u2013\-]+\s*(?<mv>.+?){siblingStop}";
+            var si = Regex.Match(content, strictInlineRx);
+            if (si.Success && !string.IsNullOrWhiteSpace(si.Groups["mv"].Value))
+            {
+                extracted[normalizedName] = si.Groups["mv"].Value.Trim();
+                continue;
+            }
+
+            var flexInlineRx = $@"(?is)(?:^|[\s,;])(?:{labelAlt})\s*[:\u003a\u2013\-]+\s*(?<mv>.+?){siblingStop}";
+            var fi = Regex.Match(content, flexInlineRx);
+            if (fi.Success && !string.IsNullOrWhiteSpace(fi.Groups["mv"].Value))
+            {
+                extracted[normalizedName] = fi.Groups["mv"].Value.Trim();
+                continue;
             }
 
             if (!string.IsNullOrWhiteSpace(field.ExampleValue))

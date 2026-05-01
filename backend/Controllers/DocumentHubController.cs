@@ -1387,10 +1387,57 @@ public class DocumentHubController : ControllerBase
         return value.ToString();
     }
 
+    private static string AlternateLabelMatchersForExtraction(string fieldNameTrimmed)
+    {
+        var raw = fieldNameTrimmed.Trim();
+        var esc = Regex.Escape(raw);
+        if (!raw.Contains('_'))
+        {
+            return esc;
+        }
+
+        var segs = raw.Split('_', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segs.Length < 2)
+        {
+            return esc;
+        }
+
+        var flex = string.Join(@"[\s._\u2013\-]{0,8}", segs.Select(Regex.Escape));
+        return flex == esc ? esc : $@"(?:{esc}|{flex})";
+    }
+
+    private static string BuildSiblingLabelStopAheadForExtraction(string currentFieldTrimmed, IReadOnlyList<string> allSiblingNamesTrimmed)
+    {
+        var clauses = new List<string>();
+        foreach (var s in allSiblingNamesTrimmed.Where(x => x.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.Equals(s.Trim(), currentFieldTrimmed.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var pat = AlternateLabelMatchersForExtraction(s.Trim());
+            clauses.Add(@$"\s+(?:{pat})\s*[:\u003a\u2013\-]");
+        }
+
+        if (clauses.Count == 0)
+        {
+            return @"(?=$)";
+        }
+
+        return $@"(?=(?:{string.Join("|", clauses)}|$))";
+    }
+
     private static Dictionary<string, string> ExtractFieldsFromContent(
         string content,
         List<(string FieldName, string? ExampleValue)> fields)
     {
+        var allNamesTrimmed = fields
+            .Select(f => f.FieldName.Trim())
+            .Where(x => x.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var extracted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var field in fields)
         {
@@ -1400,26 +1447,40 @@ public class DocumentHubController : ControllerBase
                 continue;
             }
 
-            var pattern = $@"(?im)^\s*{Regex.Escape(field.FieldName)}\s*[:\-]\s*(.+)$";
-            var match = Regex.Match(content, pattern);
-            if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+            var rawLabel = field.FieldName.Trim();
+
+            var strictLineRx = $@"(?im)^\s*{Regex.Escape(rawLabel)}\s*[:\u003a\u2013\-]+\s*(?<lv>[^\r\n]+)\s*$";
+            var strictLm = Regex.Match(content, strictLineRx);
+            if (strictLm.Success && !string.IsNullOrWhiteSpace(strictLm.Groups["lv"].Value))
             {
-                extracted[token] = match.Groups[1].Value.Trim();
+                extracted[token] = strictLm.Groups["lv"].Value.Trim();
                 continue;
             }
 
-            var inlinePattern =
-                "(?i)" + Regex.Escape(field.FieldName) + @"\s*[:\-]\s*" +
-                @"(?<val>.+?)(?=\s+(?:\r?\n)?[A-Za-z][\w]*\s*[:\-]|$)";
-            var inlineMatch = Regex.Match(content, inlinePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
-            if (inlineMatch.Success)
+            var labelAlt = AlternateLabelMatchersForExtraction(rawLabel);
+            var flexLineRx = $@"(?im)^\s*(?:{labelAlt})\s*[:\u003a\u2013\-]+\s*(?<lv>[^\r\n]+)\s*$";
+            var flexLm = Regex.Match(content, flexLineRx);
+            if (flexLm.Success && !string.IsNullOrWhiteSpace(flexLm.Groups["lv"].Value))
             {
-                var inlineVal = inlineMatch.Groups["val"].Value.Trim();
-                if (!string.IsNullOrWhiteSpace(inlineVal))
-                {
-                    extracted[token] = inlineVal;
-                    continue;
-                }
+                extracted[token] = flexLm.Groups["lv"].Value.Trim();
+                continue;
+            }
+
+            var siblingStop = BuildSiblingLabelStopAheadForExtraction(rawLabel, allNamesTrimmed);
+            var strictInlineRx = $@"(?is)(?:^|[\s,;])(?:{Regex.Escape(rawLabel)})\s*[:\u003a\u2013\-]+\s*(?<mv>.+?){siblingStop}";
+            var si = Regex.Match(content, strictInlineRx);
+            if (si.Success && !string.IsNullOrWhiteSpace(si.Groups["mv"].Value))
+            {
+                extracted[token] = si.Groups["mv"].Value.Trim();
+                continue;
+            }
+
+            var flexInlineRx = $@"(?is)(?:^|[\s,;])(?:{labelAlt})\s*[:\u003a\u2013\-]+\s*(?<mv>.+?){siblingStop}";
+            var fi = Regex.Match(content, flexInlineRx);
+            if (fi.Success && !string.IsNullOrWhiteSpace(fi.Groups["mv"].Value))
+            {
+                extracted[token] = fi.Groups["mv"].Value.Trim();
+                continue;
             }
 
             if (!string.IsNullOrWhiteSpace(field.ExampleValue))
