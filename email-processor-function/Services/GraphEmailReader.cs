@@ -94,9 +94,9 @@ public class GraphEmailReader : IGraphEmailReader
                 cfg.QueryParameters.Top = maxEmails;
                 cfg.QueryParameters.Orderby = new[] { "receivedDateTime desc" };
                 cfg.QueryParameters.Select = new[] { "id", "subject", "from", "receivedDateTime", "hasAttachments", "categories", "flag" };
-                // Skip legacy "Completed" category from older runs, and native follow-up "Mark complete" state.
-                cfg.QueryParameters.Filter =
-                    $"not(categories/any(c:c eq '{CompletedCategory}')) and not(flag/flagStatus eq 'complete')";
+                // OData: combining flag/flagStatus filter with receivedDateTime order triggers InefficientFilter on Exchange.
+                // Skip legacy "Completed" category in $filter only; exclude flag-complete in-memory below.
+                cfg.QueryParameters.Filter = $"not(categories/any(c:c eq '{CompletedCategory}'))";
             }, cancellationToken);
 
         var allFetched = messagesPage?.Value ?? new List<Message>();
