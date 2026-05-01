@@ -1210,6 +1210,14 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         workflowContext["extractionJson"] = JsonSerializer.Serialize(extracted);
+        // Transparent diagnostics for Property Hub preview (won't collide with sane user field tokens).
+        workflowContext["workflowMeta_extractionTemplateId"] =
+            extractionTemplateId.Value.ToString(CultureInfo.InvariantCulture);
+        workflowContext["workflowMeta_extractionFieldsDefined"] =
+            fields.Count.ToString(CultureInfo.InvariantCulture);
+        workflowContext["workflowMeta_extractionFieldsCaptured"] =
+            extracted.Count.ToString(CultureInfo.InvariantCulture);
+
         _logger.LogInformation(
             "RunExtraction template {TemplateId} extracted {Count} field(s).",
             extractionTemplateId.Value,

@@ -897,9 +897,11 @@ const DocumentHub: React.FC = () => {
           <>
             <p className="mt-2 text-[11px] text-slate-500">
               Each message may include{' '}
-              <code className="rounded bg-slate-100 px-1">workflowContextPreview</code> (summarisation, extracted field
-              tokens, and a truncated <code className="rounded bg-slate-100 px-1">extractionJson</code>). Classification
-              stays on the existing top-level fields on each message.
+              <code className="rounded bg-slate-100 px-1">workflowContextPreview</code> (summarisation, template-driven
+              field tokens from <code className="rounded bg-slate-100 px-1">RunExtraction</code>,{' '}
+              <code className="rounded bg-slate-100 px-1">workflowMeta_extractionTemplateId</code>, and truncated{' '}
+              <code className="rounded bg-slate-100 px-1">extractionJson</code>). Partial or noisy values usually mean the
+              line/inline patterns matched the wrong stretch of the email+PDF bundle, not that a generic extractor ran.
             </p>
             <pre className="mt-2 max-h-[36rem] overflow-auto rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
               {JSON.stringify(emailProcessingResult, null, 2)}
