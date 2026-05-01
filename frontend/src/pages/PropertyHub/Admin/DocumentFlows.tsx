@@ -982,8 +982,7 @@ const DocumentFlows: React.FC = () => {
                       .map((field) => field.fieldName?.trim() ?? '')
                       .filter((name) => name.length > 0)
                       .map((name) => `{field:${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')}}`)
-                      .filter((token) => token !== '{field:}')
-                      .slice(0, 12);
+                      .filter((token) => token !== '{field:}');
 
                     return (
                       <>
