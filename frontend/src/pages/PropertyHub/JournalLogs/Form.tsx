@@ -41,6 +41,7 @@ const JournalLogForm: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
   const [currentLogId, setCurrentLogId] = useState<number | null>(journalLogId);
+  const [propertyGroupFilterId, setPropertyGroupFilterId] = useState<number | undefined>(undefined);
 
   // Form state
   const [formData, setFormData] = useState<CreateJournalLogRequest>({
@@ -108,6 +109,14 @@ const JournalLogForm: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!formData.propertyId) return;
+    const selectedProperty = properties.find((p) => p.propertyId === formData.propertyId);
+    if (selectedProperty?.propertyGroupId && selectedProperty.propertyGroupId !== propertyGroupFilterId) {
+      setPropertyGroupFilterId(selectedProperty.propertyGroupId);
+    }
+  }, [formData.propertyId, properties, propertyGroupFilterId]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -212,6 +221,16 @@ const JournalLogForm: React.FC = () => {
 
   const selectedJournalType = journalTypes.find(t => t.journalTypeId === formData.journalTypeId);
   const availableSubTypes = selectedJournalType?.subTypes || [];
+  const propertyGroups = Array.from(
+    new Map(
+      properties
+        .filter((p) => p.propertyGroupId > 0)
+        .map((p) => [p.propertyGroupId, { propertyGroupId: p.propertyGroupId, propertyGroupName: p.propertyGroupName }])
+    ).values()
+  );
+  const propertiesForGroup = propertyGroupFilterId
+    ? properties.filter((p) => p.propertyGroupId === propertyGroupFilterId)
+    : properties;
   
   // Filter tenancies by selected property
   const availableTenancies = formData.propertyId
@@ -245,24 +264,53 @@ const JournalLogForm: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Property Group
+            </label>
+            <select
+              value={propertyGroupFilterId ?? ''}
+              onChange={(e) => {
+                const nextGroupId = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                setPropertyGroupFilterId(nextGroupId);
+                setFormData({
+                  ...formData,
+                  propertyId: 0,
+                  tenancyId: undefined,
+                  tenantId: undefined,
+                });
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">All property groups</option>
+              {propertyGroups.map((g) => (
+                <option key={g.propertyGroupId} value={g.propertyGroupId}>
+                  {g.propertyGroupName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Property *
             </label>
             <select
               value={formData.propertyId}
               onChange={(e) => {
                 const newPropertyId = parseInt(e.target.value);
+                const selectedProperty = properties.find((p) => p.propertyId === newPropertyId);
                 setFormData({
                   ...formData,
                   propertyId: newPropertyId,
                   tenancyId: undefined, // Reset when property changes
                   tenantId: undefined,
                 });
+                setPropertyGroupFilterId(selectedProperty?.propertyGroupId);
               }}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="0">Select Property</option>
-              {properties.map(p => (
+              {propertiesForGroup.map(p => (
                 <option key={p.propertyId} value={p.propertyId}>{p.propertyName}</option>
               ))}
             </select>
