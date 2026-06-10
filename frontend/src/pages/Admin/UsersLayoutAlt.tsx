@@ -3,7 +3,7 @@ import {
   adminService,
   CreateUserRequest,
   ResetPasswordRequest,
-  RoleResponseDto,
+  RoleTypeDto,
   UpdateUserRequest,
   UserResponseDto,
 } from '../../services/adminService';
@@ -18,31 +18,36 @@ const UsersLayoutAlt: React.FC = () => {
   const [generatedTempPassword, setGeneratedTempPassword] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [roles, setRoles] = useState<RoleResponseDto[]>([]);
+  const [roleTypes, setRoleTypes] = useState<RoleTypeDto[]>([]);
+  const [roleTypesLoading, setRoleTypesLoading] = useState(false);
+  const [roleTypesError, setRoleTypesError] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
-    loadRoles();
   }, []);
 
-  const loadRoles = async () => {
+  useEffect(() => {
+    if (showModal || editingUser) {
+      loadRoleTypes();
+    }
+  }, [showModal, editingUser]);
+
+  const loadRoleTypes = async () => {
     try {
-      const data = await adminService.getRoles();
-      setRoles(data);
-    } catch (err) {
-      console.error('Failed to load roles', err);
+      setRoleTypesLoading(true);
+      setRoleTypesError(null);
+      const data = await adminService.getRoleTypes();
+      setRoleTypes(data);
+    } catch (err: any) {
+      setRoleTypes([]);
+      setRoleTypesError(err.message || 'Failed to load role types');
+    } finally {
+      setRoleTypesLoading(false);
     }
   };
 
-  const parseRoleTypeIds = (formData: FormData): number[] => {
-    const selectedRoleIds = formData
-      .getAll('roleIds')
-      .map((value) => parseInt(value as string, 10));
-    const roleTypeIds = selectedRoleIds
-      .map((roleId) => roles.find((role) => role.roleId === roleId)?.roleTypeId)
-      .filter((id): id is number => id !== undefined);
-    return [...new Set(roleTypeIds)];
-  };
+  const parseRoleTypeIds = (formData: FormData): number[] =>
+    formData.getAll('roleTypeIds').map((value) => parseInt(value as string, 10));
 
   const loadUsers = async () => {
     try {
@@ -313,8 +318,8 @@ const UsersLayoutAlt: React.FC = () => {
 
       {/* Create User Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-slate-900/45 backdrop-blur-sm">
-          <div className="relative top-16 mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm sm:p-6">
+          <div className="my-8 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <h3 className="mb-4 text-lg font-semibold text-slate-900">Create User</h3>
             <form onSubmit={handleCreateUser}>
               <div className="mb-4">
@@ -334,6 +339,30 @@ const UsersLayoutAlt: React.FC = () => {
                 <input type="text" name="lastName" className="field" />
               </div>
               <div className="mb-4">
+                <label className="mb-2 block text-sm font-medium text-slate-700">Role Types</label>
+                {roleTypesLoading ? (
+                  <p className="text-sm text-slate-500">Loading role types...</p>
+                ) : roleTypesError ? (
+                  <p className="text-sm text-red-600">{roleTypesError}</p>
+                ) : roleTypes.length === 0 ? (
+                  <p className="text-sm text-slate-500">No role types found in tblRoleType.</p>
+                ) : (
+                  <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
+                    {roleTypes.map((roleType) => (
+                      <label key={roleType.roleTypeId} className="flex items-center gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          name="roleTypeIds"
+                          value={roleType.roleTypeId}
+                          className="rounded border-slate-300"
+                        />
+                        {roleType.roleTypeName}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="mb-4">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Default Landing Page</label>
                 <input
                   type="text"
@@ -344,31 +373,6 @@ const UsersLayoutAlt: React.FC = () => {
                 <p className="mt-1 text-xs text-slate-500">
                   Path to redirect user after login (e.g., /Admin, /Property Hub/Home)
                 </p>
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium text-slate-700">Roles</label>
-                {roles.length === 0 ? (
-                  <p className="text-sm text-slate-500">No roles available.</p>
-                ) : (
-                  <div className="space-y-2 rounded-lg border border-slate-200 p-3">
-                    {roles.map((role) => (
-                      <label key={role.roleId} className="flex items-start gap-2 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          name="roleIds"
-                          value={role.roleId}
-                          className="mt-0.5 rounded border-slate-300"
-                        />
-                        <span>
-                          <span className="font-medium">{role.roleName}</span>
-                          {role.roleTypeName && role.roleTypeName !== role.roleName ? (
-                            <span className="mt-0.5 block text-xs text-slate-500">{role.roleTypeName}</span>
-                          ) : null}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">
@@ -385,8 +389,8 @@ const UsersLayoutAlt: React.FC = () => {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-slate-900/45 backdrop-blur-sm">
-          <div className="relative top-16 mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm sm:p-6">
+          <div className="my-8 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <h3 className="mb-4 text-lg font-semibold text-slate-900">Edit User</h3>
             <form onSubmit={handleUpdateUser}>
               <div className="mb-4">
@@ -405,6 +409,34 @@ const UsersLayoutAlt: React.FC = () => {
               <div className="mb-4">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Last Name</label>
                 <input type="text" name="lastName" defaultValue={editingUser.lastName || ''} className="field" />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-medium text-slate-700">Role Types</label>
+                {roleTypesLoading ? (
+                  <p className="text-sm text-slate-500">Loading role types...</p>
+                ) : roleTypesError ? (
+                  <p className="text-sm text-red-600">{roleTypesError}</p>
+                ) : roleTypes.length === 0 ? (
+                  <p className="text-sm text-slate-500">No role types found in tblRoleType.</p>
+                ) : (
+                  <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
+                    {roleTypes.map((roleType) => {
+                      const assignedRoleTypeIds = editingUser.roles.map((userRole) => userRole.roleId);
+                      return (
+                        <label key={roleType.roleTypeId} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            name="roleTypeIds"
+                            value={roleType.roleTypeId}
+                            defaultChecked={assignedRoleTypeIds.includes(roleType.roleTypeId)}
+                            className="rounded border-slate-300"
+                          />
+                          {roleType.roleTypeName}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="mb-4">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
@@ -434,35 +466,6 @@ const UsersLayoutAlt: React.FC = () => {
                 <p className="mt-1 text-xs text-slate-500">
                   Path to redirect user after login (e.g., /Admin, /Property Hub/Home)
                 </p>
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium text-slate-700">Roles</label>
-                {roles.length === 0 ? (
-                  <p className="text-sm text-slate-500">No roles available.</p>
-                ) : (
-                  <div className="space-y-2 rounded-lg border border-slate-200 p-3">
-                    {roles.map((role) => {
-                      const assignedRoleTypeIds = editingUser.roles.map((userRole) => userRole.roleId);
-                      return (
-                        <label key={role.roleId} className="flex items-start gap-2 text-sm text-slate-700">
-                          <input
-                            type="checkbox"
-                            name="roleIds"
-                            value={role.roleId}
-                            defaultChecked={assignedRoleTypeIds.includes(role.roleTypeId)}
-                            className="mt-0.5 rounded border-slate-300"
-                          />
-                          <span>
-                            <span className="font-medium">{role.roleName}</span>
-                            {role.roleTypeName && role.roleTypeName !== role.roleName ? (
-                              <span className="mt-0.5 block text-xs text-slate-500">{role.roleTypeName}</span>
-                            ) : null}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setEditingUser(null)} className="btn-secondary">

@@ -45,10 +45,19 @@ public class RoleRepository : IRoleRepository
 
     public async Task<List<RoleType>> GetAllRoleTypesAsync()
     {
-        return await _context.RoleTypes
-            .Where(rt => rt.Active != false)
-            .OrderBy(rt => rt.RoleTypeName)
-            .ToListAsync();
+        try
+        {
+            return await _context.RoleTypes
+                .Where(rt => rt.Active == null || rt.Active == true)
+                .OrderBy(rt => rt.RoleTypeName)
+                .ToListAsync();
+        }
+        catch
+        {
+            return await _context.RoleTypes
+                .OrderBy(rt => rt.RoleTypeName)
+                .ToListAsync();
+        }
     }
 
     public async Task<RoleType?> GetRoleTypeByIdAsync(int roleTypeId)

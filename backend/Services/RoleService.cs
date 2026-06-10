@@ -15,21 +15,30 @@ public class RoleService : IRoleService
 
     public async Task<List<RoleResponseDto>> GetAllRolesAsync()
     {
+        var roleTypes = await _roleRepository.GetAllRoleTypesAsync();
+        var roleTypesById = roleTypes.ToDictionary(rt => rt.RoleTypeId);
+
         var roles = await _roleRepository.GetAllAsync();
-        if (roles.Count > 0)
-        {
-            return roles.Select(r => new RoleResponseDto
+        var definitionRoles = roles
+            .Where(r => !string.IsNullOrWhiteSpace(r.RoleName))
+            .Select(r => new RoleResponseDto
             {
                 RoleId = r.RoleId,
                 RoleName = r.RoleName,
                 RoleTypeId = r.RoleTypeId,
-                RoleTypeName = r.RoleType?.RoleTypeName ?? string.Empty,
+                RoleTypeName = r.RoleType?.RoleTypeName
+                    ?? roleTypesById.GetValueOrDefault(r.RoleTypeId)?.RoleTypeName
+                    ?? string.Empty,
                 CreatedDate = r.CreatedDate
-            }).ToList();
+            })
+            .ToList();
+
+        if (definitionRoles.Count > 0)
+        {
+            return definitionRoles;
         }
 
-        // Fallback when tblRole has no definition rows yet.
-        var roleTypes = await _roleRepository.GetAllRoleTypesAsync();
+        // tblRole may be a legacy junction table; expose assignable options from tblRoleType.
         return roleTypes.Select(rt => new RoleResponseDto
         {
             RoleId = rt.RoleTypeId,
