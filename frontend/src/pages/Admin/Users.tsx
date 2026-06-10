@@ -3,6 +3,7 @@ import {
   adminService,
   CreateUserRequest,
   ResetPasswordRequest,
+  RoleResponseDto,
   UpdateUserRequest,
   UserResponseDto,
 } from '../../services/adminService';
@@ -17,10 +18,31 @@ const Users: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserResponseDto | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [roles, setRoles] = useState<RoleResponseDto[]>([]);
 
   useEffect(() => {
     loadUsers();
+    loadRoles();
   }, []);
+
+  const loadRoles = async () => {
+    try {
+      const data = await adminService.getRoles();
+      setRoles(data);
+    } catch (err) {
+      console.error('Failed to load roles', err);
+    }
+  };
+
+  const parseRoleTypeIds = (formData: FormData): number[] => {
+    const selectedRoleIds = formData
+      .getAll('roleIds')
+      .map((value) => parseInt(value as string, 10));
+    const roleTypeIds = selectedRoleIds
+      .map((roleId) => roles.find((role) => role.roleId === roleId)?.roleTypeId)
+      .filter((id): id is number => id !== undefined);
+    return [...new Set(roleTypeIds)];
+  };
 
   const loadUsers = async () => {
     try {
@@ -43,7 +65,7 @@ const Users: React.FC = () => {
       firstName: formData.get('firstName') as string || undefined,
       lastName: formData.get('lastName') as string || undefined,
       defaultLoginLandingPage: formData.get('defaultLoginLandingPage') as string || undefined,
-      roleIds: [], // TODO: Add role selection UI
+      roleIds: parseRoleTypeIds(formData),
     };
 
     try {
@@ -68,7 +90,7 @@ const Users: React.FC = () => {
       defaultLoginLandingPage: defaultLandingPageValue && defaultLandingPageValue.trim() !== '' 
         ? defaultLandingPageValue.trim() 
         : undefined,
-      roleIds: [], // TODO: Add role selection UI
+      roleIds: parseRoleTypeIds(formData),
     };
 
     try {
@@ -409,6 +431,31 @@ const Users: React.FC = () => {
                   Path to redirect user after login (e.g., /Admin, /Property Hub/Home)
                 </p>
               </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-medium text-slate-700">Roles</label>
+                {roles.length === 0 ? (
+                  <p className="text-sm text-slate-500">No roles available.</p>
+                ) : (
+                  <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+                    {roles.map((role) => (
+                      <label key={role.roleId} className="flex items-start gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          name="roleIds"
+                          value={role.roleId}
+                          className="mt-0.5 rounded border-slate-300"
+                        />
+                        <span>
+                          <span className="font-medium">{role.roleName}</span>
+                          {role.roleTypeName && role.roleTypeName !== role.roleName ? (
+                            <span className="mt-0.5 block text-xs text-slate-500">{role.roleTypeName}</span>
+                          ) : null}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
@@ -495,6 +542,35 @@ const Users: React.FC = () => {
                 <p className="mt-1 text-xs text-slate-500">
                   Path to redirect user after login (e.g., /Admin, /Property Hub/Home)
                 </p>
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-medium text-slate-700">Roles</label>
+                {roles.length === 0 ? (
+                  <p className="text-sm text-slate-500">No roles available.</p>
+                ) : (
+                  <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+                    {roles.map((role) => {
+                      const assignedRoleTypeIds = editingUser.roles.map((userRole) => userRole.roleId);
+                      return (
+                        <label key={role.roleId} className="flex items-start gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            name="roleIds"
+                            value={role.roleId}
+                            defaultChecked={assignedRoleTypeIds.includes(role.roleTypeId)}
+                            className="mt-0.5 rounded border-slate-300"
+                          />
+                          <span>
+                            <span className="font-medium">{role.roleName}</span>
+                            {role.roleTypeName && role.roleTypeName !== role.roleName ? (
+                              <span className="mt-0.5 block text-xs text-slate-500">{role.roleTypeName}</span>
+                            ) : null}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <button

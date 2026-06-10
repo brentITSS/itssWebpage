@@ -14,21 +14,41 @@ public class RoleRepository : IRoleRepository
 
     public async Task<List<Role>> GetAllAsync()
     {
-        // tblRole table doesn't exist - return empty list
-        // Service layer will handle converting RoleType to RoleResponseDto
-        return new List<Role>();
+        try
+        {
+            return await _context.Roles
+                .Include(r => r.RoleType)
+                .OrderBy(r => r.RoleType!.RoleTypeName)
+                .ThenBy(r => r.RoleName)
+                .ToListAsync();
+        }
+        catch
+        {
+            // tblRole may be a legacy user-role junction table without roleName.
+            return new List<Role>();
+        }
     }
 
     public async Task<Role?> GetByIdAsync(int roleId)
     {
-        // tblRole table doesn't exist - return null
-        // Service layer will handle converting RoleType to RoleResponseDto
-        return null;
+        try
+        {
+            return await _context.Roles
+                .Include(r => r.RoleType)
+                .FirstOrDefaultAsync(r => r.RoleId == roleId);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<List<RoleType>> GetAllRoleTypesAsync()
     {
-        return await _context.RoleTypes.ToListAsync();
+        return await _context.RoleTypes
+            .Where(rt => rt.Active != false)
+            .OrderBy(rt => rt.RoleTypeName)
+            .ToListAsync();
     }
 
     public async Task<RoleType?> GetRoleTypeByIdAsync(int roleTypeId)
@@ -58,7 +78,7 @@ public class RoleRepository : IRoleRepository
     {
         return await _context.UserRoles
             .Include(ur => ur.RoleType)
-            .Where(ur => ur.UserId == userId)
+            .Where(ur => ur.UserId == userId && ur.Active)
             .ToListAsync();
     }
 

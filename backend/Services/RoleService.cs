@@ -15,21 +15,46 @@ public class RoleService : IRoleService
 
     public async Task<List<RoleResponseDto>> GetAllRolesAsync()
     {
-        // Since tblRole doesn't exist, return RoleTypes as roles
+        var roles = await _roleRepository.GetAllAsync();
+        if (roles.Count > 0)
+        {
+            return roles.Select(r => new RoleResponseDto
+            {
+                RoleId = r.RoleId,
+                RoleName = r.RoleName,
+                RoleTypeId = r.RoleTypeId,
+                RoleTypeName = r.RoleType?.RoleTypeName ?? string.Empty,
+                CreatedDate = r.CreatedDate
+            }).ToList();
+        }
+
+        // Fallback when tblRole has no definition rows yet.
         var roleTypes = await _roleRepository.GetAllRoleTypesAsync();
         return roleTypes.Select(rt => new RoleResponseDto
         {
-            RoleId = rt.RoleTypeId, // Use RoleTypeId as RoleId
-            RoleName = rt.RoleTypeName, // Use RoleTypeName as RoleName
+            RoleId = rt.RoleTypeId,
+            RoleName = rt.RoleTypeName,
             RoleTypeId = rt.RoleTypeId,
             RoleTypeName = rt.RoleTypeName,
-            CreatedDate = DateTime.UtcNow // RoleType doesn't have CreatedDate, use current date
+            CreatedDate = DateTime.UtcNow
         }).ToList();
     }
 
     public async Task<RoleResponseDto?> GetRoleByIdAsync(int roleId)
     {
-        // Since tblRole doesn't exist, treat roleId as roleTypeId
+        var role = await _roleRepository.GetByIdAsync(roleId);
+        if (role != null)
+        {
+            return new RoleResponseDto
+            {
+                RoleId = role.RoleId,
+                RoleName = role.RoleName,
+                RoleTypeId = role.RoleTypeId,
+                RoleTypeName = role.RoleType?.RoleTypeName ?? string.Empty,
+                CreatedDate = role.CreatedDate
+            };
+        }
+
         var roleType = await _roleRepository.GetRoleTypeByIdAsync(roleId);
         if (roleType == null) return null;
 

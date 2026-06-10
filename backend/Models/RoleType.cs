@@ -20,7 +20,7 @@ public class RoleType
     public string? Description { get; set; }
 
     [Column("active")]
-    public bool Active { get; set; } = true;
+    public bool? Active { get; set; }
 
     // Navigation properties
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();

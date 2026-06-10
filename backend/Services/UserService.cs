@@ -112,8 +112,8 @@ public class UserService : IUserService
                 : request.DefaultLoginLandingPage.Trim();
         }
 
-        // Update roles if provided
-        if (request.RoleIds != null && request.RoleIds.Any())
+        // Update roles if provided (empty list clears all roles)
+        if (request.RoleIds != null)
         {
             var currentRoles = await _roleRepository.GetUserRolesAsync(userId);
             var currentRoleTypeIds = currentRoles.Select(ur => ur.RoleTypeId).ToList();

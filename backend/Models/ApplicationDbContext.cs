@@ -12,8 +12,7 @@ public class ApplicationDbContext : DbContext
     // User & Roles
     public DbSet<User> Users { get; set; }
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
-    // Note: Role model exists but tblRole table doesn't - using RoleType and UserRole instead
-    // public DbSet<Role> Roles { get; set; }
+    public DbSet<Role> Roles { get; set; }
     public DbSet<RoleType> RoleTypes { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
 
@@ -72,6 +71,47 @@ public class ApplicationDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // Configure relationships and indexes
+        modelBuilder.Entity<RoleType>(entity =>
+        {
+            entity.ToTable("tblRoleType");
+            entity.HasKey(rt => rt.RoleTypeId);
+            entity.Property(rt => rt.RoleTypeId).HasColumnName("roleTypeID");
+            entity.Property(rt => rt.RoleTypeName).HasColumnName("roleType").HasMaxLength(100);
+            entity.Property(rt => rt.Description).HasColumnName("description").HasMaxLength(500);
+            entity.Property(rt => rt.Active).HasColumnName("active");
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.ToTable("tblRole");
+            entity.HasKey(r => r.RoleId);
+            entity.Property(r => r.RoleId).HasColumnName("roleID");
+            entity.Property(r => r.RoleName).HasColumnName("roleName").HasMaxLength(100);
+            entity.Property(r => r.RoleTypeId).HasColumnName("roleTypeID");
+            entity.Property(r => r.CreatedDate).HasColumnName("createdDate");
+            entity.Property(r => r.ModifiedDate).HasColumnName("modifiedDate");
+
+            entity.HasOne(r => r.RoleType)
+                .WithMany(rt => rt.Roles)
+                .HasForeignKey(r => r.RoleTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.ToTable("tblUserRole");
+            entity.HasKey(ur => ur.UserRoleId);
+            entity.Property(ur => ur.UserRoleId).HasColumnName("roleID");
+            entity.Property(ur => ur.UserId).HasColumnName("userID");
+            entity.Property(ur => ur.RoleTypeId).HasColumnName("roleTypeID");
+            entity.Property(ur => ur.Active).HasColumnName("active");
+
+            entity.HasOne(ur => ur.RoleType)
+                .WithMany()
+                .HasForeignKey(ur => ur.RoleTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<UserRole>()
             .HasIndex(ur => new { ur.UserId, ur.RoleTypeId })
             .IsUnique();
