@@ -1,5 +1,5 @@
 name: Deploy Frontend to Hostinger
-# Manual retrigger marker: keep this comment for path-filter based reruns. Triggered 2026-04-23.
+# Manual retrigger marker: keep this comment for path-filter based reruns. Triggered 2026-06-10.
 
 on:
   push:
