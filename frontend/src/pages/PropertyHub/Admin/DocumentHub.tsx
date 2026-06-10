@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -1127,18 +1126,6 @@ const DocumentHub: React.FC = () => {
                   </p>
                 </div>
               )}
-            </div>
-            <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-900">
-              <p className="font-semibold">Document Flows moved</p>
-              <p className="mt-1">
-                Workflow creation and testing now live on a dedicated page for better spacing on mobile and tablet.
-              </p>
-              <Link
-                to="/Property Hub/Admin/Document Flows"
-                className="mt-2 inline-flex items-center rounded border border-indigo-200 bg-white px-2 py-1 text-[11px] font-medium text-indigo-700 hover:border-indigo-300"
-              >
-                Open Document Flows
-              </Link>
             </div>
           </div>
         </div>
