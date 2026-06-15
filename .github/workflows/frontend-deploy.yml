@@ -1,5 +1,5 @@
 name: Deploy Frontend to Hostinger
-# Manual retrigger marker: keep this comment for path-filter based reruns. Triggered 2026-06-10 ftps-vars-ok.
+# Manual retrigger marker: keep this comment for path-filter based reruns. Triggered 2026-06-10 default-ftps.
 
 on:
   push:
@@ -19,8 +19,9 @@ jobs:
     timeout-minutes: 45
     environment: production
     # Optional repo Settings → Variables: HOSTINGER_FTP_PROTOCOL (ftp | ftps | ftps-legacy), HOSTINGER_FTP_PORT (e.g. 21).
+    # Default ftps — plain ftp on :21 often ETIMEDOUT from GitHub-hosted runners.
     env:
-      FTP_DEPLOY_PROTOCOL: ${{ vars.HOSTINGER_FTP_PROTOCOL != '' && vars.HOSTINGER_FTP_PROTOCOL || 'ftp' }}
+      FTP_DEPLOY_PROTOCOL: ${{ vars.HOSTINGER_FTP_PROTOCOL != '' && vars.HOSTINGER_FTP_PROTOCOL || 'ftps' }}
       FTP_DEPLOY_PORT: ${{ vars.HOSTINGER_FTP_PORT != '' && vars.HOSTINGER_FTP_PORT || '21' }}
 
     steps:
@@ -48,6 +49,11 @@ jobs:
           fi
           echo "FTP secrets are present."
           echo "Optional repo Variables: HOSTINGER_FTP_PROTOCOL (ftp | ftps | ftps-legacy), HOSTINGER_FTP_PORT (default 21)."
+
+      - name: Log FTP deploy protocol
+        run: |
+          echo "FTP deploy protocol: ${{ env.FTP_DEPLOY_PROTOCOL }}"
+          echo "FTP deploy port: ${{ env.FTP_DEPLOY_PORT }}"
 
       - name: Create .env.production file
         working-directory: ./frontend
