@@ -13,6 +13,8 @@ BEGIN
         WorkflowName NVARCHAR(200) NULL,
         Status NVARCHAR(40) NOT NULL,
         ErrorMessage NVARCHAR(MAX) NULL,
+        SummarisationText NVARCHAR(MAX) NULL,
+        ExtractionJson NVARCHAR(MAX) NULL,
         StartedDate DATETIME2 NOT NULL CONSTRAINT DF_tbldocumentworkflowauditrun_StartedDate DEFAULT (SYSUTCDATETIME()),
         CompletedDate DATETIME2 NULL
     );

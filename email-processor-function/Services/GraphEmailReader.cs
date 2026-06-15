@@ -355,6 +355,8 @@ public class GraphEmailReader : IGraphEmailReader
                         auditRunId.Value,
                         "NoRuleMatched",
                         null,
+                        null,
+                        null,
                         cancellationToken);
                 }
                 return (
@@ -515,11 +517,14 @@ public class GraphEmailReader : IGraphEmailReader
                     {
                         if (auditConnection != null && auditRunId.HasValue)
                         {
+                            var (failedSummary, failedExtraction) = ExtractAuditOutputsFromWorkflowContext(workflowContext);
                             await FinalizeWorkflowAuditRunAsync(
                                 auditConnection,
                                 auditRunId.Value,
                                 "Failed",
                                 $"{step.StepType}: {ex.Message}",
+                                failedSummary,
+                                failedExtraction,
                                 cancellationToken);
                         }
                         var safeError = SanitizeStatusSegment(ex.Message);
@@ -535,11 +540,14 @@ public class GraphEmailReader : IGraphEmailReader
 
             if (auditConnection != null && auditRunId.HasValue)
             {
+                var (completedSummary, completedExtraction) = ExtractAuditOutputsFromWorkflowContext(workflowContext);
                 await FinalizeWorkflowAuditRunAsync(
                     auditConnection,
                     auditRunId.Value,
                     "Completed",
                     null,
+                    completedSummary,
+                    completedExtraction,
                     cancellationToken);
             }
 
@@ -574,6 +582,8 @@ public class GraphEmailReader : IGraphEmailReader
                     WorkflowName NVARCHAR(200) NULL,
                     Status NVARCHAR(40) NOT NULL,
                     ErrorMessage NVARCHAR(MAX) NULL,
+                    SummarisationText NVARCHAR(MAX) NULL,
+                    ExtractionJson NVARCHAR(MAX) NULL,
                     StartedDate DATETIME2 NOT NULL CONSTRAINT DF_tbldocumentworkflowauditrun_StartedDate DEFAULT (SYSUTCDATETIME()),
                     CompletedDate DATETIME2 NULL
                 );
@@ -599,6 +609,12 @@ public class GraphEmailReader : IGraphEmailReader
                 CREATE INDEX IX_tbldocumentworkflowauditstep_RunId_Order
                     ON tbldocumentworkflowauditstep (DocumentWorkflowAuditRunId, StepOrder);
             END;
+
+            IF COL_LENGTH('dbo.tbldocumentworkflowauditrun', 'SummarisationText') IS NULL
+                ALTER TABLE dbo.tbldocumentworkflowauditrun ADD SummarisationText NVARCHAR(MAX) NULL;
+
+            IF COL_LENGTH('dbo.tbldocumentworkflowauditrun', 'ExtractionJson') IS NULL
+                ALTER TABLE dbo.tbldocumentworkflowauditrun ADD ExtractionJson NVARCHAR(MAX) NULL;
             """;
 
         await using var command = new SqlCommand(sql, connection);
@@ -702,12 +718,16 @@ public class GraphEmailReader : IGraphEmailReader
         long auditRunId,
         string status,
         string? errorMessage,
+        string? summarisationText,
+        string? extractionJson,
         CancellationToken cancellationToken)
     {
         const string sql = """
             UPDATE tbldocumentworkflowauditrun
             SET Status = @status,
                 ErrorMessage = @errorMessage,
+                SummarisationText = @summarisationText,
+                ExtractionJson = @extractionJson,
                 CompletedDate = SYSUTCDATETIME()
             WHERE DocumentWorkflowAuditRunId = @auditRunId;
             """;
@@ -715,6 +735,8 @@ public class GraphEmailReader : IGraphEmailReader
         command.Parameters.AddWithValue("@auditRunId", auditRunId);
         command.Parameters.AddWithValue("@status", status);
         command.Parameters.AddWithValue("@errorMessage", (object?)errorMessage ?? DBNull.Value);
+        command.Parameters.AddWithValue("@summarisationText", (object?)summarisationText ?? DBNull.Value);
+        command.Parameters.AddWithValue("@extractionJson", (object?)extractionJson ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -2957,6 +2979,34 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         return preview;
+    }
+
+    private static (string? SummarisationText, string? ExtractionJson) ExtractAuditOutputsFromWorkflowContext(
+        IReadOnlyDictionary<string, string> workflowContext)
+    {
+        if (workflowContext.Count == 0)
+        {
+            return (null, null);
+        }
+
+        string? summarisation = null;
+        if (workflowContext.TryGetValue("summary", out var summary) && !string.IsNullOrWhiteSpace(summary))
+        {
+            summarisation = summary.Trim();
+        }
+        else if (workflowContext.TryGetValue("summarisation", out var summarisationAlt) &&
+                 !string.IsNullOrWhiteSpace(summarisationAlt))
+        {
+            summarisation = summarisationAlt.Trim();
+        }
+
+        string? extractionJson = null;
+        if (workflowContext.TryGetValue("extractionJson", out var extraction) && !string.IsNullOrWhiteSpace(extraction))
+        {
+            extractionJson = extraction.Trim();
+        }
+
+        return (summarisation, extractionJson);
     }
 
     private string GetRequired(string configKey, string envKey)
