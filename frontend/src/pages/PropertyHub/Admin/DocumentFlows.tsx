@@ -99,9 +99,13 @@ const DocumentFlows: React.FC = () => {
 
   const getFriendlyError = useCallback((error: unknown): string => {
     const raw = error instanceof Error ? error.message : 'Unexpected error.';
-    return raw.toLowerCase().includes('404')
-      ? 'Workflow API is unavailable on the backend deployment.'
-      : raw;
+    if (raw.toLowerCase().includes('404')) {
+      return 'Workflow API is unavailable on the backend deployment.';
+    }
+    if (raw.toLowerCase().includes('status: 400')) {
+      return 'Save failed (400). Check Min score is 0–1 and Priority is a whole number (e.g. 100), not 0.28.';
+    }
+    return raw;
   }, []);
 
   const availableClassificationLabels = useMemo(() => {
@@ -258,6 +262,14 @@ const DocumentFlows: React.FC = () => {
       setFeedback('At least one step is required.');
       return;
     }
+    if (!Number.isFinite(workflowMinimumScore) || workflowMinimumScore < 0 || workflowMinimumScore > 1) {
+      setFeedback('Min score must be between 0 and 1. Use 0 for Unclassified workflows.');
+      return;
+    }
+    if (!Number.isInteger(workflowPriority) || workflowPriority < 1) {
+      setFeedback('Priority must be a whole number of 1 or higher (e.g. 100). It is not the confidence score.');
+      return;
+    }
 
     setLoading(true);
     setFeedback('Saving workflow rule...');
@@ -391,9 +403,41 @@ const DocumentFlows: React.FC = () => {
           </datalist>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <input type="number" min={0} max={1} step={0.01} value={workflowMinimumScore} onChange={(e) => setWorkflowMinimumScore(Number(e.target.value || 0.28))} className="rounded border border-slate-300 px-2 py-1" />
-          <input type="number" min={1} value={workflowPriority} onChange={(e) => setWorkflowPriority(Number(e.target.value || 100))} className="rounded border border-slate-300 px-2 py-1" />
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-medium text-slate-600">Min score (0–1)</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={workflowMinimumScore}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setWorkflowMinimumScore(raw === '' ? 0 : Number(raw));
+              }}
+              className="w-full rounded border border-slate-300 px-2 py-1"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-medium text-slate-600">Priority (whole number)</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={workflowPriority}
+              onChange={(e) => {
+                const parsed = Number(e.target.value);
+                setWorkflowPriority(Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : 100);
+              }}
+              className="w-full rounded border border-slate-300 px-2 py-1"
+            />
+          </label>
         </div>
+        {workflowClassificationLabel.trim().toLowerCase() === 'unclassified' && workflowMinimumScore > 0 && (
+          <p className="mt-2 text-[11px] text-amber-700">
+            Unclassified emails usually score below 0.28. Set Min score to <span className="font-semibold">0</span> so this workflow can run.
+          </p>
+        )}
         <label className="mt-2 inline-flex items-center gap-2"><input type="checkbox" checked={workflowStopOnFailure} onChange={(e) => setWorkflowStopOnFailure(e.target.checked)} />Stop on failure</label>
 
         <div className="mt-3 space-y-2 rounded border border-slate-200 bg-slate-50 p-2">
