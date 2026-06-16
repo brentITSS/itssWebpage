@@ -25,7 +25,7 @@ jobs:
     #   HOSTINGER_FTP_PORT = 21
     # Secrets for ssh: HOSTINGER_SSH_PRIVATE_KEY (PEM RSA private key; public key in hPanel → SSH Access)
     env:
-      DEPLOY_METHOD: ${{ vars.HOSTINGER_DEPLOY_METHOD != '' && vars.HOSTINGER_DEPLOY_METHOD || 'ftp' }}
+      DEPLOY_METHOD: ${{ vars.HOSTINGER_DEPLOY_METHOD != '' && vars.HOSTINGER_DEPLOY_METHOD || 'ssh' }}
       SSH_DEPLOY_PORT: ${{ vars.HOSTINGER_SSH_PORT != '' && vars.HOSTINGER_SSH_PORT || '65002' }}
       FTP_DEPLOY_PROTOCOL: ${{ vars.HOSTINGER_FTP_PROTOCOL != '' && vars.HOSTINGER_FTP_PROTOCOL || 'ftps' }}
       FTP_DEPLOY_PORT: ${{ vars.HOSTINGER_FTP_PORT != '' && vars.HOSTINGER_FTP_PORT || '21' }}
