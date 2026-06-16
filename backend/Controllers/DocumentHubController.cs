@@ -1397,8 +1397,52 @@ public class DocumentHubController : ControllerBase
             StartedDate = run.StartedDate,
             CompletedDate = run.CompletedDate,
             SummarisationText = run.SummarisationText,
-            ExtractionSnapshots = snapshots ?? new List<DocumentWorkflowExtractionSnapshotDto>()
+            ExtractionSnapshots = ResolveExtractionSnapshots(run, snapshots)
         };
+    }
+
+    private static List<DocumentWorkflowExtractionSnapshotDto> ResolveExtractionSnapshots(
+        DocumentWorkflowAuditRun run,
+        List<DocumentWorkflowExtractionSnapshotDto>? snapshots)
+    {
+        if (snapshots is { Count: > 0 })
+        {
+            return snapshots;
+        }
+
+        return ParseExtractionJsonSnapshots(run.ExtractionJson);
+    }
+
+    private static List<DocumentWorkflowExtractionSnapshotDto> ParseExtractionJsonSnapshots(string? extractionJson)
+    {
+        if (string.IsNullOrWhiteSpace(extractionJson))
+        {
+            return new List<DocumentWorkflowExtractionSnapshotDto>();
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(extractionJson);
+            if (parsed == null || parsed.Count == 0)
+            {
+                return new List<DocumentWorkflowExtractionSnapshotDto>();
+            }
+
+            return parsed
+                .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
+                .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(kv => new DocumentWorkflowExtractionSnapshotDto
+                {
+                    FieldName = kv.Key.Trim(),
+                    FieldValue = string.IsNullOrWhiteSpace(kv.Value) ? null : kv.Value.Trim(),
+                    Comments = null
+                })
+                .ToList();
+        }
+        catch
+        {
+            return new List<DocumentWorkflowExtractionSnapshotDto>();
+        }
     }
 
     private static DocumentWorkflowExtractionSnapshotDto MapExtractionSnapshot(DocumentWorkflowExtractionSnapshot snapshot)

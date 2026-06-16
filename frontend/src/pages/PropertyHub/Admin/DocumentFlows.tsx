@@ -1321,7 +1321,9 @@ const DocumentFlows: React.FC = () => {
                             </table>
                           </div>
                         ) : (
-                          <p className="text-slate-500">No extraction snapshot rows for this run.</p>
+                          <p className="text-slate-500">
+                            No extracted fields for this run. The workflow may not include a RunExtraction step, extraction returned no values, or this run completed before extraction reporting was enabled. Re-process an email after deploy to populate snapshots.
+                          </p>
                         )}
                       </div>
                     </details>
