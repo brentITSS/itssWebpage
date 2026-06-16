@@ -20,6 +20,10 @@ import {
   type TenancyResponseDto,
   type TenantResponseDto,
 } from '../../../services/propertyAdminService';
+import {
+  canExportWorkflowRunHistoryPdf,
+  exportWorkflowRunHistoryPdf,
+} from '../../../utils/workflowRunHistoryPdf';
 
 type EditableWorkflowStep = UpsertDocumentWorkflowStepRequest;
 const OUTLOOK_CATEGORY_COLORS: Array<{ value: string; label: string; hex: string }> = [
@@ -125,6 +129,7 @@ const DocumentFlows: React.FC = () => {
   const [runHistoryError, setRunHistoryError] = useState<string | null>(null);
   const [runHistory, setRunHistory] = useState<DocumentWorkflowRuleRunHistoryResponse | null>(null);
   const [runHistoryViewMode, setRunHistoryViewMode] = useState<RunHistoryViewMode>('byRun');
+  const [runHistoryExporting, setRunHistoryExporting] = useState(false);
 
   const transposedRunHistory = useMemo(() => {
     if (!runHistory) {
@@ -400,6 +405,21 @@ const DocumentFlows: React.FC = () => {
     setRunHistory(null);
     setRunHistoryError(null);
     setRunHistoryViewMode('byRun');
+    setRunHistoryExporting(false);
+  };
+
+  const handleExportRunHistoryPdf = () => {
+    if (!runHistory || runHistoryExporting) return;
+    if (!canExportWorkflowRunHistoryPdf(runHistoryViewMode, runHistory.runs, transposedRunHistory)) return;
+
+    setRunHistoryExporting(true);
+    try {
+      exportWorkflowRunHistoryPdf(runHistory, runHistoryViewMode, transposedRunHistory);
+    } catch (error) {
+      setRunHistoryError(getFriendlyError(error));
+    } finally {
+      setRunHistoryExporting(false);
+    }
   };
 
   const handleRunWorkflowTest = async () => {
@@ -1278,22 +1298,35 @@ const DocumentFlows: React.FC = () => {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {runHistory && runHistory.runs.length > 0 && (
-                  <div className="flex rounded border border-slate-300 bg-slate-50 p-0.5 text-xs">
+                  <>
+                    <div className="flex rounded border border-slate-300 bg-slate-50 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setRunHistoryViewMode('byRun')}
+                        className={`rounded px-2 py-1 ${runHistoryViewMode === 'byRun' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                      >
+                        By run
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRunHistoryViewMode('transposed')}
+                        className={`rounded px-2 py-1 ${runHistoryViewMode === 'transposed' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                      >
+                        Transposed
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setRunHistoryViewMode('byRun')}
-                      className={`rounded px-2 py-1 ${runHistoryViewMode === 'byRun' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                      onClick={handleExportRunHistoryPdf}
+                      disabled={
+                        runHistoryExporting ||
+                        !canExportWorkflowRunHistoryPdf(runHistoryViewMode, runHistory.runs, transposedRunHistory)
+                      }
+                      className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs text-indigo-800 hover:border-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      By run
+                      {runHistoryExporting ? 'Exporting…' : 'Export PDF'}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setRunHistoryViewMode('transposed')}
-                      className={`rounded px-2 py-1 ${runHistoryViewMode === 'transposed' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                    >
-                      Transposed
-                    </button>
-                  </div>
+                  </>
                 )}
                 <button
                   type="button"
