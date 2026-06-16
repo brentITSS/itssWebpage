@@ -73,6 +73,13 @@ const formatWorkflowRunDate = (run: DocumentWorkflowAuditRunDto): string => {
   return new Date(raw).toLocaleString();
 };
 
+const getWorkflowRunSortTime = (run: DocumentWorkflowAuditRunDto): number => {
+  const raw = run.completedDate ?? run.startedDate;
+  return raw ? new Date(raw).getTime() : 0;
+};
+
+type RunHistoryViewMode = 'byRun' | 'transposed';
+
 const statusBadgeClass = (status: string): string => {
   const normalized = status.trim().toLowerCase();
   if (normalized === 'completed') return 'border-emerald-200 bg-emerald-50 text-emerald-800';
@@ -117,6 +124,25 @@ const DocumentFlows: React.FC = () => {
   const [runHistoryLoading, setRunHistoryLoading] = useState(false);
   const [runHistoryError, setRunHistoryError] = useState<string | null>(null);
   const [runHistory, setRunHistory] = useState<DocumentWorkflowRuleRunHistoryResponse | null>(null);
+  const [runHistoryViewMode, setRunHistoryViewMode] = useState<RunHistoryViewMode>('byRun');
+
+  const transposedRunHistory = useMemo(() => {
+    if (!runHistory) {
+      return { fieldNames: [] as string[], runs: [] as DocumentWorkflowAuditRunDto[] };
+    }
+
+    const fieldNameSet = new Set<string>();
+    for (const run of runHistory.runs) {
+      for (const snapshot of run.extractionSnapshots) {
+        fieldNameSet.add(snapshot.fieldName);
+      }
+    }
+
+    return {
+      fieldNames: Array.from(fieldNameSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+      runs: [...runHistory.runs].sort((a, b) => getWorkflowRunSortTime(b) - getWorkflowRunSortTime(a)),
+    };
+  }, [runHistory]);
 
   const getFriendlyError = useCallback((error: unknown): string => {
     const raw = error instanceof Error ? error.message : 'Unexpected error.';
@@ -373,6 +399,7 @@ const DocumentFlows: React.FC = () => {
     setRunHistoryOpen(false);
     setRunHistory(null);
     setRunHistoryError(null);
+    setRunHistoryViewMode('byRun');
   };
 
   const handleRunWorkflowTest = async () => {
@@ -1249,13 +1276,33 @@ const DocumentFlows: React.FC = () => {
                   {runHistory?.workflowName ?? 'Loading…'} — newest runs first
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleCloseRunHistory}
-                className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:border-slate-400"
-              >
-                Close
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                {runHistory && runHistory.runs.length > 0 && (
+                  <div className="flex rounded border border-slate-300 bg-slate-50 p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setRunHistoryViewMode('byRun')}
+                      className={`rounded px-2 py-1 ${runHistoryViewMode === 'byRun' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      By run
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRunHistoryViewMode('transposed')}
+                      className={`rounded px-2 py-1 ${runHistoryViewMode === 'transposed' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      Transposed
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCloseRunHistory}
+                  className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:border-slate-400"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-3 text-xs text-slate-700">
@@ -1266,7 +1313,50 @@ const DocumentFlows: React.FC = () => {
               {!runHistoryLoading && !runHistoryError && runHistory && runHistory.runs.length === 0 && (
                 <p className="text-slate-500">No workflow runs recorded yet for this rule.</p>
               )}
-              {!runHistoryLoading && !runHistoryError && runHistory && runHistory.runs.length > 0 && (
+              {!runHistoryLoading && !runHistoryError && runHistory && runHistory.runs.length > 0 && runHistoryViewMode === 'transposed' && (
+                transposedRunHistory.fieldNames.length > 0 ? (
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                    <table className="min-w-full border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 text-left text-[10px] uppercase tracking-wide text-slate-600">
+                          <th className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-100 px-2 py-1 whitespace-nowrap">Run date</th>
+                          <th className="sticky left-[7.5rem] z-10 border-b border-r border-slate-200 bg-slate-100 px-2 py-1 min-w-[12rem]">Subject</th>
+                          {transposedRunHistory.fieldNames.map((fieldName) => (
+                            <th key={fieldName} className="border-b border-slate-200 px-2 py-1 whitespace-nowrap font-medium normal-case tracking-normal text-slate-800">
+                              {fieldName}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transposedRunHistory.runs.map((run) => {
+                          const valuesByField = new Map(
+                            run.extractionSnapshots.map((snapshot) => [snapshot.fieldName, snapshot.fieldValue])
+                          );
+                          return (
+                            <tr key={run.documentWorkflowAuditRunId} className="align-top hover:bg-slate-50">
+                              <td className="sticky left-0 z-[1] border-b border-r border-slate-100 bg-white px-2 py-1 whitespace-nowrap text-slate-700">
+                                {formatWorkflowRunDate(run)}
+                              </td>
+                              <td className="sticky left-[7.5rem] z-[1] border-b border-r border-slate-100 bg-white px-2 py-1 max-w-[16rem] truncate text-slate-700" title={run.subject?.trim() || undefined}>
+                                {run.subject?.trim() || '(No subject)'}
+                              </td>
+                              {transposedRunHistory.fieldNames.map((fieldName) => (
+                                <td key={`${run.documentWorkflowAuditRunId}-${fieldName}`} className="border-b border-slate-100 px-2 py-1 whitespace-pre-wrap">
+                                  {valuesByField.get(fieldName) ?? '—'}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-slate-500">No extracted fields across these runs yet.</p>
+                )
+              )}
+              {!runHistoryLoading && !runHistoryError && runHistory && runHistory.runs.length > 0 && runHistoryViewMode === 'byRun' && (
                 <div className="space-y-2">
                   {runHistory.runs.map((run) => (
                     <details key={run.documentWorkflowAuditRunId} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -1306,7 +1396,6 @@ const DocumentFlows: React.FC = () => {
                                 <tr className="bg-slate-100 text-left text-[10px] uppercase tracking-wide text-slate-600">
                                   <th className="border-b border-slate-200 px-2 py-1">Field</th>
                                   <th className="border-b border-slate-200 px-2 py-1">Value</th>
-                                  <th className="border-b border-slate-200 px-2 py-1">Comments</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1314,7 +1403,6 @@ const DocumentFlows: React.FC = () => {
                                   <tr key={`${run.documentWorkflowAuditRunId}-${snapshot.fieldName}`} className="align-top">
                                     <td className="border-b border-slate-100 px-2 py-1 font-medium text-slate-800">{snapshot.fieldName}</td>
                                     <td className="border-b border-slate-100 px-2 py-1 whitespace-pre-wrap">{snapshot.fieldValue ?? '—'}</td>
-                                    <td className="border-b border-slate-100 px-2 py-1 whitespace-pre-wrap text-slate-600">{snapshot.comments ?? '—'}</td>
                                   </tr>
                                 ))}
                               </tbody>
