@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useAuthAccess } from '../context/AuthAccessContext';
+import { formatRoleWithFirstName } from '../utils/access';
 
 const Admin: React.FC = () => {
+  const { user } = useAuthAccess();
   const [collapsed, setCollapsed] = useState(false);
+  const globalAdminHeading = formatRoleWithFirstName('Global Admin', user);
 
   const iconClass = "h-5 w-5 flex-shrink-0";
 
@@ -64,7 +68,7 @@ const Admin: React.FC = () => {
           <div className="mb-4 flex items-center justify-between">
             <div className={collapsed ? 'hidden' : 'block'}>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">ITSS Platform</p>
-              <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Global Admin</h1>
+              <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">{globalAdminHeading}</h1>
             </div>
             <button
               type="button"

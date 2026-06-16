@@ -2,10 +2,15 @@ import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthAccess } from '../../context/AuthAccessContext';
 import { authService } from '../../services/authService';
+import { formatRoleWithFirstName, getPropertyHubRoleLabel } from '../../utils/access';
 
 const PropertyHubLayout: React.FC = () => {
   const location = useLocation();
-  const { isPropertyHubUserOnly } = useAuthAccess();
+  const { user, isPropertyHubUserOnly } = useAuthAccess();
+  const roleLine = (() => {
+    const roleLabel = getPropertyHubRoleLabel(user);
+    return roleLabel ? formatRoleWithFirstName(roleLabel, user) : null;
+  })();
   /** Workstream users (non-admin on Property Hub) only see Home + Logout in the top bar. */
   const showFullTopNav = !isPropertyHubUserOnly;
   // Normalize pathname for matching (handle URL encoding)
@@ -35,6 +40,9 @@ const PropertyHubLayout: React.FC = () => {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Workspace</p>
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Property Hub</h1>
+              {roleLine && (
+                <p className="mt-1 text-lg font-semibold tracking-tight text-slate-900">{roleLine}</p>
+              )}
               <p className="text-sm text-slate-500">Operations, admin, and activity tracking</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">

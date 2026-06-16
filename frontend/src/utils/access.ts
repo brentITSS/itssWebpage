@@ -35,6 +35,52 @@ export function isPropertyHubWorkstreamUserOnly(user: UserDto | null | undefined
   return !entries.some((wa) => wa.permissionTypeName?.trim().toLowerCase() === 'admin');
 }
 
+function getPropertyHubPermissionRank(permissionTypeName: string | undefined): number {
+  const p = permissionTypeName?.trim().toLowerCase();
+  if (!p) return 0;
+  if (p === 'admin') return 3;
+  if (p === 'edit' || p === 'editor') return 2;
+  if (p === 'view' || p === 'read' || p === 'readonly') return 1;
+  return 1;
+}
+
+function formatPermissionTypeLabel(permissionTypeName: string): string {
+  const trimmed = permissionTypeName.trim();
+  if (!trimmed) return 'User';
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
+/** Display label for the user's Property Hub access level (Global Admin, Admin, Edit, View, etc.). */
+export function getPropertyHubRoleLabel(user: UserDto | null | undefined): string | null {
+  if (!user) return null;
+  if (user.isGlobalAdmin) return 'Global Admin';
+
+  const entries = getPropertyHubWorkstreamEntries(user);
+  if (entries.length === 0) return null;
+
+  if (entries.some((wa) => wa.permissionTypeName?.trim().toLowerCase() === 'admin')) {
+    return 'Admin';
+  }
+
+  let bestPermission = '';
+  let bestRank = 0;
+  for (const entry of entries) {
+    const rank = getPropertyHubPermissionRank(entry.permissionTypeName);
+    if (rank > bestRank) {
+      bestRank = rank;
+      bestPermission = entry.permissionTypeName?.trim() ?? '';
+    }
+  }
+
+  return bestPermission ? formatPermissionTypeLabel(bestPermission) : 'User';
+}
+
+/** e.g. "Admin (Leezil)" when first name is set, otherwise "Admin". */
+export function formatRoleWithFirstName(roleLabel: string, user: UserDto | null | undefined): string {
+  const first = user?.firstName?.trim();
+  return first ? `${roleLabel} (${first})` : roleLabel;
+}
+
 export function getPostLoginPath(user: UserDto): string {
   if (user.mustChangePassword) return '/ChangePassword';
   const landing = user.defaultLoginLandingPage?.trim();
