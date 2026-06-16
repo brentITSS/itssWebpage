@@ -517,14 +517,12 @@ public class GraphEmailReader : IGraphEmailReader
                     {
                         if (auditConnection != null && auditRunId.HasValue)
                         {
-                            var (failedSummary, failedExtraction) = ExtractAuditOutputsFromWorkflowContext(workflowContext);
-                            await FinalizeWorkflowAuditRunAsync(
+                            await FinalizeWorkflowAuditRunWithSnapshotsAsync(
                                 auditConnection,
                                 auditRunId.Value,
                                 "Failed",
                                 $"{step.StepType}: {ex.Message}",
-                                failedSummary,
-                                failedExtraction,
+                                workflowContext,
                                 cancellationToken);
                         }
                         var safeError = SanitizeStatusSegment(ex.Message);
@@ -540,14 +538,12 @@ public class GraphEmailReader : IGraphEmailReader
 
             if (auditConnection != null && auditRunId.HasValue)
             {
-                var (completedSummary, completedExtraction) = ExtractAuditOutputsFromWorkflowContext(workflowContext);
-                await FinalizeWorkflowAuditRunAsync(
+                await FinalizeWorkflowAuditRunWithSnapshotsAsync(
                     auditConnection,
                     auditRunId.Value,
                     "Completed",
                     null,
-                    completedSummary,
-                    completedExtraction,
+                    workflowContext,
                     cancellationToken);
             }
 
@@ -615,6 +611,24 @@ public class GraphEmailReader : IGraphEmailReader
 
             IF COL_LENGTH('dbo.tbldocumentworkflowauditrun', 'ExtractionJson') IS NULL
                 ALTER TABLE dbo.tbldocumentworkflowauditrun ADD ExtractionJson NVARCHAR(MAX) NULL;
+
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'tbldocumentworkflowextractionsnapshot')
+            BEGIN
+                CREATE TABLE tbldocumentworkflowextractionsnapshot (
+                    DocumentWorkflowExtractionSnapshotId BIGINT IDENTITY(1,1) PRIMARY KEY,
+                    DocumentWorkflowAuditRunId BIGINT NOT NULL,
+                    FieldName NVARCHAR(200) NOT NULL,
+                    FieldValue NVARCHAR(MAX) NULL,
+                    Comments NVARCHAR(MAX) NULL,
+                    CONSTRAINT FK_tbldocumentworkflowextractionsnapshot_tbldocumentworkflowauditrun
+                        FOREIGN KEY (DocumentWorkflowAuditRunId)
+                        REFERENCES tbldocumentworkflowauditrun(DocumentWorkflowAuditRunId)
+                );
+                CREATE INDEX IX_tbldocumentworkflowextractionsnapshot_AuditRunId
+                    ON tbldocumentworkflowextractionsnapshot (DocumentWorkflowAuditRunId);
+                CREATE INDEX IX_tbldocumentworkflowextractionsnapshot_FieldName
+                    ON tbldocumentworkflowextractionsnapshot (FieldName);
+            END;
             """;
 
         await using var command = new SqlCommand(sql, connection);
@@ -738,6 +752,136 @@ public class GraphEmailReader : IGraphEmailReader
         command.Parameters.AddWithValue("@summarisationText", (object?)summarisationText ?? DBNull.Value);
         command.Parameters.AddWithValue("@extractionJson", (object?)extractionJson ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task FinalizeWorkflowAuditRunWithSnapshotsAsync(
+        SqlConnection connection,
+        long auditRunId,
+        string status,
+        string? errorMessage,
+        IReadOnlyDictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        var (summarisationText, extractionJson) = ExtractAuditOutputsFromWorkflowContext(workflowContext);
+        await FinalizeWorkflowAuditRunAsync(
+            connection,
+            auditRunId,
+            status,
+            errorMessage,
+            summarisationText,
+            extractionJson,
+            cancellationToken);
+        await PersistExtractionSnapshotsAsync(connection, auditRunId, workflowContext, cancellationToken);
+    }
+
+    private static async Task PersistExtractionSnapshotsAsync(
+        SqlConnection connection,
+        long auditRunId,
+        IReadOnlyDictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        if (!workflowContext.TryGetValue("extractionJson", out var extractionJson) ||
+            string.IsNullOrWhiteSpace(extractionJson))
+        {
+            return;
+        }
+
+        Dictionary<string, string>? extractedFields;
+        try
+        {
+            extractedFields = JsonSerializer.Deserialize<Dictionary<string, string>>(extractionJson);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (extractedFields == null || extractedFields.Count == 0)
+        {
+            return;
+        }
+
+        workflowContext.TryGetValue("extractionSnapshotComment", out var globalComment);
+        var fieldComments = ParseExtractionSnapshotFieldComments(workflowContext);
+
+        const string deleteSql = """
+            DELETE FROM tbldocumentworkflowextractionsnapshot
+            WHERE DocumentWorkflowAuditRunId = @auditRunId;
+            """;
+        await using (var deleteCommand = new SqlCommand(deleteSql, connection))
+        {
+            deleteCommand.Parameters.AddWithValue("@auditRunId", auditRunId);
+            await deleteCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        const string insertSql = """
+            INSERT INTO tbldocumentworkflowextractionsnapshot (
+                DocumentWorkflowAuditRunId,
+                FieldName,
+                FieldValue,
+                Comments
+            )
+            VALUES (
+                @auditRunId,
+                @fieldName,
+                @fieldValue,
+                @comments
+            );
+            """;
+
+        foreach (var field in extractedFields.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(field.Key))
+            {
+                continue;
+            }
+
+            var fieldName = field.Key.Trim();
+            var fieldValue = field.Value?.Trim();
+            string? rowComment = null;
+            if (fieldComments != null &&
+                fieldComments.TryGetValue(fieldName, out var perFieldComment) &&
+                !string.IsNullOrWhiteSpace(perFieldComment))
+            {
+                rowComment = perFieldComment.Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(globalComment))
+            {
+                rowComment = globalComment.Trim();
+            }
+
+            await using var insertCommand = new SqlCommand(insertSql, connection);
+            insertCommand.Parameters.AddWithValue("@auditRunId", auditRunId);
+            insertCommand.Parameters.AddWithValue("@fieldName", fieldName.Length > 200 ? fieldName[..200] : fieldName);
+            insertCommand.Parameters.AddWithValue("@fieldValue", (object?)fieldValue ?? DBNull.Value);
+            insertCommand.Parameters.AddWithValue("@comments", (object?)rowComment ?? DBNull.Value);
+            await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private static Dictionary<string, string>? ParseExtractionSnapshotFieldComments(
+        IReadOnlyDictionary<string, string> workflowContext)
+    {
+        if (!workflowContext.TryGetValue("extractionSnapshotFieldComments", out var raw) ||
+            string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(raw);
+            if (parsed == null || parsed.Count == 0)
+            {
+                return null;
+            }
+
+            return new Dictionary<string, string>(parsed, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static async Task FinalizeWorkflowAuditStepAsync(

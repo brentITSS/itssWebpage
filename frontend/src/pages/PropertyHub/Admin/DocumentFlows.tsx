@@ -3,7 +3,9 @@ import {
   DocumentExtractionTemplateDto,
   DocumentLabelSetDto,
   DocumentSummarisationTemplateDto,
+  DocumentWorkflowAuditRunDto,
   DocumentWorkflowRuleDto,
+  DocumentWorkflowRuleRunHistoryResponse,
   DocumentWorkflowRuleTestResponse,
   UpsertDocumentWorkflowStepRequest,
   documentHubService,
@@ -65,6 +67,20 @@ const stringifyStepConfig = (config: Record<string, string | number | boolean>):
   return Object.keys(filtered).length === 0 ? '' : JSON.stringify(filtered);
 };
 
+const formatWorkflowRunDate = (run: DocumentWorkflowAuditRunDto): string => {
+  const raw = run.completedDate ?? run.startedDate;
+  if (!raw) return '—';
+  return new Date(raw).toLocaleString();
+};
+
+const statusBadgeClass = (status: string): string => {
+  const normalized = status.trim().toLowerCase();
+  if (normalized === 'completed') return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+  if (normalized === 'failed') return 'border-rose-200 bg-rose-50 text-rose-800';
+  if (normalized === 'norulematched') return 'border-amber-200 bg-amber-50 text-amber-800';
+  return 'border-slate-200 bg-slate-50 text-slate-700';
+};
+
 const DocumentFlows: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -96,6 +112,11 @@ const DocumentFlows: React.FC = () => {
   const [workflowTestFile, setWorkflowTestFile] = useState<File | null>(null);
   const [workflowTestResult, setWorkflowTestResult] = useState<DocumentWorkflowRuleTestResponse | null>(null);
   const [workflowTestFeedback, setWorkflowTestFeedback] = useState<string | null>(null);
+
+  const [runHistoryOpen, setRunHistoryOpen] = useState(false);
+  const [runHistoryLoading, setRunHistoryLoading] = useState(false);
+  const [runHistoryError, setRunHistoryError] = useState<string | null>(null);
+  const [runHistory, setRunHistory] = useState<DocumentWorkflowRuleRunHistoryResponse | null>(null);
 
   const getFriendlyError = useCallback((error: unknown): string => {
     const raw = error instanceof Error ? error.message : 'Unexpected error.';
@@ -331,6 +352,27 @@ const DocumentFlows: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewRunHistory = async (rule: DocumentWorkflowRuleDto) => {
+    setRunHistoryOpen(true);
+    setRunHistoryLoading(true);
+    setRunHistoryError(null);
+    setRunHistory(null);
+    try {
+      const history = await documentHubService.getWorkflowRuleRunHistory(rule.documentWorkflowRuleId);
+      setRunHistory(history);
+    } catch (error) {
+      setRunHistoryError(getFriendlyError(error));
+    } finally {
+      setRunHistoryLoading(false);
+    }
+  };
+
+  const handleCloseRunHistory = () => {
+    setRunHistoryOpen(false);
+    setRunHistory(null);
+    setRunHistoryError(null);
   };
 
   const handleRunWorkflowTest = async () => {
@@ -1151,6 +1193,13 @@ const DocumentFlows: React.FC = () => {
                       <p className="text-[11px] text-slate-600">Label: {rule.classificationLabel} | Min: {rule.minimumScore} | Priority: {rule.priority}</p>
                     </div>
                     <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => { void handleViewRunHistory(rule); }}
+                        className="rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-indigo-800 hover:border-indigo-300"
+                      >
+                        Runs
+                      </button>
                       <button type="button" onClick={() => { void handleEditWorkflowRule(rule); }} className="rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-700 hover:border-slate-400">Edit</button>
                       <button type="button" onClick={() => handleDeleteWorkflowRule(rule.documentWorkflowRuleId, rule.workflowName)} className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">Delete</button>
                     </div>
@@ -1181,6 +1230,108 @@ const DocumentFlows: React.FC = () => {
           )}
         </div>
       </div>
+
+      {runHistoryOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm p-3 sm:p-6" onClick={handleCloseRunHistory}>
+          <div
+            className="mx-auto flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workflow-run-history-title"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+              <div>
+                <h3 id="workflow-run-history-title" className="text-lg font-semibold text-slate-900">
+                  Workflow run history
+                </h3>
+                <p className="text-sm text-slate-600">
+                  {runHistory?.workflowName ?? 'Loading…'} — newest runs first
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseRunHistory}
+                className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:border-slate-400"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-3 text-xs text-slate-700">
+              {runHistoryLoading && <p className="text-slate-500">Loading run history…</p>}
+              {runHistoryError && (
+                <p className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800">{runHistoryError}</p>
+              )}
+              {!runHistoryLoading && !runHistoryError && runHistory && runHistory.runs.length === 0 && (
+                <p className="text-slate-500">No workflow runs recorded yet for this rule.</p>
+              )}
+              {!runHistoryLoading && !runHistoryError && runHistory && runHistory.runs.length > 0 && (
+                <div className="space-y-2">
+                  {runHistory.runs.map((run) => (
+                    <details key={run.documentWorkflowAuditRunId} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <summary className="cursor-pointer list-none">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-slate-900">{run.subject?.trim() || '(No subject)'}</p>
+                            <p className="text-[11px] text-slate-600">
+                              {formatWorkflowRunDate(run)}
+                              {run.classificationLabel ? ` · ${run.classificationLabel}` : ''}
+                              {run.classificationScore != null ? ` (${run.classificationScore.toFixed(2)})` : ''}
+                            </p>
+                          </div>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeClass(run.status)}`}>
+                            {run.status}
+                          </span>
+                        </div>
+                      </summary>
+
+                      <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                        {run.errorMessage && (
+                          <p className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-rose-800">
+                            <span className="font-semibold">Error:</span> {run.errorMessage}
+                          </p>
+                        )}
+                        {run.summarisationText && (
+                          <div>
+                            <p className="font-semibold text-slate-800">Summary</p>
+                            <p className="mt-1 whitespace-pre-wrap rounded border border-slate-200 bg-white px-2 py-1">{run.summarisationText}</p>
+                          </div>
+                        )}
+                        {run.extractionSnapshots.length > 0 ? (
+                          <div>
+                            <p className="mb-1 font-semibold text-slate-800">Extracted fields</p>
+                            <table className="w-full border-collapse overflow-hidden rounded border border-slate-200 bg-white">
+                              <thead>
+                                <tr className="bg-slate-100 text-left text-[10px] uppercase tracking-wide text-slate-600">
+                                  <th className="border-b border-slate-200 px-2 py-1">Field</th>
+                                  <th className="border-b border-slate-200 px-2 py-1">Value</th>
+                                  <th className="border-b border-slate-200 px-2 py-1">Comments</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {run.extractionSnapshots.map((snapshot) => (
+                                  <tr key={`${run.documentWorkflowAuditRunId}-${snapshot.fieldName}`} className="align-top">
+                                    <td className="border-b border-slate-100 px-2 py-1 font-medium text-slate-800">{snapshot.fieldName}</td>
+                                    <td className="border-b border-slate-100 px-2 py-1 whitespace-pre-wrap">{snapshot.fieldValue ?? '—'}</td>
+                                    <td className="border-b border-slate-100 px-2 py-1 whitespace-pre-wrap text-slate-600">{snapshot.comments ?? '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="text-slate-500">No extraction snapshot rows for this run.</p>
+                        )}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -290,3 +290,31 @@ public class DocumentWorkflowRuleTestResponse
     public string EligibilityReason { get; set; } = string.Empty;
     public List<DocumentWorkflowStepTestResultDto> Steps { get; set; } = new();
 }
+
+public class DocumentWorkflowExtractionSnapshotDto
+{
+    public string FieldName { get; set; } = string.Empty;
+    public string? FieldValue { get; set; }
+    public string? Comments { get; set; }
+}
+
+public class DocumentWorkflowAuditRunDto
+{
+    public long DocumentWorkflowAuditRunId { get; set; }
+    public string? Subject { get; set; }
+    public string? ClassificationLabel { get; set; }
+    public double? ClassificationScore { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    public DateTime StartedDate { get; set; }
+    public DateTime? CompletedDate { get; set; }
+    public string? SummarisationText { get; set; }
+    public List<DocumentWorkflowExtractionSnapshotDto> ExtractionSnapshots { get; set; } = new();
+}
+
+public class DocumentWorkflowRuleRunHistoryResponse
+{
+    public int DocumentWorkflowRuleId { get; set; }
+    public string WorkflowName { get; set; } = string.Empty;
+    public List<DocumentWorkflowAuditRunDto> Runs { get; set; } = new();
+}

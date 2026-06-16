@@ -249,6 +249,31 @@ export interface DocumentWorkflowRuleTestResponse {
   steps: DocumentWorkflowStepTestResultDto[];
 }
 
+export interface DocumentWorkflowExtractionSnapshotDto {
+  fieldName: string;
+  fieldValue?: string;
+  comments?: string;
+}
+
+export interface DocumentWorkflowAuditRunDto {
+  documentWorkflowAuditRunId: number;
+  subject?: string;
+  classificationLabel?: string;
+  classificationScore?: number;
+  status: string;
+  errorMessage?: string;
+  startedDate: string;
+  completedDate?: string;
+  summarisationText?: string;
+  extractionSnapshots: DocumentWorkflowExtractionSnapshotDto[];
+}
+
+export interface DocumentWorkflowRuleRunHistoryResponse {
+  documentWorkflowRuleId: number;
+  workflowName: string;
+  runs: DocumentWorkflowAuditRunDto[];
+}
+
 export const documentHubService = {
   getLabelSets: async (): Promise<DocumentLabelSetDto[]> => {
     return await apiClient<DocumentLabelSetDto[]>('/document-hub/label-sets');
@@ -452,5 +477,14 @@ export const documentHubService = {
       method: 'POST',
       body: formData,
     });
+  },
+
+  getWorkflowRuleRunHistory: async (
+    ruleId: number,
+    limit = 50
+  ): Promise<DocumentWorkflowRuleRunHistoryResponse> => {
+    return await apiClient<DocumentWorkflowRuleRunHistoryResponse>(
+      `/document-hub/workflow-rules/${ruleId}/run-history?limit=${limit}`
+    );
   },
 };

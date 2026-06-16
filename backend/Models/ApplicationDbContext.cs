@@ -65,6 +65,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<DocumentCorrectionFeedback> DocumentCorrectionFeedback { get; set; }
     public DbSet<DocumentWorkflowRule> DocumentWorkflowRules { get; set; }
     public DbSet<DocumentWorkflowStep> DocumentWorkflowSteps { get; set; }
+    public DbSet<DocumentWorkflowAuditRun> DocumentWorkflowAuditRuns { get; set; }
+    public DbSet<DocumentWorkflowExtractionSnapshot> DocumentWorkflowExtractionSnapshots { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

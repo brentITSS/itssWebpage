@@ -323,3 +323,83 @@ public class DocumentWorkflowStep
     [ForeignKey(nameof(DocumentWorkflowRuleId))]
     public virtual DocumentWorkflowRule? Rule { get; set; }
 }
+
+[Table("tbldocumentworkflowauditrun")]
+public class DocumentWorkflowAuditRun
+{
+    [Key]
+    [Column("DocumentWorkflowAuditRunId")]
+    public long DocumentWorkflowAuditRunId { get; set; }
+
+    [Column("MessageId")]
+    [MaxLength(1024)]
+    public string MessageId { get; set; } = string.Empty;
+
+    [Column("MailboxUser")]
+    [MaxLength(320)]
+    public string? MailboxUser { get; set; }
+
+    [Column("Subject")]
+    [MaxLength(500)]
+    public string? Subject { get; set; }
+
+    [Column("ClassificationLabel")]
+    [MaxLength(120)]
+    public string? ClassificationLabel { get; set; }
+
+    [Column("ClassificationScore")]
+    public double? ClassificationScore { get; set; }
+
+    [Column("DocumentWorkflowRuleId")]
+    public int? DocumentWorkflowRuleId { get; set; }
+
+    [Column("WorkflowName")]
+    [MaxLength(200)]
+    public string? WorkflowName { get; set; }
+
+    [Column("Status")]
+    [MaxLength(40)]
+    public string Status { get; set; } = string.Empty;
+
+    [Column("ErrorMessage")]
+    public string? ErrorMessage { get; set; }
+
+    [Column("SummarisationText")]
+    public string? SummarisationText { get; set; }
+
+    [Column("ExtractionJson")]
+    public string? ExtractionJson { get; set; }
+
+    [Column("StartedDate")]
+    public DateTime StartedDate { get; set; }
+
+    [Column("CompletedDate")]
+    public DateTime? CompletedDate { get; set; }
+
+    public virtual ICollection<DocumentWorkflowExtractionSnapshot> ExtractionSnapshots { get; set; } =
+        new List<DocumentWorkflowExtractionSnapshot>();
+}
+
+[Table("tbldocumentworkflowextractionsnapshot")]
+public class DocumentWorkflowExtractionSnapshot
+{
+    [Key]
+    [Column("DocumentWorkflowExtractionSnapshotId")]
+    public long DocumentWorkflowExtractionSnapshotId { get; set; }
+
+    [Column("DocumentWorkflowAuditRunId")]
+    public long DocumentWorkflowAuditRunId { get; set; }
+
+    [Column("FieldName")]
+    [MaxLength(200)]
+    public string FieldName { get; set; } = string.Empty;
+
+    [Column("FieldValue")]
+    public string? FieldValue { get; set; }
+
+    [Column("Comments")]
+    public string? Comments { get; set; }
+
+    [ForeignKey(nameof(DocumentWorkflowAuditRunId))]
+    public virtual DocumentWorkflowAuditRun? AuditRun { get; set; }
+}

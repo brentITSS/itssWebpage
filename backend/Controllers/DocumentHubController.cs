@@ -643,6 +643,58 @@ public class DocumentHubController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("workflow-rules/{ruleId:int}/run-history")]
+    public async Task<ActionResult<DocumentWorkflowRuleRunHistoryResponse>> GetWorkflowRuleRunHistory(
+        int ruleId,
+        [FromQuery] int limit = 50)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+        if (!HasPropertyHubAccess(currentUser)) return Forbid("Access denied: Property Hub access required.");
+
+        var rule = await _context.DocumentWorkflowRules
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.DocumentWorkflowRuleId == ruleId);
+        if (rule == null)
+        {
+            return NotFound(new { message = "Workflow rule not found." });
+        }
+
+        limit = Math.Clamp(limit, 1, 200);
+
+        var runs = await _context.DocumentWorkflowAuditRuns
+            .AsNoTracking()
+            .Where(x => x.DocumentWorkflowRuleId == ruleId)
+            .OrderByDescending(x => x.CompletedDate ?? x.StartedDate)
+            .ThenByDescending(x => x.DocumentWorkflowAuditRunId)
+            .Take(limit)
+            .ToListAsync();
+
+        var runIds = runs.Select(x => x.DocumentWorkflowAuditRunId).ToList();
+        var snapshots = runIds.Count == 0
+            ? new List<DocumentWorkflowExtractionSnapshot>()
+            : await _context.DocumentWorkflowExtractionSnapshots
+                .AsNoTracking()
+                .Where(x => runIds.Contains(x.DocumentWorkflowAuditRunId))
+                .OrderBy(x => x.FieldName)
+                .ToListAsync();
+
+        var snapshotsByRunId = snapshots
+            .GroupBy(x => x.DocumentWorkflowAuditRunId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(MapExtractionSnapshot).ToList());
+
+        return Ok(new DocumentWorkflowRuleRunHistoryResponse
+        {
+            DocumentWorkflowRuleId = rule.DocumentWorkflowRuleId,
+            WorkflowName = rule.WorkflowName,
+            Runs = runs
+                .Select(run => MapAuditRun(run, snapshotsByRunId))
+                .ToList()
+        });
+    }
+
     [HttpPost("workflow-rules/{ruleId:int}/test")]
     public async Task<ActionResult<DocumentWorkflowRuleTestResponse>> TestWorkflowRule(int ruleId, [FromForm] IFormFile file)
     {
@@ -1325,6 +1377,37 @@ public class DocumentHubController : ControllerBase
             StepType = x.StepType,
             StepConfigJson = x.StepConfigJson,
             IsActive = x.IsActive
+        };
+    }
+
+    private static DocumentWorkflowAuditRunDto MapAuditRun(
+        DocumentWorkflowAuditRun run,
+        IReadOnlyDictionary<long, List<DocumentWorkflowExtractionSnapshotDto>> snapshotsByRunId)
+    {
+        snapshotsByRunId.TryGetValue(run.DocumentWorkflowAuditRunId, out var snapshots);
+
+        return new DocumentWorkflowAuditRunDto
+        {
+            DocumentWorkflowAuditRunId = run.DocumentWorkflowAuditRunId,
+            Subject = run.Subject,
+            ClassificationLabel = run.ClassificationLabel,
+            ClassificationScore = run.ClassificationScore,
+            Status = run.Status,
+            ErrorMessage = run.ErrorMessage,
+            StartedDate = run.StartedDate,
+            CompletedDate = run.CompletedDate,
+            SummarisationText = run.SummarisationText,
+            ExtractionSnapshots = snapshots ?? new List<DocumentWorkflowExtractionSnapshotDto>()
+        };
+    }
+
+    private static DocumentWorkflowExtractionSnapshotDto MapExtractionSnapshot(DocumentWorkflowExtractionSnapshot snapshot)
+    {
+        return new DocumentWorkflowExtractionSnapshotDto
+        {
+            FieldName = snapshot.FieldName,
+            FieldValue = snapshot.FieldValue,
+            Comments = snapshot.Comments
         };
     }
 
