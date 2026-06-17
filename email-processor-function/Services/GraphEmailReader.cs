@@ -935,6 +935,7 @@ public class GraphEmailReader : IGraphEmailReader
         string? attachmentAddedByTemplate = null;
         var addToCalendar = false;
         int calendarDateOffsetDays = 0;
+        string? calendarDateTemplate = null;
         string? calendarTitleTemplate = null;
         string? calendarNotesTemplate = null;
         string? tagTypeIdsCsv = null;
@@ -961,6 +962,7 @@ public class GraphEmailReader : IGraphEmailReader
             attachmentAddedByTemplate = GetOptionalString(root, "attachmentAddedByTemplate");
             addToCalendar = GetOptionalBool(root, "addToCalendar") ?? false;
             calendarDateOffsetDays = GetOptionalInt(root, "calendarDateOffsetDays") ?? 0;
+            calendarDateTemplate = GetOptionalString(root, "calendarDateTemplate");
             calendarTitleTemplate = GetOptionalString(root, "calendarTitleTemplate");
             calendarNotesTemplate = GetOptionalString(root, "calendarNotesTemplate");
             tagTypeIdsCsv = GetOptionalString(root, "tagTypeIdsCsv");
@@ -1084,7 +1086,14 @@ public class GraphEmailReader : IGraphEmailReader
 
         if (insertedId.HasValue && addToCalendar)
         {
-            var calendarDate = effectiveDate.AddDays(calendarDateOffsetDays).Date;
+            var calendarDate = ResolveCalendarDate(
+                effectiveDate,
+                calendarDateOffsetDays,
+                calendarDateTemplate,
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext);
             await UpsertCalendarAppointmentRowAsync(
                 connection,
                 sourceType: "journallog",
@@ -1156,6 +1165,7 @@ public class GraphEmailReader : IGraphEmailReader
         string? contactIdTemplate = null;
         var addToCalendar = false;
         int calendarDateOffsetDays = 0;
+        string? calendarDateTemplate = null;
         string? calendarTitleTemplate = null;
         string? calendarNotesTemplate = null;
         string? tagTypeIdsCsv = null;
@@ -1177,6 +1187,7 @@ public class GraphEmailReader : IGraphEmailReader
             contactIdTemplate = GetOptionalString(root, "contactIdTemplate");
             addToCalendar = GetOptionalBool(root, "addToCalendar") ?? false;
             calendarDateOffsetDays = GetOptionalInt(root, "calendarDateOffsetDays") ?? 0;
+            calendarDateTemplate = GetOptionalString(root, "calendarDateTemplate");
             calendarTitleTemplate = GetOptionalString(root, "calendarTitleTemplate");
             calendarNotesTemplate = GetOptionalString(root, "calendarNotesTemplate");
             tagTypeIdsCsv = GetOptionalString(root, "tagTypeIdsCsv");
@@ -1234,7 +1245,14 @@ public class GraphEmailReader : IGraphEmailReader
 
         if (insertedId.HasValue && addToCalendar)
         {
-            var calendarDate = effectiveDate.AddDays(calendarDateOffsetDays).Date;
+            var calendarDate = ResolveCalendarDate(
+                effectiveDate,
+                calendarDateOffsetDays,
+                calendarDateTemplate,
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext);
             await UpsertCalendarAppointmentRowAsync(
                 connection,
                 sourceType: "contactlog",
@@ -2730,6 +2748,90 @@ public class GraphEmailReader : IGraphEmailReader
         }
 
         return result;
+    }
+
+    private DateTime ResolveCalendarDate(
+        DateTime effectiveDate,
+        int calendarDateOffsetDays,
+        string? calendarDateTemplate,
+        Message message,
+        string classificationLabel,
+        double classificationScore,
+        IReadOnlyDictionary<string, string>? workflowContext)
+    {
+        DateTime baseDate;
+        if (!string.IsNullOrWhiteSpace(calendarDateTemplate))
+        {
+            var rendered = ApplyTemplateTokens(
+                    calendarDateTemplate,
+                    message,
+                    classificationLabel,
+                    classificationScore,
+                    workflowContext)
+                .Trim();
+
+            if (TryParseExtractedDate(rendered, out var parsed))
+            {
+                baseDate = parsed;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Calendar date template '{Template}' resolved to '{Rendered}' which could not be parsed; using effective date {EffectiveDate:u}.",
+                    calendarDateTemplate,
+                    rendered,
+                    effectiveDate);
+                baseDate = effectiveDate;
+            }
+        }
+        else
+        {
+            baseDate = effectiveDate;
+        }
+
+        return baseDate.AddDays(calendarDateOffsetDays).Date;
+    }
+
+    private static bool TryParseExtractedDate(string value, out DateTime date)
+    {
+        date = default;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var trimmed = value.Trim();
+        string[] formats =
+        [
+            "yyyy-MM-dd",
+            "dd/MM/yyyy",
+            "d/M/yyyy",
+            "dd-MM-yyyy",
+            "d-M-yyyy",
+            "dd MMM yyyy",
+            "dd MMMM yyyy",
+            "d MMM yyyy",
+            "d MMMM yyyy",
+            "yyyy/MM/dd",
+            "MM/dd/yyyy",
+        ];
+
+        if (DateTime.TryParseExact(trimmed, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+        {
+            return true;
+        }
+
+        if (DateTime.TryParse(trimmed, CultureInfo.GetCultureInfo("en-ZA"), DateTimeStyles.None, out date))
+        {
+            return true;
+        }
+
+        if (DateTime.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out date))
+        {
+            return true;
+        }
+
+        return DateTime.TryParse(trimmed, out date);
     }
 
     private async Task<decimal?> FetchLiveZarToGbpRateAsync(CancellationToken cancellationToken)

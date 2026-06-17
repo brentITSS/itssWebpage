@@ -808,10 +808,16 @@ const DocumentFlows: React.FC = () => {
                           Add this journal to calendar appointments.
                         </label>
                         <input
+                          value={String(config.calendarDateTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarDateTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarDateTemplate (e.g. {field:due_date}; blank = journal date)"
+                        />
+                        <input
                           value={String(config.calendarDateOffsetDays ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarDateOffsetDays', e.target.value === '' ? '' : Number(e.target.value))}
                           className="rounded border border-slate-300 px-2 py-1"
-                          placeholder="calendarDateOffsetDays (e.g. 0, 1, -1)"
+                          placeholder="calendarDateOffsetDays (days added to date above, e.g. 0, -7)"
                         />
                         <input
                           value={String(config.calendarTitleTemplate ?? '')}
@@ -1026,10 +1032,16 @@ const DocumentFlows: React.FC = () => {
                           Add this contact log to calendar appointments.
                         </label>
                         <input
+                          value={String(config.calendarDateTemplate ?? '')}
+                          onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarDateTemplate', e.target.value)}
+                          className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                          placeholder="calendarDateTemplate (e.g. {field:due_date}; blank = contact date)"
+                        />
+                        <input
                           value={String(config.calendarDateOffsetDays ?? '')}
                           onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'calendarDateOffsetDays', e.target.value === '' ? '' : Number(e.target.value))}
                           className="rounded border border-slate-300 px-2 py-1"
-                          placeholder="calendarDateOffsetDays (e.g. 0, 1, -1)"
+                          placeholder="calendarDateOffsetDays (days added to date above, e.g. 0, -7)"
                         />
                         <input
                           value={String(config.calendarTitleTemplate ?? '')}
