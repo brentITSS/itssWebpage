@@ -248,6 +248,25 @@ const DocumentFlows: React.FC = () => {
     setWorkflowSteps((prev) => prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, stepOrder: i + 1 })));
   };
 
+  const handleDuplicateWorkflowStep = (idx: number) => {
+    setWorkflowSteps((prev) => {
+      const source = prev[idx];
+      if (!source) return prev;
+
+      const duplicate: EditableWorkflowStep = {
+        stepOrder: idx + 2,
+        stepType: source.stepType,
+        stepConfigJson: source.stepConfigJson ?? '',
+        isActive: source.isActive ?? true,
+      };
+
+      return [...prev.slice(0, idx + 1), duplicate, ...prev.slice(idx + 1)].map((step, index) => ({
+        ...step,
+        stepOrder: index + 1,
+      }));
+    });
+  };
+
   const handleUpdateWorkflowStepConfigField = (idx: number, key: string, value: string | number | boolean) => {
     setWorkflowSteps((prev) =>
       prev.map((step, index) => {
@@ -543,7 +562,16 @@ const DocumentFlows: React.FC = () => {
                   <option value="RunExtraction">RunExtraction</option>
                   <option value="RunSummarisation">RunSummarisation</option>
                 </select>
-                <button type="button" onClick={() => handleRemoveWorkflowStep(idx)} className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">Remove</button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleDuplicateWorkflowStep(idx)}
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-700 hover:border-slate-400"
+                  >
+                    Duplicate
+                  </button>
+                  <button type="button" onClick={() => handleRemoveWorkflowStep(idx)} className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">Remove</button>
+                </div>
               </div>
               <input value={step.stepConfigJson ?? ''} onChange={(e) => handleUpdateWorkflowStep(idx, { stepConfigJson: e.target.value })} className="mt-2 w-full rounded border border-slate-300 px-2 py-1" placeholder="Optional JSON config" />
               {step.stepType === 'MarkCompleted' && (
