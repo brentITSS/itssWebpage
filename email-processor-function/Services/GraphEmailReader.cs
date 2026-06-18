@@ -1463,6 +1463,9 @@ public class GraphEmailReader : IGraphEmailReader
         var column = entityType.Equals("contactlog", StringComparison.OrdinalIgnoreCase)
             ? "contactLogID"
             : "journalLogID";
+        var otherColumn = entityType.Equals("contactlog", StringComparison.OrdinalIgnoreCase)
+            ? "journalLogID"
+            : "contactLogID";
 
         foreach (var tagTypeId in tagTypeIds)
         {
@@ -1474,8 +1477,8 @@ public class GraphEmailReader : IGraphEmailReader
                       AND {column} = @entityId
                 )
                 BEGIN
-                    INSERT INTO tblTagLog (tagTypeID, tagActive, {column})
-                    VALUES (@tagTypeId, 1, @entityId);
+                    INSERT INTO tblTagLog (tagTypeID, tagActive, {column}, {otherColumn})
+                    VALUES (@tagTypeId, 1, @entityId, NULL);
                 END
                 """;
 
