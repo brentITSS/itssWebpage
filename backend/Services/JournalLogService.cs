@@ -591,6 +591,7 @@ public class JournalLogService : IJournalLogService
             }
 
             var downloaded = await blob.DownloadContentAsync();
+            var contentBytes = downloaded.Value.Content.ToArray();
             var contentType = downloaded.Value.Details.ContentType ?? "application/octet-stream";
             var fileName = Path.GetFileName(blobKey);
             var underscore = fileName.IndexOf('_');
@@ -616,6 +617,26 @@ public class JournalLogService : IJournalLogService
                 fileName = $"{fileName}{hintedExt}";
             }
 
+            if (string.Equals(Path.GetExtension(fileName), ".bin", StringComparison.OrdinalIgnoreCase))
+            {
+                var sniffedExtension = InferExtensionFromMagicBytes(contentBytes);
+                if (!string.IsNullOrWhiteSpace(sniffedExtension))
+                {
+                    var stem = Path.GetFileNameWithoutExtension(fileName);
+                    if (string.IsNullOrWhiteSpace(stem) || Guid.TryParse(stem, out _))
+                    {
+                        stem = Path.GetFileNameWithoutExtension(hintedFileName ?? string.Empty);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(stem))
+                    {
+                        stem = "attachment";
+                    }
+
+                    fileName = $"{stem}{sniffedExtension}";
+                }
+            }
+
             if (string.Equals(contentType, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
             {
                 var provider = new FileExtensionContentTypeProvider();
@@ -629,13 +650,45 @@ public class JournalLogService : IJournalLogService
             {
                 FileName = fileName,
                 ContentType = contentType,
-                ContentBytes = downloaded.Value.Content.ToArray()
+                ContentBytes = contentBytes
             };
         }
         catch
         {
             return null;
         }
+    }
+
+    private static string? InferExtensionFromMagicBytes(byte[]? contentBytes)
+    {
+        if (contentBytes == null || contentBytes.Length < 4)
+        {
+            return null;
+        }
+
+        if (contentBytes[0] == 0x25 && contentBytes[1] == 0x50 && contentBytes[2] == 0x44 && contentBytes[3] == 0x46)
+        {
+            return ".pdf";
+        }
+
+        if (contentBytes.Length >= 8 &&
+            contentBytes[0] == 0x89 && contentBytes[1] == 0x50 && contentBytes[2] == 0x4E && contentBytes[3] == 0x47)
+        {
+            return ".png";
+        }
+
+        if (contentBytes.Length >= 3 &&
+            contentBytes[0] == 0xFF && contentBytes[1] == 0xD8 && contentBytes[2] == 0xFF)
+        {
+            return ".jpg";
+        }
+
+        if (contentBytes[0] == 0x50 && contentBytes[1] == 0x4B)
+        {
+            return ".docx";
+        }
+
+        return null;
     }
 
     private static void DeleteAttachmentFilesByPrefix(string folder, int attachmentId)

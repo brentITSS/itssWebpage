@@ -817,16 +817,6 @@ public class GraphEmailReader : IGraphEmailReader
         workflowContext.TryGetValue("extractionSnapshotComment", out var globalComment);
         var fieldComments = ParseExtractionSnapshotFieldComments(workflowContext);
 
-        const string deleteSql = """
-            DELETE FROM tbldocumentworkflowextractionsnapshot
-            WHERE DocumentWorkflowAuditRunId = @auditRunId;
-            """;
-        await using (var deleteCommand = new SqlCommand(deleteSql, connection))
-        {
-            deleteCommand.Parameters.AddWithValue("@auditRunId", auditRunId);
-            await deleteCommand.ExecuteNonQueryAsync(cancellationToken);
-        }
-
         const string insertSql = """
             INSERT INTO tbldocumentworkflowextractionsnapshot (
                 DocumentWorkflowAuditRunId,
@@ -2511,28 +2501,25 @@ public class GraphEmailReader : IGraphEmailReader
 
         foreach (var attachment in attachmentPreviews)
         {
-            // Skip inline/signature-like images for workflow-generated journal attachments.
-            var isImage = !string.IsNullOrWhiteSpace(attachment.ContentType) &&
-                          attachment.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
-            var looksLikeSignature = !string.IsNullOrWhiteSpace(attachment.Name) &&
-                                     (attachment.Name.StartsWith("Outlook-", StringComparison.OrdinalIgnoreCase) ||
-                                      attachment.Name.Contains("signature", StringComparison.OrdinalIgnoreCase));
-            if (isImage || looksLikeSignature)
+            if (ShouldSkipWorkflowAttachment(attachment))
             {
                 continue;
             }
 
+            var resolvedFileName = ResolveWorkflowAttachmentFileName(
+                attachment.Name,
+                attachment.ContentType,
+                attachment.ContentBytes);
+
             var attachedByValue = NullIfEmpty(attachedBy);
-            if (!string.IsNullOrWhiteSpace(attachment.Name))
-            {
-                attachedByValue = string.IsNullOrWhiteSpace(attachedByValue)
-                    ? $"Workflow ({attachment.Name})"
-                    : $"{attachedByValue} ({attachment.Name})";
-            }
+            attachedByValue = string.IsNullOrWhiteSpace(attachedByValue)
+                ? $"Workflow ({resolvedFileName})"
+                : $"{attachedByValue} ({resolvedFileName})";
 
             var blobKey = await TryUploadAttachmentToBlobAsync(
                 folder: "journals/workflow",
-                originalFileName: attachment.Name,
+                originalFileName: resolvedFileName,
+                contentType: attachment.ContentType,
                 contentBytes: attachment.ContentBytes,
                 cancellationToken);
             var safeAttachedBy = BuildPersistedTextWithBlobMarker(attachedByValue, blobKey, 255);
@@ -2569,8 +2556,18 @@ public class GraphEmailReader : IGraphEmailReader
 
         foreach (var attachment in attachmentPreviews)
         {
+            if (ShouldSkipWorkflowAttachment(attachment))
+            {
+                continue;
+            }
+
+            var resolvedFileName = ResolveWorkflowAttachmentFileName(
+                attachment.Name,
+                attachment.ContentType,
+                attachment.ContentBytes);
+
             var description = ApplyTemplateTokens(
-                attachmentDescriptionTemplate ?? $"Attachment: {attachment.Name}",
+                attachmentDescriptionTemplate ?? $"Attachment: {resolvedFileName}",
                 message,
                 classificationLabel,
                 classificationScore,
@@ -2578,7 +2575,8 @@ public class GraphEmailReader : IGraphEmailReader
 
             var blobKey = await TryUploadAttachmentToBlobAsync(
                 folder: "contacts/workflow",
-                originalFileName: attachment.Name,
+                originalFileName: resolvedFileName,
+                contentType: attachment.ContentType,
                 contentBytes: attachment.ContentBytes,
                 cancellationToken);
             description = BuildPersistedTextWithBlobMarker(description, blobKey, 500);
@@ -2594,6 +2592,7 @@ public class GraphEmailReader : IGraphEmailReader
     private async Task<string?> TryUploadAttachmentToBlobAsync(
         string folder,
         string? originalFileName,
+        string? contentType,
         byte[]? contentBytes,
         CancellationToken cancellationToken)
     {
@@ -2614,7 +2613,8 @@ public class GraphEmailReader : IGraphEmailReader
             _configuration["AttachmentStorage:ContainerName"] ??
             Environment.GetEnvironmentVariable("AttachmentStorage__ContainerName") ??
             "propertyhub-attachments";
-        var extension = Path.GetExtension(SanitizeFileName(originalFileName));
+        var resolvedFileName = ResolveWorkflowAttachmentFileName(originalFileName, contentType, contentBytes);
+        var extension = Path.GetExtension(resolvedFileName);
         if (string.IsNullOrWhiteSpace(extension))
         {
             extension = ".bin";
@@ -2622,6 +2622,7 @@ public class GraphEmailReader : IGraphEmailReader
 
         // Keep blob key compact so marker always fits into DB varchar columns.
         var blobKey = $"{folder}/{DateTime.UtcNow:yyyyMMdd}/{Guid.NewGuid():N}{extension}";
+        var resolvedContentType = ResolveAttachmentContentType(resolvedFileName, contentType, contentBytes);
 
         try
         {
@@ -2629,7 +2630,16 @@ public class GraphEmailReader : IGraphEmailReader
             await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
             var blob = container.GetBlobClient(blobKey);
             await using var stream = new MemoryStream(contentBytes, writable: false);
-            await blob.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken);
+            await blob.UploadAsync(
+                stream,
+                new Azure.Storage.Blobs.Models.BlobUploadOptions
+                {
+                    HttpHeaders = new Azure.Storage.Blobs.Models.BlobHttpHeaders
+                    {
+                        ContentType = resolvedContentType,
+                    },
+                },
+                cancellationToken);
             return blobKey;
         }
         catch (Exception ex)
@@ -2671,6 +2681,162 @@ public class GraphEmailReader : IGraphEmailReader
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(fallback.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
         return string.IsNullOrWhiteSpace(cleaned) ? "attachment.bin" : cleaned;
+    }
+
+    private static readonly Regex OutlookSpuriousAttachmentNameRegex = new(
+        @"^attachment-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static bool ShouldSkipWorkflowAttachment(AttachmentPreview attachment)
+    {
+        var name = attachment.Name?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(attachment.ContentType) &&
+            attachment.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (name.StartsWith("Outlook-", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("signature", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Outlook/Graph often exposes inner reference parts as attachment-{guid} with no real filename.
+        if (OutlookSpuriousAttachmentNameRegex.IsMatch(name) &&
+            string.IsNullOrWhiteSpace(Path.GetExtension(name)))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string ResolveWorkflowAttachmentFileName(string? name, string? contentType, byte[]? contentBytes)
+    {
+        var sanitized = SanitizeFileName(name);
+        var extension = Path.GetExtension(sanitized);
+        if (!string.IsNullOrWhiteSpace(extension) &&
+            !extension.Equals(".bin", StringComparison.OrdinalIgnoreCase))
+        {
+            return sanitized;
+        }
+
+        var inferredExtension = InferExtensionFromContentType(contentType)
+            ?? InferExtensionFromMagicBytes(contentBytes)
+            ?? ".bin";
+        var stem = Path.GetFileNameWithoutExtension(sanitized);
+        if (string.IsNullOrWhiteSpace(stem))
+        {
+            stem = "attachment";
+        }
+
+        return $"{stem}{inferredExtension}";
+    }
+
+    private static string ResolveAttachmentContentType(string fileName, string? contentType, byte[]? contentBytes)
+    {
+        if (!string.IsNullOrWhiteSpace(contentType) &&
+            !contentType.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
+        {
+            return contentType;
+        }
+
+        var extension = Path.GetExtension(fileName);
+        if (!string.IsNullOrWhiteSpace(extension))
+        {
+            var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+            if (provider.TryGetContentType(fileName, out var inferred))
+            {
+                return inferred;
+            }
+        }
+
+        return InferExtensionFromMagicBytes(contentBytes) switch
+        {
+            ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".txt" => "text/plain",
+            _ => "application/octet-stream",
+        };
+    }
+
+    private static string? InferExtensionFromContentType(string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return null;
+        }
+
+        return contentType.Trim().ToLowerInvariant() switch
+        {
+            "application/pdf" => ".pdf",
+            "application/json" => ".json",
+            "text/csv" => ".csv",
+            "text/plain" => ".txt",
+            "application/xml" or "text/xml" => ".xml",
+            "image/png" => ".png",
+            "image/jpeg" or "image/jpg" => ".jpg",
+            "image/gif" => ".gif",
+            "application/msword" => ".doc",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
+            "application/vnd.ms-excel" => ".xls",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
+            "message/rfc822" => ".eml",
+            _ => null,
+        };
+    }
+
+    private static string? InferExtensionFromMagicBytes(byte[]? contentBytes)
+    {
+        if (contentBytes == null || contentBytes.Length < 4)
+        {
+            return null;
+        }
+
+        if (contentBytes.Length >= 4 &&
+            contentBytes[0] == 0x25 &&
+            contentBytes[1] == 0x50 &&
+            contentBytes[2] == 0x44 &&
+            contentBytes[3] == 0x46)
+        {
+            return ".pdf";
+        }
+
+        if (contentBytes.Length >= 8 &&
+            contentBytes[0] == 0x89 &&
+            contentBytes[1] == 0x50 &&
+            contentBytes[2] == 0x4E &&
+            contentBytes[3] == 0x47)
+        {
+            return ".png";
+        }
+
+        if (contentBytes.Length >= 3 &&
+            contentBytes[0] == 0xFF &&
+            contentBytes[1] == 0xD8 &&
+            contentBytes[2] == 0xFF)
+        {
+            return ".jpg";
+        }
+
+        if (contentBytes.Length >= 2 &&
+            contentBytes[0] == 0x50 &&
+            contentBytes[1] == 0x4B)
+        {
+            return ".docx";
+        }
+
+        return null;
     }
 
     /// <summary>Maps template keys such as total_incl_vat to PDF text variants: same string or spaced words.</summary>
