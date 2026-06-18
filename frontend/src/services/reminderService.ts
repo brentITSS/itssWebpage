@@ -24,6 +24,8 @@ export interface ReminderResponseDto {
   reminderDate?: string;
   reminderActive?: boolean;
   isCompleted: boolean;
+  emailNotificationSent?: boolean;
+  emailNotificationError?: string;
 }
 
 export interface CreateReminderRequest {
@@ -36,6 +38,8 @@ export interface CreateReminderRequest {
   notes?: string;
   reminderDate?: string;
   isCompleted: boolean;
+  sendEmailReminder?: boolean;
+  emailRecipient?: string;
 }
 
 export interface OverdueRemindersQuery {

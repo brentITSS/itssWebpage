@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Users.Item.Messages.Item.Move;
+using Microsoft.Graph.Users.Item.SendMail;
 using MimeKit;
 using MsgReader.Outlook;
 using UglyToad.PdfPig;
@@ -486,6 +487,18 @@ public class GraphEmailReader : IGraphEmailReader
                     {
                         await RunSummarisationStepAsync(
                             consolidatedContent,
+                            step.StepConfigJson,
+                            workflowContext,
+                            cancellationToken);
+                    }
+                    else if (stepType == "sendemail")
+                    {
+                        await SendWorkflowEmailAsync(
+                            graphClient,
+                            mailboxUser,
+                            message,
+                            classificationLabel,
+                            classificationScore,
                             step.StepConfigJson,
                             workflowContext,
                             cancellationToken);
@@ -1293,6 +1306,121 @@ public class GraphEmailReader : IGraphEmailReader
                 cancellationToken);
         }
         _logger.LogInformation("Created ContactLog {ContactLogId} via workflow.", insertedId);
+    }
+
+    private async Task SendWorkflowEmailAsync(
+        GraphServiceClient graphClient,
+        string mailboxUser,
+        Message message,
+        string classificationLabel,
+        double classificationScore,
+        string? stepConfigJson,
+        IReadOnlyDictionary<string, string> workflowContext,
+        CancellationToken cancellationToken)
+    {
+        var toEmailTemplate = string.Empty;
+        var subjectTemplate = "Property Hub workflow: {classificationLabel}";
+        var bodyTemplate = "Workflow notification for email '{subject}'.";
+        var bodyIsHtml = false;
+        var saveToSentItems = true;
+
+        if (!string.IsNullOrWhiteSpace(stepConfigJson))
+        {
+            using var config = JsonDocument.Parse(stepConfigJson);
+            var root = config.RootElement;
+            toEmailTemplate = GetOptionalString(root, "toEmailTemplate")
+                ?? GetOptionalString(root, "toEmail")
+                ?? string.Empty;
+            subjectTemplate = GetOptionalString(root, "subjectTemplate")
+                ?? GetOptionalString(root, "subject")
+                ?? subjectTemplate;
+            bodyTemplate = GetOptionalString(root, "bodyTemplate")
+                ?? GetOptionalString(root, "body")
+                ?? bodyTemplate;
+            bodyIsHtml = GetOptionalBool(root, "bodyIsHtml") ?? false;
+            saveToSentItems = GetOptionalBool(root, "saveToSentItems") ?? true;
+        }
+
+        var toEmail = ApplyTemplateTokens(
+                toEmailTemplate,
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext)
+            .Trim();
+        var subject = ApplyTemplateTokens(
+                subjectTemplate,
+                message,
+                classificationLabel,
+                classificationScore,
+                workflowContext)
+            .Trim();
+        var body = ApplyTemplateTokens(
+            bodyTemplate,
+            message,
+            classificationLabel,
+            classificationScore,
+            workflowContext);
+
+        if (string.IsNullOrWhiteSpace(toEmail))
+        {
+            throw new InvalidOperationException("SendEmail step requires toEmailTemplate (or toEmail) in step config.");
+        }
+
+        if (!IsValidEmailAddress(toEmail))
+        {
+            throw new InvalidOperationException($"SendEmail step recipient '{toEmail}' is not a valid email address.");
+        }
+
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            throw new InvalidOperationException("SendEmail step subject resolved to an empty value.");
+        }
+
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            throw new InvalidOperationException("SendEmail step body resolved to an empty value.");
+        }
+
+        var graphMessage = new Message
+        {
+            Subject = subject,
+            Body = new ItemBody
+            {
+                ContentType = bodyIsHtml ? BodyType.Html : BodyType.Text,
+                Content = body,
+            },
+            ToRecipients = new List<Recipient>
+            {
+                new()
+                {
+                    EmailAddress = new EmailAddress { Address = toEmail },
+                },
+            },
+        };
+
+        _logger.LogInformation("Sending workflow email from {MailboxUser} to {Recipient}", mailboxUser, toEmail);
+
+        await graphClient.Users[mailboxUser].SendMail.PostAsync(
+            new SendMailPostRequestBody
+            {
+                Message = graphMessage,
+                SaveToSentItems = saveToSentItems,
+            },
+            cancellationToken: cancellationToken);
+    }
+
+    private static bool IsValidEmailAddress(string email)
+    {
+        try
+        {
+            _ = new System.Net.Mail.MailAddress(email);
+            return email.Contains('@', StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static async Task UpsertCalendarAppointmentRowAsync(

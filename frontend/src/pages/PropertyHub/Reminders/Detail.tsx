@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { reminderService, ReminderResponseDto } from '../../../services/reminderService';
 import ReminderForm from './Form';
 import { formatDateTimeUk, formatDateUk } from '../../../dateFormat';
 
 const ReminderDetail: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const emailFlash = location.state as
+    | {
+        emailNotificationSent?: boolean;
+        emailNotificationError?: string;
+        emailRecipient?: string;
+      }
+    | null
+    | undefined;
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isEdit = searchParams.get('edit') === 'true';
@@ -71,6 +80,19 @@ const ReminderDetail: React.FC = () => {
 
   return (
     <div>
+      {emailFlash && (
+        <div
+          className={`mb-4 rounded border px-4 py-3 ${
+            emailFlash.emailNotificationSent
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : 'border-amber-200 bg-amber-50 text-amber-900'
+          }`}
+        >
+          {emailFlash.emailNotificationSent
+            ? `Email reminder sent to ${emailFlash.emailRecipient || 'recipient'}.`
+            : `Reminder saved, but email could not be sent: ${emailFlash.emailNotificationError || 'Unknown error'}`}
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">{reminder.title}</h2>
         <div className="space-x-2">

@@ -854,6 +854,27 @@ public class DocumentHubController : ControllerBase
                 continue;
             }
 
+            if (stepType == "sendemail")
+            {
+                var config = ParseJsonObject(step.StepConfigJson);
+                var toTemplate = GetConfigString(config, "toEmailTemplate") ?? GetConfigString(config, "toEmail") ?? string.Empty;
+                var subjectTemplate = GetConfigString(config, "subjectTemplate") ?? GetConfigString(config, "subject") ?? "Property Hub workflow: {classificationLabel}";
+                var bodyTemplate = GetConfigString(config, "bodyTemplate") ?? GetConfigString(config, "body") ?? "Workflow notification.";
+                var renderedTo = RenderWorkflowTemplate(toTemplate, label, score, file.FileName, contextFields);
+                var renderedSubject = RenderWorkflowTemplate(subjectTemplate, label, score, file.FileName, contextFields);
+                var renderedBody = RenderWorkflowTemplate(bodyTemplate, label, score, file.FileName, contextFields);
+                stepResults.Add(new DocumentWorkflowStepTestResultDto
+                {
+                    StepOrder = step.StepOrder,
+                    StepType = step.StepType,
+                    Status = string.IsNullOrWhiteSpace(renderedTo) ? "error" : "would_run",
+                    Details = string.IsNullOrWhiteSpace(renderedTo)
+                        ? "Missing toEmailTemplate (or toEmail) in step config."
+                        : $"Would send email to '{renderedTo}' with subject '{renderedSubject}'. Body preview: {(renderedBody.Length > 180 ? renderedBody[..180] + "…" : renderedBody)}"
+                });
+                continue;
+            }
+
             stepResults.Add(new DocumentWorkflowStepTestResultDto
             {
                 StepOrder = step.StepOrder,

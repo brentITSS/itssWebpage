@@ -561,6 +561,7 @@ const DocumentFlows: React.FC = () => {
                   <option value="CreateContactLog">CreateContactLog</option>
                   <option value="RunExtraction">RunExtraction</option>
                   <option value="RunSummarisation">RunSummarisation</option>
+                  <option value="SendEmail">SendEmail</option>
                 </select>
                 <div className="flex items-center gap-1">
                   <button
@@ -1248,6 +1249,48 @@ const DocumentFlows: React.FC = () => {
                       </>
                     );
                   })()}
+                </div>
+              )}
+              {step.stepType === 'SendEmail' && (
+                <div className="mt-2 grid gap-1 md:grid-cols-2">
+                  <input
+                    value={String(parseStepConfig(step.stepConfigJson).toEmailTemplate ?? parseStepConfig(step.stepConfigJson).toEmail ?? '')}
+                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'toEmailTemplate', e.target.value)}
+                    className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                    placeholder="toEmailTemplate (e.g. manager@example.com or {field:assigned_email})"
+                  />
+                  <input
+                    value={String(parseStepConfig(step.stepConfigJson).subjectTemplate ?? parseStepConfig(step.stepConfigJson).subject ?? '')}
+                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'subjectTemplate', e.target.value)}
+                    className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                    placeholder='subjectTemplate (default: Property Hub workflow: {classificationLabel})'
+                  />
+                  <textarea
+                    rows={4}
+                    value={String(parseStepConfig(step.stepConfigJson).bodyTemplate ?? parseStepConfig(step.stepConfigJson).body ?? '')}
+                    onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'bodyTemplate', e.target.value)}
+                    className="md:col-span-2 rounded border border-slate-300 px-2 py-1"
+                    placeholder="bodyTemplate (supports {subject}, {from}, {classificationLabel}, {field:...}, {summary})"
+                  />
+                  <label className="inline-flex items-center gap-2 text-[11px] text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(parseStepConfig(step.stepConfigJson).bodyIsHtml)}
+                      onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'bodyIsHtml', e.target.checked)}
+                    />
+                    Body is HTML
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-[11px] text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={parseStepConfig(step.stepConfigJson).saveToSentItems !== false}
+                      onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'saveToSentItems', e.target.checked)}
+                    />
+                    Save to Sent Items
+                  </label>
+                  <p className="md:col-span-2 text-[10px] text-slate-500">
+                    Sends from the configured Property Hub mailbox (e.g. property@itsson.co.uk). Requires Azure AD <span className="font-semibold">Mail.Send</span> application permission.
+                  </p>
                 </div>
               )}
             </div>

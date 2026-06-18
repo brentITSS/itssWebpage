@@ -144,6 +144,7 @@ builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IJournalLogService, JournalLogService>();
 builder.Services.AddScoped<IContactLogService, ContactLogService>();
+builder.Services.AddScoped<IPropertyHubEmailService, GraphPropertyHubEmailService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
 builder.Services.AddScoped<ITagService, TagService>();

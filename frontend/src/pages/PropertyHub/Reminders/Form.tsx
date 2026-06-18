@@ -61,6 +61,8 @@ const ReminderForm: React.FC = () => {
     notes: '',
     reminderDate: '',
     isCompleted: false,
+    sendEmailReminder: false,
+    emailRecipient: '',
   });
 
   const loadData = useCallback(async () => {
@@ -150,6 +152,11 @@ const ReminderForm: React.FC = () => {
       setSaving(false);
       return;
     }
+    if (!reminderId && formData.sendEmailReminder && !formData.emailRecipient?.trim()) {
+      setError('Enter an email address to send the reminder notification.');
+      setSaving(false);
+      return;
+    }
     try {
       if (reminderId) {
         const upd: UpdateReminderRequest = {
@@ -169,9 +176,18 @@ const ReminderForm: React.FC = () => {
         const createPayload: CreateReminderRequest = {
           ...formData,
           reminderDate: formData.reminderDate || undefined,
+          emailRecipient: formData.sendEmailReminder ? formData.emailRecipient?.trim() : undefined,
         };
         const created = await reminderService.createReminder(createPayload);
-        navigate(detailPathAfterSave(created.reminderId));
+        navigate(detailPathAfterSave(created.reminderId), {
+          state: formData.sendEmailReminder
+            ? {
+                emailNotificationSent: created.emailNotificationSent,
+                emailNotificationError: created.emailNotificationError,
+                emailRecipient: formData.emailRecipient?.trim(),
+              }
+            : undefined,
+        });
       }
     } catch (err: any) {
       setError(err.message || 'Failed to save');
@@ -361,6 +377,43 @@ const ReminderForm: React.FC = () => {
               Completed (sets reminderActive = 0 in the database)
             </label>
           </div>
+          {!reminderId && (
+            <>
+              <div className="flex items-center gap-2 md:col-span-2">
+                <input
+                  type="checkbox"
+                  id="sendEmailReminder"
+                  checked={!!formData.sendEmailReminder}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      sendEmailReminder: e.target.checked,
+                      emailRecipient: e.target.checked ? formData.emailRecipient : '',
+                    })
+                  }
+                />
+                <label htmlFor="sendEmailReminder" className="text-sm text-gray-700">
+                  Send email reminder from property@itsson.co.uk
+                </label>
+              </div>
+              {formData.sendEmailReminder && (
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Email recipient</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.emailRecipient || ''}
+                    onChange={(e) => setFormData({ ...formData, emailRecipient: e.target.value })}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    placeholder="e.g. colleague@itsson.co.uk"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    The reminder is saved first; email is sent immediately after. Requires Graph Mail.Send on the server.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
           <div className="flex items-end gap-2 pb-1 md:col-span-2">
             <button
               type="submit"

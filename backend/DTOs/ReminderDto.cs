@@ -52,6 +52,10 @@ public class ReminderResponseDto
     public bool? ReminderActive { get; set; }
     /// <summary>True when reminderActive is explicitly false.</summary>
     public bool IsCompleted { get; set; }
+    /// <summary>Populated on create when an email notification was requested.</summary>
+    public bool? EmailNotificationSent { get; set; }
+    /// <summary>Populated on create when email notification was requested but failed.</summary>
+    public string? EmailNotificationError { get; set; }
 }
 
 public class CreateReminderRequest
@@ -66,6 +70,10 @@ public class CreateReminderRequest
     public DateTime? ReminderDate { get; set; }
     /// <summary>When true, stored as reminderActive = false.</summary>
     public bool IsCompleted { get; set; }
+    /// <summary>When true, sends an email reminder to <see cref="EmailRecipient"/> from the configured Property Hub mailbox.</summary>
+    public bool SendEmailReminder { get; set; }
+    /// <summary>Required when <see cref="SendEmailReminder"/> is true.</summary>
+    public string? EmailRecipient { get; set; }
 }
 
 public class UpdateReminderRequest
