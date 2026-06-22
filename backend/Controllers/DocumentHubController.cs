@@ -1699,6 +1699,12 @@ public class DocumentHubController : ControllerBase
             return DocumentHubAiHelper.NormalizeWhitespace(text);
         }
 
+        if (extension == ".xlsx")
+        {
+            await using var stream = file.OpenReadStream();
+            return DocumentHubAiHelper.ExtractTextFromXlsx(stream);
+        }
+
         if (extension is ".txt" or ".csv" or ".json" or ".xml" or ".log" or ".md")
         {
             using var reader = new StreamReader(file.OpenReadStream());

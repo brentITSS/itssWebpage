@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
 using UglyToad.PdfPig;
 
 namespace backend.Services;
@@ -19,6 +22,72 @@ public static class DocumentHubAiHelper
 
             var raw = sb.ToString();
             return NormalizeWhitespacePreservingLines(raw);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    public static string ExtractTextFromXlsx(Stream xlsxStream)
+    {
+        try
+        {
+            using var document = SpreadsheetDocument.Open(xlsxStream, false);
+            var workbookPart = document.WorkbookPart;
+            if (workbookPart?.Workbook?.Sheets == null)
+            {
+                return string.Empty;
+            }
+
+            var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable;
+            var sb = new StringBuilder();
+            var sheetCount = 0;
+
+            foreach (var sheet in workbookPart.Workbook.Sheets.Elements<Sheet>())
+            {
+                if (sheetCount++ >= 20)
+                {
+                    break;
+                }
+
+                if (sheet.Id?.Value == null)
+                {
+                    continue;
+                }
+
+                if (workbookPart.GetPartById(sheet.Id.Value) is not WorksheetPart worksheetPart)
+                {
+                    continue;
+                }
+
+                var sheetData = worksheetPart.Worksheet?.GetFirstChild<SheetData>();
+                if (sheetData == null)
+                {
+                    continue;
+                }
+
+                sb.AppendLine($"Sheet: {sheet.Name?.Value ?? "Sheet"}");
+
+                var rowCount = 0;
+                foreach (var row in sheetData.Elements<Row>())
+                {
+                    if (rowCount++ >= 2000)
+                    {
+                        break;
+                    }
+
+                    var line = FormatSpreadsheetRow(row, sharedStrings);
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        sb.AppendLine(line);
+                    }
+                }
+
+                sb.AppendLine();
+            }
+
+            return NormalizeWhitespacePreservingLines(sb.ToString());
         }
         catch
         {
@@ -157,6 +226,78 @@ public static class DocumentHubAiHelper
         }
 
         return finalSummary;
+    }
+
+    private static string FormatSpreadsheetRow(Row row, SharedStringTable? sharedStrings)
+    {
+        var cells = row.Elements<Cell>()
+            .Select(cell => (ColumnIndex: GetSpreadsheetColumnIndex(cell.CellReference?.Value), Text: GetSpreadsheetCellText(cell, sharedStrings)))
+            .Where(cell => cell.ColumnIndex > 0)
+            .OrderBy(cell => cell.ColumnIndex)
+            .ToList();
+
+        if (cells.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var values = new string[cells[^1].ColumnIndex];
+        foreach (var (columnIndex, text) in cells)
+        {
+            values[columnIndex - 1] = text;
+        }
+
+        while (values.Length > 0 && string.IsNullOrWhiteSpace(values[^1]))
+        {
+            Array.Resize(ref values, values.Length - 1);
+        }
+
+        return values.Length == 0 ? string.Empty : string.Join(" | ", values);
+    }
+
+    private static string GetSpreadsheetCellText(Cell cell, SharedStringTable? sharedStrings)
+    {
+        if (cell.InlineString?.Text != null)
+        {
+            return cell.InlineString.Text.Text?.Trim() ?? string.Empty;
+        }
+
+        if (cell.CellValue == null)
+        {
+            return string.Empty;
+        }
+
+        var raw = cell.CellValue.InnerText?.Trim() ?? string.Empty;
+        if (cell.DataType?.Value == CellValues.SharedString &&
+            sharedStrings != null &&
+            int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sharedIndex))
+        {
+            return sharedStrings.ElementAtOrDefault(sharedIndex)?.InnerText?.Trim() ?? raw;
+        }
+
+        return raw;
+    }
+
+    private static int GetSpreadsheetColumnIndex(string? cellReference)
+    {
+        if (string.IsNullOrWhiteSpace(cellReference))
+        {
+            return 0;
+        }
+
+        var columnLetters = new string(cellReference.TakeWhile(char.IsLetter).ToArray());
+        if (columnLetters.Length == 0)
+        {
+            return 0;
+        }
+
+        var index = 0;
+        foreach (var letter in columnLetters)
+        {
+            index = (index * 26) + (char.ToUpperInvariant(letter) - 'A' + 1);
+        }
+
+        return index;
     }
 
     private static string ToTitle(string value)

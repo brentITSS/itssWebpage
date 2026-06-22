@@ -28,6 +28,9 @@ const duplicateDisplayName = (name: string, maxLength: number): string => {
   return `${trimmed.slice(0, Math.max(0, maxLength - suffix.length))}${suffix}`;
 };
 
+const deriveClassificationLabelFromSetName = (labelSetName: string): string =>
+  labelSetName.trim().replace(/\s+Label Set$/i, '').trim();
+
 type TrainerField = {
   id: string;
   fieldName: string;
@@ -164,6 +167,16 @@ const DocumentHub: React.FC = () => {
     );
   }, []);
 
+  const syncMasterLabelNameToSuggestions = useCallback((name: string) => {
+    const derivedLabel = deriveClassificationLabelFromSetName(name);
+    if (!derivedLabel) {
+      return;
+    }
+    setClassificationSuggestions((prev) =>
+      prev.length === 1 ? prev.map((item) => ({ ...item, suggestedLabel: derivedLabel })) : prev
+    );
+  }, []);
+
   const handleSaveLabelSet = async () => {
     const normalizedLabelSetName =
       labelSetName.trim() ||
@@ -213,9 +226,16 @@ const DocumentHub: React.FC = () => {
                 ? masterPrompt || suggestion.suggestedPrompt?.trim()
                 : suggestion.suggestedPrompt?.trim() || masterPrompt
             )?.trim() || 'Classify this document based on content and layout.';
+            const resolvedLabel = (
+              classificationSuggestions.length === 1
+                ? deriveClassificationLabelFromSetName(normalizedLabelSetName) ||
+                  suggestion.suggestedLabel?.trim() ||
+                  'General Doc'
+                : suggestion.suggestedLabel?.trim() || 'General Doc'
+            ).slice(0, 80);
 
             return {
-            classificationLabel: (suggestion.suggestedLabel || 'General Doc').trim().slice(0, 80) || 'General Doc',
+            classificationLabel: resolvedLabel || 'General Doc',
             classificationDescription: resolvedDescription ? resolvedDescription.slice(0, 2000) : undefined,
             classificationPrompt: resolvedPrompt.slice(0, 8000),
             seedDocumentName: suggestion.fileName,
@@ -488,6 +508,8 @@ const DocumentHub: React.FC = () => {
   };
 
   const handleEditLabelSet = (labelSet: DocumentLabelSetDto) => {
+    const setName = (labelSet.labelSetName ?? '').trim();
+    const derivedLabelFromSetName = deriveClassificationLabelFromSetName(setName);
     const mappedSuggestions = (labelSet.labels ?? []).map((label) => ({
       fileName: label.seedDocumentName ?? 'Saved label',
       suggestedLabel: label.classificationLabel ?? '',
@@ -495,6 +517,12 @@ const DocumentHub: React.FC = () => {
       suggestedPrompt: label.classificationPrompt ?? '',
       textPreview: '',
     }));
+    if (mappedSuggestions.length === 1 && derivedLabelFromSetName) {
+      const storedLabel = mappedSuggestions[0].suggestedLabel.trim();
+      if (!storedLabel || storedLabel.toLowerCase() !== derivedLabelFromSetName.toLowerCase()) {
+        mappedSuggestions[0].suggestedLabel = derivedLabelFromSetName;
+      }
+    }
     const fallbackDescriptionFromLabels =
       mappedSuggestions.find((item) => item.suggestedDescription.trim().length > 0)?.suggestedDescription ?? '';
 
@@ -1043,9 +1071,16 @@ const DocumentHub: React.FC = () => {
             <div className="mt-4 space-y-4">
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Label Set Name</span>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  For single-label sets, this also drives the classification label shown below (what workflows match on).
+                </p>
                 <input
                   value={labelSetName}
-                  onChange={(event) => setLabelSetName(event.target.value)}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setLabelSetName(next);
+                    syncMasterLabelNameToSuggestions(next);
+                  }}
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                   placeholder="e.g. Tenancy Documents"
                 />
@@ -1053,8 +1088,8 @@ const DocumentHub: React.FC = () => {
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Label Set Description</span>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Set-level notes. When labels are listed below, this also updates each label&apos;s description used in
-                  classification.
+                  Set-level notes. For single-label sets, editing the label set name or this field also updates the
+                  classification label and description below.
                 </p>
                 <textarea
                   value={labelSetDescription}
@@ -1070,8 +1105,8 @@ const DocumentHub: React.FC = () => {
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Classification Prompt Template</span>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Prompt sent to the classifier for every label in this set. Editing here updates the label prompt(s) below
-                  on save.
+                  Prompt sent to the classifier for every label in this set. Editing here updates the label prompt below
+                  immediately for single-label sets.
                 </p>
                 <textarea
                   value={classificationPrompt}
@@ -1243,7 +1278,7 @@ const DocumentHub: React.FC = () => {
                 <span className="text-[11px] font-medium text-slate-600">Test Document Upload</span>
                 <input
                   type="file"
-                  accept=".pdf,.txt,.csv,.json,.xml,.log,.md"
+                  accept=".pdf,.xlsx,.txt,.csv,.json,.xml,.log,.md"
                   onChange={(event) => setClassificationTestFile(event.target.files?.[0] ?? null)}
                   className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
                 />

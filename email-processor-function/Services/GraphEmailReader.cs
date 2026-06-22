@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Azure.Storage.Blobs;
 using Azure.Identity;
 using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
 using email_processor_function.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -3430,6 +3431,7 @@ public class GraphEmailReader : IGraphEmailReader
         {
             ".pdf" => ExtractPdfText(content),
             ".docx" => ExtractDocxText(content),
+            ".xlsx" => ExtractXlsxText(content),
             ".eml" => ExtractEmlText(content),
             ".msg" => ExtractMsgText(content),
             ".txt" or ".csv" or ".json" or ".xml" => Encoding.UTF8.GetString(content),
@@ -3457,6 +3459,145 @@ public class GraphEmailReader : IGraphEmailReader
         using var doc = WordprocessingDocument.Open(stream, false);
         var body = doc.MainDocumentPart?.Document?.Body?.InnerText ?? string.Empty;
         return NormalizeWhitespace(body);
+    }
+
+    private static string ExtractXlsxText(byte[] content)
+    {
+        try
+        {
+            using var stream = new MemoryStream(content);
+            using var document = SpreadsheetDocument.Open(stream, false);
+            var workbookPart = document.WorkbookPart;
+            if (workbookPart?.Workbook?.Sheets == null)
+            {
+                return string.Empty;
+            }
+
+            var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable;
+            var sb = new StringBuilder();
+            var sheetCount = 0;
+
+            foreach (var sheet in workbookPart.Workbook.Sheets.Elements<Sheet>())
+            {
+                if (sheetCount++ >= 20)
+                {
+                    break;
+                }
+
+                if (sheet.Id?.Value == null)
+                {
+                    continue;
+                }
+
+                if (workbookPart.GetPartById(sheet.Id.Value) is not WorksheetPart worksheetPart)
+                {
+                    continue;
+                }
+
+                var sheetData = worksheetPart.Worksheet?.GetFirstChild<SheetData>();
+                if (sheetData == null)
+                {
+                    continue;
+                }
+
+                sb.AppendLine($"Sheet: {sheet.Name?.Value ?? "Sheet"}");
+
+                var rowCount = 0;
+                foreach (var row in sheetData.Elements<Row>())
+                {
+                    if (rowCount++ >= 2000)
+                    {
+                        break;
+                    }
+
+                    var line = FormatSpreadsheetRow(row, sharedStrings);
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        sb.AppendLine(line);
+                    }
+                }
+
+                sb.AppendLine();
+            }
+
+            return NormalizeWhitespacePreserveLineBreaks(sb.ToString());
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string FormatSpreadsheetRow(Row row, SharedStringTable? sharedStrings)
+    {
+        var cells = row.Elements<Cell>()
+            .Select(cell => (ColumnIndex: GetSpreadsheetColumnIndex(cell.CellReference?.Value), Text: GetSpreadsheetCellText(cell, sharedStrings)))
+            .Where(cell => cell.ColumnIndex > 0)
+            .OrderBy(cell => cell.ColumnIndex)
+            .ToList();
+
+        if (cells.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var values = new string[cells[^1].ColumnIndex];
+        foreach (var (columnIndex, text) in cells)
+        {
+            values[columnIndex - 1] = text;
+        }
+
+        while (values.Length > 0 && string.IsNullOrWhiteSpace(values[^1]))
+        {
+            Array.Resize(ref values, values.Length - 1);
+        }
+
+        return values.Length == 0 ? string.Empty : string.Join(" | ", values);
+    }
+
+    private static string GetSpreadsheetCellText(Cell cell, SharedStringTable? sharedStrings)
+    {
+        if (cell.InlineString?.Text != null)
+        {
+            return cell.InlineString.Text.Text?.Trim() ?? string.Empty;
+        }
+
+        if (cell.CellValue == null)
+        {
+            return string.Empty;
+        }
+
+        var raw = cell.CellValue.InnerText?.Trim() ?? string.Empty;
+        if (cell.DataType?.Value == CellValues.SharedString &&
+            sharedStrings != null &&
+            int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sharedIndex))
+        {
+            return sharedStrings.ElementAtOrDefault(sharedIndex)?.InnerText?.Trim() ?? raw;
+        }
+
+        return raw;
+    }
+
+    private static int GetSpreadsheetColumnIndex(string? cellReference)
+    {
+        if (string.IsNullOrWhiteSpace(cellReference))
+        {
+            return 0;
+        }
+
+        var columnLetters = new string(cellReference.TakeWhile(char.IsLetter).ToArray());
+        if (columnLetters.Length == 0)
+        {
+            return 0;
+        }
+
+        var index = 0;
+        foreach (var letter in columnLetters)
+        {
+            index = (index * 26) + (char.ToUpperInvariant(letter) - 'A' + 1);
+        }
+
+        return index;
     }
 
     private static string ExtractEmlText(byte[] content)

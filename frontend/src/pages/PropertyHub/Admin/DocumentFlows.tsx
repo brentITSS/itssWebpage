@@ -1347,7 +1347,7 @@ const DocumentFlows: React.FC = () => {
               <option value="">Select workflow rule</option>
               {workflowRules.map((rule) => <option key={rule.documentWorkflowRuleId} value={rule.documentWorkflowRuleId}>{rule.workflowName}</option>)}
             </select>
-            <input type="file" accept=".pdf,.txt,.csv,.json,.xml,.log,.md" onChange={(e) => setWorkflowTestFile(e.target.files?.[0] ?? null)} className="rounded border border-slate-300 px-2 py-1" />
+            <input type="file" accept=".pdf,.xlsx,.txt,.csv,.json,.xml,.log,.md" onChange={(e) => setWorkflowTestFile(e.target.files?.[0] ?? null)} className="rounded border border-slate-300 px-2 py-1" />
             <button type="button" onClick={handleRunWorkflowTest} disabled={loading} className="rounded border border-slate-300 bg-white px-3 py-1.5">Run Workflow Test</button>
           </div>
           {workflowTestFeedback && <p className="mt-2 text-[11px]">{workflowTestFeedback}</p>}
