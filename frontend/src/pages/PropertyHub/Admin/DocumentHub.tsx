@@ -56,6 +56,7 @@ type SpreadsheetPreviewSheet = {
   name: string;
   rows: string[][];
   headerRowIndex: number;
+  columnHeaders: Record<number, string>;
 };
 
 type SpreadsheetCellCapture = {
@@ -70,10 +71,113 @@ type SpreadsheetCellCapture = {
 const MONTH_HEADER_PATTERN =
   /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s/]?\d{2,4}\b/i;
 
+const MONTH_ABBREV_PATTERN = /^[A-Za-z]{3}-\d{2}$/;
+
+const isSpreadsheetMonthLabel = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return MONTH_HEADER_PATTERN.test(trimmed) || MONTH_ABBREV_PATTERN.test(trimmed);
+};
+
+const tryFormatExcelSerialAsMonth = (value: string): string | null => {
+  if (!/^\d{4,5}$/.test(value.trim())) {
+    return null;
+  }
+
+  const serial = Number.parseInt(value.trim(), 10);
+  if (serial < 39000 || serial > 65000) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(1899, 11, 30 + serial));
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const month = date.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+  const year = String(date.getUTCFullYear()).slice(-2);
+  return `${month}-${year}`;
+};
+
+const parseMonthLabel = (label: string): Date | null => {
+  const trimmed = label.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const abbrevMatch = trimmed.match(/^([A-Za-z]{3})-(\d{2})$/);
+  if (abbrevMatch) {
+    const monthIndex = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(
+      abbrevMatch[1].toLowerCase()
+    );
+    if (monthIndex >= 0) {
+      const year = 2000 + Number.parseInt(abbrevMatch[2], 10);
+      return new Date(Date.UTC(year, monthIndex, 1));
+    }
+  }
+
+  const namedMatch = trimmed.match(
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s/]?(\d{2,4})\b/i
+  );
+  if (namedMatch) {
+    const monthIndex = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(
+      namedMatch[1].slice(0, 3).toLowerCase()
+    );
+    if (monthIndex >= 0) {
+      const yearPart = namedMatch[2];
+      const year = yearPart.length === 2 ? 2000 + Number.parseInt(yearPart, 10) : Number.parseInt(yearPart, 10);
+      return new Date(Date.UTC(year, monthIndex, 1));
+    }
+  }
+
+  return null;
+};
+
+const formatMonthLabel = (date: Date): string => {
+  const month = date.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+  const year = String(date.getUTCFullYear()).slice(-2);
+  return `${month}-${year}`;
+};
+
+const addMonthsUtc = (date: Date, offset: number): Date =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1));
+
+const normalizeSpreadsheetHeaderCell = (value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+  if (isSpreadsheetMonthLabel(trimmed)) {
+    return trimmed;
+  }
+  return tryFormatExcelSerialAsMonth(trimmed) ?? trimmed;
+};
+
 const detectSpreadsheetHeaderRowIndex = (rows: string[][]): number => {
   let bestIndex = 0;
-  let bestScore = -1;
+  let bestMonthCount = 0;
 
+  for (let rowIndex = 0; rowIndex < Math.min(rows.length, 25); rowIndex++) {
+    let monthCount = 0;
+    for (const cell of rows[rowIndex] ?? []) {
+      const normalized = normalizeSpreadsheetHeaderCell(cell ?? '');
+      if (isSpreadsheetMonthLabel(normalized)) {
+        monthCount++;
+      }
+    }
+    if (monthCount > bestMonthCount) {
+      bestMonthCount = monthCount;
+      bestIndex = rowIndex;
+    }
+  }
+
+  if (bestMonthCount > 0) {
+    return bestIndex;
+  }
+
+  let bestScore = -1;
   for (let rowIndex = 0; rowIndex < Math.min(rows.length, 20); rowIndex++) {
     const row = rows[rowIndex];
     let score = 0;
@@ -83,9 +187,7 @@ const detectSpreadsheetHeaderRowIndex = (rows: string[][]): number => {
       if (!cell) {
         continue;
       }
-      if (MONTH_HEADER_PATTERN.test(cell)) {
-        score += 4;
-      } else if (/^(?:total|less|due|management)/i.test(cell)) {
+      if (/^(?:total|less|due|management)/i.test(cell)) {
         score -= 2;
       } else if (cell.length <= 16) {
         score += 1;
@@ -98,7 +200,144 @@ const detectSpreadsheetHeaderRowIndex = (rows: string[][]): number => {
     }
   }
 
-  return bestScore > 0 ? bestIndex : 0;
+  return bestIndex;
+};
+
+const collectSpreadsheetDataColumns = (rows: string[][]): number[] => {
+  const dataCols = new Set<number>();
+
+  for (const row of rows) {
+    const rowLabel = row[0]?.trim() ?? '';
+    if (!rowLabel || !/(unit|meter|kb|apt|flat|shop)/i.test(rowLabel)) {
+      continue;
+    }
+
+    row.forEach((cell, colIndex) => {
+      if (colIndex > 0 && /^-?\d+(\.\d+)?$/.test(cell?.trim() ?? '')) {
+        dataCols.add(colIndex);
+      }
+    });
+  }
+
+  return Array.from(dataCols).sort((a, b) => a - b);
+};
+
+const buildSpreadsheetColumnHeaders = (rows: string[][]): Record<number, string> => {
+  const headers: Record<number, string> = {};
+
+  for (let rowIndex = 0; rowIndex < Math.min(rows.length, 30); rowIndex++) {
+    const row = rows[rowIndex] ?? [];
+    for (let colIndex = 0; colIndex < row.length; colIndex++) {
+      const normalized = normalizeSpreadsheetHeaderCell(row[colIndex] ?? '');
+      if (!normalized || headers[colIndex]) {
+        continue;
+      }
+      if (isSpreadsheetMonthLabel(normalized)) {
+        headers[colIndex] = normalized;
+      }
+    }
+  }
+
+  const headerRowIndex = detectSpreadsheetHeaderRowIndex(rows);
+  const headerRow = rows[headerRowIndex] ?? [];
+  for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
+    if (headers[colIndex]) {
+      continue;
+    }
+    const normalized = normalizeSpreadsheetHeaderCell(headerRow[colIndex] ?? '');
+    if (normalized && colIndex > 0 && normalized.length <= 24) {
+      headers[colIndex] = normalized;
+    }
+  }
+
+  return fillSpreadsheetMonthColumnGaps(rows, headers);
+};
+
+const fillSpreadsheetMonthColumnGaps = (
+  rows: string[][],
+  headers: Record<number, string>
+): Record<number, string> => {
+  const filled: Record<number, string> = { ...headers };
+
+  const monthCols = Object.entries(filled)
+    .map(([colIndex, label]) => ({ colIndex: Number(colIndex), label }))
+    .filter((entry) => isSpreadsheetMonthLabel(entry.label))
+    .sort((a, b) => a.colIndex - b.colIndex);
+
+  if (monthCols.length === 0) {
+    return filled;
+  }
+
+  const dataCols = collectSpreadsheetDataColumns(rows);
+
+  const monthStepBetween = (leftLabel: string, rightLabel: string): number => {
+    const leftDate = parseMonthLabel(leftLabel);
+    const rightDate = parseMonthLabel(rightLabel);
+    if (!leftDate || !rightDate) {
+      return -1;
+    }
+    return leftDate < rightDate ? 1 : -1;
+  };
+
+  if (monthCols.length === 1 && dataCols.length > 1) {
+    const anchor = monthCols[0];
+    const anchorDate = parseMonthLabel(anchor.label);
+    if (anchorDate) {
+      const orderedDataCols = dataCols.sort((a, b) => a - b);
+      const anchorPos = orderedDataCols.indexOf(anchor.colIndex);
+      const anchorIndex = anchorPos >= 0 ? anchorPos : 0;
+      const step = -1;
+
+      for (let index = 0; index < orderedDataCols.length; index++) {
+        const colIndex = orderedDataCols[index];
+        if (filled[colIndex]) {
+          continue;
+        }
+        filled[colIndex] = formatMonthLabel(addMonthsUtc(anchorDate, (index - anchorIndex) * step));
+      }
+    }
+  }
+
+  for (let index = 0; index < monthCols.length - 1; index++) {
+    const left = monthCols[index];
+    const right = monthCols[index + 1];
+    const leftDate = parseMonthLabel(left.label);
+    if (!leftDate) {
+      continue;
+    }
+    const step = monthStepBetween(left.label, right.label);
+
+    for (let colIndex = left.colIndex + 1; colIndex < right.colIndex; colIndex++) {
+      if (filled[colIndex]) {
+        continue;
+      }
+      filled[colIndex] = formatMonthLabel(addMonthsUtc(leftDate, (colIndex - left.colIndex) * step));
+    }
+  }
+
+  if (dataCols.length > 0 && monthCols.length > 0) {
+    const firstMonth = monthCols[0];
+    const lastMonth = monthCols[monthCols.length - 1];
+    const firstMonthDate = parseMonthLabel(firstMonth.label);
+    const lastMonthDate = parseMonthLabel(lastMonth.label);
+    const leadingStep =
+      monthCols.length >= 2 && firstMonthDate && lastMonthDate
+        ? monthStepBetween(firstMonth.label, lastMonth.label)
+        : -1;
+
+    if (firstMonthDate) {
+      for (const colIndex of dataCols) {
+        if (filled[colIndex]) {
+          continue;
+        }
+        filled[colIndex] = formatMonthLabel(
+          addMonthsUtc(firstMonthDate, (colIndex - firstMonth.colIndex) * leadingStep)
+        );
+      }
+    }
+  }
+
+  return filled;
 };
 
 const getSpreadsheetRowLabel = (row: string[], rowIndex: number, headerRowIndex: number): string => {
@@ -112,15 +351,34 @@ const getSpreadsheetRowLabel = (row: string[], rowIndex: number, headerRowIndex:
   return row.find((cell) => cell?.trim())?.trim() ?? '';
 };
 
-const getSpreadsheetColHeader = (rows: string[][], headerRowIndex: number, colIndex: number): string => {
-  for (let rowIndex = headerRowIndex; rowIndex >= 0; rowIndex--) {
-    const header = rows[rowIndex]?.[colIndex]?.trim();
+const getSpreadsheetColHeader = (
+  columnHeaders: Record<number, string>,
+  colIndex: number
+): string => {
+  if (colIndex === 0) {
+    return 'label';
+  }
+
+  const probes = [colIndex, colIndex - 1, colIndex + 1];
+  for (const probe of probes) {
+    const header = columnHeaders[probe];
+    if (header && isSpreadsheetMonthLabel(header)) {
+      return header;
+    }
+  }
+
+  for (const probe of probes) {
+    const header = columnHeaders[probe];
     if (header) {
       return header;
     }
   }
-  return colIndex === 0 ? 'label' : `col_${colIndex}`;
+
+  return `col_${colIndex}`;
 };
+
+const isUsableSpreadsheetColHeader = (colHeader: string): boolean =>
+  !!colHeader.trim() && colHeader !== 'label' && !colHeader.startsWith('col_');
 
 const slugifySpreadsheetFieldPart = (input: string): string => {
   const trimmed = input.trim();
@@ -148,13 +406,16 @@ const buildSpreadsheetFieldName = (cell: SpreadsheetCellCapture): string => {
   const rowPart = slugifySpreadsheetFieldPart(cell.rowLabel);
   const colPart = slugifySpreadsheetFieldPart(cell.colHeader);
 
-  if (rowPart && colPart && colPart !== 'label' && !colPart.startsWith('col_')) {
+  if (rowPart && isUsableSpreadsheetColHeader(cell.colHeader) && colPart) {
     return `${rowPart}__${colPart}`;
+  }
+  if (rowPart && cell.colIndex > 0) {
+    return `${rowPart}__c${cell.colIndex}`;
   }
   if (rowPart && cell.value.trim()) {
     return rowPart;
   }
-  if (colPart && cell.value.trim() && colPart !== 'label' && !colPart.startsWith('col_')) {
+  if (colPart && cell.value.trim() && isUsableSpreadsheetColHeader(cell.colHeader)) {
     return colPart;
   }
   return slugifySpreadsheetFieldPart(cell.value) || 'extracted_field';
@@ -225,8 +486,7 @@ const collectSpreadsheetCellsFromContainer = (
 const hasSpreadsheetCellContext = (cells: SpreadsheetCellCapture[]): boolean =>
   cells.some((cell) => {
     const hasRow = !!cell.rowLabel.trim() && cell.colIndex > 0;
-    const hasCol =
-      !!cell.colHeader.trim() && !cell.colHeader.startsWith('col_') && cell.colHeader !== 'label';
+    const hasCol = isUsableSpreadsheetColHeader(cell.colHeader);
     return hasRow && hasCol && !!cell.value.trim();
   });
 
@@ -254,10 +514,14 @@ const parseSpreadsheetPreviewText = (text: string): SpreadsheetPreviewSheet[] =>
     current.rows.push(line.split('|').map((cell) => cell.trim()));
   }
 
-  return sheets.map((sheet) => ({
-    ...sheet,
-    headerRowIndex: detectSpreadsheetHeaderRowIndex(sheet.rows),
-  }));
+  return sheets.map((sheet) => {
+    const headerRowIndex = detectSpreadsheetHeaderRowIndex(sheet.rows);
+    return {
+      ...sheet,
+      headerRowIndex,
+      columnHeaders: buildSpreadsheetColumnHeaders(sheet.rows),
+    };
+  });
 };
 
 const HIGHLIGHT_COLORS = ['#fde68a', '#bfdbfe', '#fecdd3', '#bbf7d0', '#ddd6fe', '#fdba74'];
@@ -2006,11 +2270,7 @@ const DocumentHub: React.FC = () => {
                                         rowIndex,
                                         sheet.headerRowIndex
                                       );
-                                      const colHeader = getSpreadsheetColHeader(
-                                        sheet.rows,
-                                        sheet.headerRowIndex,
-                                        cellIndex
-                                      );
+                                      const colHeader = getSpreadsheetColHeader(sheet.columnHeaders, cellIndex);
                                       return (
                                       <td
                                         key={`${sheet.name}-${rowIndex}-${cellIndex}`}
