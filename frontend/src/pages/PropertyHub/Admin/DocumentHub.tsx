@@ -52,6 +52,38 @@ type PersistentHighlight = {
   rects: Array<{ left: number; top: number; width: number; height: number }>;
 };
 
+type SpreadsheetPreviewSheet = {
+  name: string;
+  rows: string[][];
+};
+
+const parseSpreadsheetPreviewText = (text: string): SpreadsheetPreviewSheet[] => {
+  const sheets: SpreadsheetPreviewSheet[] = [];
+  let current: SpreadsheetPreviewSheet | null = null;
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
+    }
+
+    if (line.startsWith('Sheet:')) {
+      current = { name: line.replace(/^Sheet:\s*/i, '').trim() || 'Sheet', rows: [] };
+      sheets.push(current);
+      continue;
+    }
+
+    if (!current) {
+      current = { name: 'Sheet', rows: [] };
+      sheets.push(current);
+    }
+
+    current.rows.push(line.split('|').map((cell) => cell.trim()));
+  }
+
+  return sheets;
+};
+
 const HIGHLIGHT_COLORS = ['#fde68a', '#bfdbfe', '#fecdd3', '#bbf7d0', '#ddd6fe', '#fdba74'];
 type MobileTrainerView = 'document' | 'fields';
 type DragPoint = { x: number; y: number };
@@ -883,7 +915,9 @@ const DocumentHub: React.FC = () => {
     }
 
     const containerBounds = container.getBoundingClientRect();
-    const spans = Array.from(container.querySelectorAll('.react-pdf__Page__textContent span'));
+    const spans = Array.from(
+      container.querySelectorAll('.react-pdf__Page__textContent span, [data-trainer-selectable]')
+    );
     const collected: string[] = [];
 
     for (const span of spans) {
@@ -959,7 +993,7 @@ const DocumentHub: React.FC = () => {
 
     const selected = collectTextFromRect(normalized);
     if (!selected) {
-      setFeedback('No selectable PDF text found in that area. Try a larger drag box.');
+      setFeedback('No selectable text found in that area. Try a larger drag box.');
       return;
     }
 
@@ -1664,6 +1698,9 @@ const DocumentHub: React.FC = () => {
 
       {showExtractionTrainer && extractionPreview && (() => {
         const trainerUsesSpreadsheetView = isSpreadsheetTrainingFile(extractionTestFile);
+        const spreadsheetSheets = trainerUsesSpreadsheetView
+          ? parseSpreadsheetPreviewText(extractionPreview.extractedText ?? '')
+          : [];
         return (
         <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm p-0 sm:p-3 lg:p-6">
           <div className="mx-auto flex h-full w-full max-w-[96vw] flex-col rounded-none border border-slate-200 bg-white p-3 sm:rounded-xl sm:p-4 lg:p-5">
@@ -1713,7 +1750,7 @@ const DocumentHub: React.FC = () => {
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {trainerUsesSpreadsheetView
-                      ? 'Uploaded spreadsheet - select text to capture fields'
+                      ? 'Uploaded spreadsheet - drag to select cells'
                       : 'Uploaded PDF - highlight directly on document'}
                   </p>
                   {!trainerUsesSpreadsheetView && (
@@ -1738,16 +1775,39 @@ const DocumentHub: React.FC = () => {
                 </div>
                 <div
                   ref={pdfSelectionContainerRef}
-                  className={`relative min-h-0 flex-1 overflow-auto rounded border border-slate-300 bg-white p-2 ${
-                    trainerUsesSpreadsheetView ? '' : 'cursor-crosshair'
-                  }`}
-                  onMouseDown={trainerUsesSpreadsheetView ? undefined : handleDragSelectionStart}
-                  onMouseMove={trainerUsesSpreadsheetView ? undefined : handleDragSelectionMove}
-                  onMouseUp={trainerUsesSpreadsheetView ? undefined : handleDragSelectionEnd}
-                  onMouseLeave={trainerUsesSpreadsheetView ? undefined : handleDragSelectionEnd}
+                  className="relative min-h-0 flex-1 cursor-crosshair overflow-auto rounded border border-slate-300 bg-white p-2"
+                  onMouseDown={handleDragSelectionStart}
+                  onMouseMove={handleDragSelectionMove}
+                  onMouseUp={handleDragSelectionEnd}
+                  onMouseLeave={handleDragSelectionEnd}
                 >
                   {trainerUsesSpreadsheetView ? (
-                    extractionPreview.extractedText?.trim() ? (
+                    spreadsheetSheets.length > 0 ? (
+                      <div className="space-y-4 pb-2">
+                        {spreadsheetSheets.map((sheet) => (
+                          <div key={sheet.name}>
+                            <p className="mb-1 text-xs font-semibold text-slate-600">{sheet.name}</p>
+                            <table className="w-full min-w-max border-collapse text-xs text-slate-800">
+                              <tbody>
+                                {sheet.rows.map((row, rowIndex) => (
+                                  <tr key={`${sheet.name}-${rowIndex}`}>
+                                    {row.map((cell, cellIndex) => (
+                                      <td
+                                        key={`${sheet.name}-${rowIndex}-${cellIndex}`}
+                                        data-trainer-selectable
+                                        className="border border-slate-200 px-2 py-1 align-top select-text"
+                                      >
+                                        {cell}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ))}
+                      </div>
+                    ) : extractionPreview.extractedText?.trim() ? (
                       <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-5 text-slate-800 select-text">
                         {extractionPreview.extractedText}
                       </pre>
@@ -1792,7 +1852,7 @@ const DocumentHub: React.FC = () => {
                     </div>
                   )}
 
-                  {!trainerUsesSpreadsheetView && dragPreviewRect && (
+                  {dragPreviewRect && (
                     <div
                       className="pointer-events-none absolute rounded border-2 border-dashed border-indigo-500 bg-indigo-200/25"
                       style={{
@@ -1804,8 +1864,7 @@ const DocumentHub: React.FC = () => {
                     />
                   )}
 
-                  {!trainerUsesSpreadsheetView &&
-                    trainerHighlights.map((highlight) =>
+                  {trainerHighlights.map((highlight) =>
                     highlight.rects.map((rect, idx) => (
                       <div
                         key={`${highlight.id}-${idx}`}
@@ -1871,11 +1930,11 @@ const DocumentHub: React.FC = () => {
                   disabled={selectionLoading}
                   className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {selectionLoading ? 'Analysing selection...' : 'Capture Selected Text (fallback)'}
+                  {selectionLoading ? 'Analysing selection...' : 'Capture Selected Text'}
                 </button>
                 <p className="text-xs text-slate-500">
                   {trainerUsesSpreadsheetView
-                    ? 'Select spreadsheet text, then click Capture Selected Text. AI will infer field name/value pairs.'
+                    ? 'Drag a box over spreadsheet cells (like the PDF trainer). AI will infer field name/value pairs and keep a colored highlight.'
                     : 'Drag a box over the PDF like a screenshot tool. AI will infer field name/value pairs and keep a colored highlight.'}
                 </p>
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
