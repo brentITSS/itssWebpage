@@ -1072,7 +1072,7 @@ public class DocumentHubController : ControllerBase
 
         if (file == null || file.Length == 0)
         {
-            return BadRequest(new { message = "A PDF file is required." });
+            return BadRequest(new { message = "A document file is required." });
         }
 
         var extractedText = await ExtractTextAsync(file);
