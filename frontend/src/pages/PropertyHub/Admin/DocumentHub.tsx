@@ -55,11 +55,184 @@ type PersistentHighlight = {
 type SpreadsheetPreviewSheet = {
   name: string;
   rows: string[][];
+  headerRowIndex: number;
 };
 
+type SpreadsheetCellCapture = {
+  sheetName: string;
+  rowIndex: number;
+  colIndex: number;
+  rowLabel: string;
+  colHeader: string;
+  value: string;
+};
+
+const MONTH_HEADER_PATTERN =
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s/]?\d{2,4}\b/i;
+
+const detectSpreadsheetHeaderRowIndex = (rows: string[][]): number => {
+  let bestIndex = 0;
+  let bestScore = -1;
+
+  for (let rowIndex = 0; rowIndex < Math.min(rows.length, 20); rowIndex++) {
+    const row = rows[rowIndex];
+    let score = 0;
+
+    for (let colIndex = 1; colIndex < row.length; colIndex++) {
+      const cell = row[colIndex]?.trim() ?? '';
+      if (!cell) {
+        continue;
+      }
+      if (MONTH_HEADER_PATTERN.test(cell)) {
+        score += 4;
+      } else if (/^(?:total|less|due|management)/i.test(cell)) {
+        score -= 2;
+      } else if (cell.length <= 16) {
+        score += 1;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = rowIndex;
+    }
+  }
+
+  return bestScore > 0 ? bestIndex : 0;
+};
+
+const getSpreadsheetRowLabel = (row: string[], rowIndex: number, headerRowIndex: number): string => {
+  if (rowIndex === headerRowIndex) {
+    return '';
+  }
+  const primary = row[0]?.trim();
+  if (primary) {
+    return primary;
+  }
+  return row.find((cell) => cell?.trim())?.trim() ?? '';
+};
+
+const getSpreadsheetColHeader = (rows: string[][], headerRowIndex: number, colIndex: number): string => {
+  for (let rowIndex = headerRowIndex; rowIndex >= 0; rowIndex--) {
+    const header = rows[rowIndex]?.[colIndex]?.trim();
+    if (header) {
+      return header;
+    }
+  }
+  return colIndex === 0 ? 'label' : `col_${colIndex}`;
+};
+
+const slugifySpreadsheetFieldPart = (input: string): string => {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const meterMatch = trimmed.match(/\((\d{6,})\)/);
+  const withoutParen = trimmed.replace(/\(\d{6,}\)/g, '').trim();
+  let slug = withoutParen
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (!slug && meterMatch) {
+    slug = `meter_${meterMatch[1]}`;
+  } else if (slug && meterMatch) {
+    slug = `${slug}_${meterMatch[1]}`;
+  }
+
+  return slug.slice(0, 48);
+};
+
+const buildSpreadsheetFieldName = (cell: SpreadsheetCellCapture): string => {
+  const rowPart = slugifySpreadsheetFieldPart(cell.rowLabel);
+  const colPart = slugifySpreadsheetFieldPart(cell.colHeader);
+
+  if (rowPart && colPart && colPart !== 'label' && !colPart.startsWith('col_')) {
+    return `${rowPart}__${colPart}`;
+  }
+  if (rowPart && cell.value.trim()) {
+    return rowPart;
+  }
+  if (colPart && cell.value.trim() && colPart !== 'label' && !colPart.startsWith('col_')) {
+    return colPart;
+  }
+  return slugifySpreadsheetFieldPart(cell.value) || 'extracted_field';
+};
+
+const readSpreadsheetCellFromElement = (element: Element): SpreadsheetCellCapture | null => {
+  if (!(element instanceof HTMLElement) || element.dataset.trainerCell !== 'true') {
+    return null;
+  }
+
+  return {
+    sheetName: element.dataset.sheetName ?? 'Sheet',
+    rowIndex: Number.parseInt(element.dataset.rowIndex ?? '0', 10),
+    colIndex: Number.parseInt(element.dataset.colIndex ?? '0', 10),
+    rowLabel: element.dataset.rowLabel ?? '',
+    colHeader: element.dataset.colHeader ?? '',
+    value: element.dataset.cellValue ?? element.textContent?.trim() ?? '',
+  };
+};
+
+const cellCaptureKey = (cell: SpreadsheetCellCapture): string =>
+  `${cell.sheetName}|${cell.rowIndex}|${cell.colIndex}`;
+
+const rectsIntersect = (
+  a: { left: number; top: number; width: number; height: number },
+  b: { left: number; top: number; width: number; height: number }
+): boolean =>
+  a.left < b.left + b.width &&
+  a.left + a.width > b.left &&
+  a.top < b.top + b.height &&
+  a.top + a.height > b.top;
+
+const collectSpreadsheetCellsFromContainer = (
+  container: HTMLElement,
+  targetRects: Array<{ left: number; top: number; width: number; height: number }>
+): SpreadsheetCellCapture[] => {
+  const containerBounds = container.getBoundingClientRect();
+  const captured = new Map<string, SpreadsheetCellCapture>();
+
+  for (const element of Array.from(container.querySelectorAll('[data-trainer-cell="true"]'))) {
+    const cell = readSpreadsheetCellFromElement(element);
+    if (!cell || !cell.value.trim()) {
+      continue;
+    }
+
+    const spanRect = element.getBoundingClientRect();
+    const relativeRect = {
+      left: spanRect.left - containerBounds.left + container.scrollLeft,
+      top: spanRect.top - containerBounds.top + container.scrollTop,
+      width: spanRect.width,
+      height: spanRect.height,
+    };
+
+    const intersects = targetRects.some((targetRect) => rectsIntersect(relativeRect, targetRect));
+    if (!intersects) {
+      continue;
+    }
+
+    captured.set(cellCaptureKey(cell), cell);
+  }
+
+  return Array.from(captured.values()).sort(
+    (a, b) =>
+      a.sheetName.localeCompare(b.sheetName) || a.rowIndex - b.rowIndex || a.colIndex - b.colIndex
+  );
+};
+
+const hasSpreadsheetCellContext = (cells: SpreadsheetCellCapture[]): boolean =>
+  cells.some((cell) => {
+    const hasRow = !!cell.rowLabel.trim() && cell.colIndex > 0;
+    const hasCol =
+      !!cell.colHeader.trim() && !cell.colHeader.startsWith('col_') && cell.colHeader !== 'label';
+    return hasRow && hasCol && !!cell.value.trim();
+  });
+
 const parseSpreadsheetPreviewText = (text: string): SpreadsheetPreviewSheet[] => {
-  const sheets: SpreadsheetPreviewSheet[] = [];
-  let current: SpreadsheetPreviewSheet | null = null;
+  const sheets: Array<{ name: string; rows: string[][] }> = [];
+  let current: { name: string; rows: string[][] } | null = null;
 
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trim();
@@ -81,7 +254,10 @@ const parseSpreadsheetPreviewText = (text: string): SpreadsheetPreviewSheet[] =>
     current.rows.push(line.split('|').map((cell) => cell.trim()));
   }
 
-  return sheets;
+  return sheets.map((sheet) => ({
+    ...sheet,
+    headerRowIndex: detectSpreadsheetHeaderRowIndex(sheet.rows),
+  }));
 };
 
 const HIGHLIGHT_COLORS = ['#fde68a', '#bfdbfe', '#fecdd3', '#bbf7d0', '#ddd6fe', '#fdba74'];
@@ -814,7 +990,8 @@ const DocumentHub: React.FC = () => {
 
   const runSelectionCapture = async (
     selected: string,
-    rects: Array<{ left: number; top: number; width: number; height: number }>
+    rects: Array<{ left: number; top: number; width: number; height: number }>,
+    options?: { spreadsheetCells?: SpreadsheetCellCapture[] }
   ) => {
     if (!selected) {
       setFeedback('Select text in the document preview first.');
@@ -831,13 +1008,31 @@ const DocumentHub: React.FC = () => {
       },
     ]);
 
+    const spreadsheetCells = options?.spreadsheetCells ?? [];
+    const contextFields =
+      spreadsheetCells.length > 0 && hasSpreadsheetCellContext(spreadsheetCells)
+        ? spreadsheetCells
+            .filter((cell) => cell.value.trim())
+            .map((cell) => ({
+              fieldName: buildSpreadsheetFieldName(cell),
+              exampleValue: cell.value.trim(),
+            }))
+        : [];
+
     setSelectionLoading(true);
     try {
+      const metadata = { boundingBoxJson: JSON.stringify(rects) };
+      if (contextFields.length > 0) {
+        appendTrainerFields(contextFields, metadata);
+        const summary = contextFields.map((field) => `${field.fieldName} = ${field.exampleValue}`).join(', ');
+        setFeedback(`Captured ${contextFields.length} cell(s): ${summary}`);
+        return;
+      }
+
       const aiFields = await documentHubService.suggestExtractionFromSelection({
         selectedText: selected,
         extractedText: extractionPreview?.extractedText ?? '',
       });
-      const metadata = { boundingBoxJson: JSON.stringify(rects) };
       if (aiFields.length > 0) {
         appendTrainerFields(aiFields, metadata);
       } else {
@@ -884,7 +1079,12 @@ const DocumentHub: React.FC = () => {
       return;
     }
 
-    await runSelectionCapture(selected, rects);
+    const spreadsheetCells =
+      container && isSpreadsheetTrainingFile(extractionTestFile)
+        ? collectSpreadsheetCellsFromContainer(container, rects)
+        : [];
+
+    await runSelectionCapture(selected, rects, { spreadsheetCells });
   };
 
   const getPointInSelectionContainer = (event: React.MouseEvent<HTMLDivElement>): DragPoint | null => {
@@ -991,13 +1191,22 @@ const DocumentHub: React.FC = () => {
       return;
     }
 
-    const selected = collectTextFromRect(normalized);
+    const container = pdfSelectionContainerRef.current;
+    const spreadsheetCells =
+      container && isSpreadsheetTrainingFile(extractionTestFile)
+        ? collectSpreadsheetCellsFromContainer(container, [normalized])
+        : [];
+
+    const selected =
+      spreadsheetCells.length > 0
+        ? spreadsheetCells.map((cell) => cell.value).join(' ')
+        : collectTextFromRect(normalized);
     if (!selected) {
       setFeedback('No selectable text found in that area. Try a larger drag box.');
       return;
     }
 
-    await runSelectionCapture(selected, [normalized]);
+    await runSelectionCapture(selected, [normalized], { spreadsheetCells });
   };
 
   const dragPreviewRect =
@@ -1709,7 +1918,7 @@ const DocumentHub: React.FC = () => {
                 <h3 className="text-lg font-semibold text-slate-900">Entity Extraction Trainer</h3>
                 <p className="text-xs text-slate-500">
                   {trainerUsesSpreadsheetView
-                    ? 'Select text in the extracted spreadsheet preview and let AI generate editable field/value mappings.'
+                    ? 'Select text in the extracted spreadsheet preview. Drag over cells to capture row + column context (e.g. kb_unit_1__may_26 = 200).'
                     : 'Highlight text directly on the PDF preview and let AI generate editable field/value mappings.'}
                 </p>
               </div>
@@ -1750,7 +1959,7 @@ const DocumentHub: React.FC = () => {
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {trainerUsesSpreadsheetView
-                      ? 'Uploaded spreadsheet - drag to select cells'
+                      ? 'Uploaded spreadsheet - drag cells to capture row + column'
                       : 'Uploaded PDF - highlight directly on document'}
                   </p>
                   {!trainerUsesSpreadsheetView && (
@@ -1791,15 +2000,34 @@ const DocumentHub: React.FC = () => {
                               <tbody>
                                 {sheet.rows.map((row, rowIndex) => (
                                   <tr key={`${sheet.name}-${rowIndex}`}>
-                                    {row.map((cell, cellIndex) => (
+                                    {row.map((cell, cellIndex) => {
+                                      const rowLabel = getSpreadsheetRowLabel(
+                                        row,
+                                        rowIndex,
+                                        sheet.headerRowIndex
+                                      );
+                                      const colHeader = getSpreadsheetColHeader(
+                                        sheet.rows,
+                                        sheet.headerRowIndex,
+                                        cellIndex
+                                      );
+                                      return (
                                       <td
                                         key={`${sheet.name}-${rowIndex}-${cellIndex}`}
                                         data-trainer-selectable
+                                        data-trainer-cell="true"
+                                        data-sheet-name={sheet.name}
+                                        data-row-index={rowIndex}
+                                        data-col-index={cellIndex}
+                                        data-row-label={rowLabel}
+                                        data-col-header={colHeader}
+                                        data-cell-value={cell}
                                         className="border border-slate-200 px-2 py-1 align-top select-text"
                                       >
                                         {cell}
                                       </td>
-                                    ))}
+                                      );
+                                    })}
                                   </tr>
                                 ))}
                               </tbody>
@@ -1934,7 +2162,7 @@ const DocumentHub: React.FC = () => {
                 </button>
                 <p className="text-xs text-slate-500">
                   {trainerUsesSpreadsheetView
-                    ? 'Drag a box over spreadsheet cells (like the PDF trainer). AI will infer field name/value pairs and keep a colored highlight.'
+                    ? 'Drag over one or more data cells. Field names combine the row label and column header (editable below).'
                     : 'Drag a box over the PDF like a screenshot tool. AI will infer field name/value pairs and keep a colored highlight.'}
                 </p>
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-2">
