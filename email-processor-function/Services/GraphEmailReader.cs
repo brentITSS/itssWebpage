@@ -942,6 +942,7 @@ public class GraphEmailReader : IGraphEmailReader
         string? calendarDateTemplate = null;
         string? calendarTitleTemplate = null;
         string? calendarNotesTemplate = null;
+        var trackingDataOnly = false;
         string? tagTypeIdsCsv = null;
         string? tagTypeIdsCsvTemplate = null;
 
@@ -969,6 +970,7 @@ public class GraphEmailReader : IGraphEmailReader
             calendarDateTemplate = GetOptionalString(root, "calendarDateTemplate");
             calendarTitleTemplate = GetOptionalString(root, "calendarTitleTemplate");
             calendarNotesTemplate = GetOptionalString(root, "calendarNotesTemplate");
+            trackingDataOnly = GetOptionalBool(root, "trackingDataOnly") ?? false;
             tagTypeIdsCsv = GetOptionalString(root, "tagTypeIdsCsv");
             tagTypeIdsCsvTemplate = GetOptionalString(root, "tagTypeIdsCsvTemplate");
         }
@@ -1036,7 +1038,8 @@ public class GraphEmailReader : IGraphEmailReader
                 journalAmountRand,
                 zAR_GBP_CurrencyExchangeRate,
                 journalAmountGBP,
-                journalReference)
+                journalReference,
+                trackingDataOnly)
             VALUES (
                 @propertyGroupId,
                 @propertyId,
@@ -1049,7 +1052,8 @@ public class GraphEmailReader : IGraphEmailReader
                 @journalAmountRand,
                 @zarGbpCurrencyExchangeRate,
                 @journalAmountGbp,
-                @journalReference);
+                @journalReference,
+                @trackingDataOnly);
             SELECT CAST(SCOPE_IDENTITY() AS int);
             """;
         await using var command = new SqlCommand(insertSql, connection);
@@ -1075,6 +1079,7 @@ public class GraphEmailReader : IGraphEmailReader
                 : (object?)NullIfEmpty(renderedExchange) ?? DBNull.Value);
         command.Parameters.AddWithValue("@journalAmountGbp", (object?)amountGbp ?? DBNull.Value);
         command.Parameters.AddWithValue("@journalReference", (object?)NullIfEmpty(renderedReference) ?? DBNull.Value);
+        command.Parameters.AddWithValue("@trackingDataOnly", trackingDataOnly);
 
         var insertedId = (int?)await command.ExecuteScalarAsync(cancellationToken);
 

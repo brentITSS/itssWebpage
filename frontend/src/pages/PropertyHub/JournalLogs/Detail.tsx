@@ -295,6 +295,12 @@ const JournalLogDetail: React.FC = () => {
               </div>
             )}
             <div>
+              <dt className="text-sm font-medium text-gray-500">Tracking data only</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {journalLog.trackingDataOnly ? 'Yes' : 'No'}
+              </dd>
+            </div>
+            <div>
               <dt className="text-sm font-medium text-gray-500">Created Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
                 {formatDateTimeUk(journalLog.createdDate)}

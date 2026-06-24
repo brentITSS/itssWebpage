@@ -55,6 +55,7 @@ const JournalLogForm: React.FC = () => {
     transactionDate: new Date().toISOString().split('T')[0],
     addToCalendar: false,
     calendarDate: undefined,
+    trackingDataOnly: false,
   });
 
   const loadData = useCallback(async () => {
@@ -92,6 +93,7 @@ const JournalLogForm: React.FC = () => {
           transactionDate: new Date(logData.transactionDate).toISOString().split('T')[0],
           addToCalendar: !!logData.hasCalendarAppointment,
           calendarDate: logData.calendarDate ? new Date(logData.calendarDate).toISOString().split('T')[0] : undefined,
+          trackingDataOnly: !!logData.trackingDataOnly,
         });
       } else if (contextReturnPropertyId != null) {
         setFormData((prev) => ({
@@ -138,6 +140,7 @@ const JournalLogForm: React.FC = () => {
           transactionDate: formData.transactionDate,
           addToCalendar: !!formData.addToCalendar,
           calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.transactionDate) : undefined,
+          trackingDataOnly: !!formData.trackingDataOnly,
         };
         await journalService.updateJournalLog(currentLogId, updateRequest);
         savedLogId = currentLogId;
@@ -146,6 +149,7 @@ const JournalLogForm: React.FC = () => {
           ...formData,
           addToCalendar: !!formData.addToCalendar,
           calendarDate: formData.addToCalendar ? (formData.calendarDate || formData.transactionDate) : undefined,
+          trackingDataOnly: !!formData.trackingDataOnly,
         });
         savedLogId = createdLog.journalLogId;
         setCurrentLogId(savedLogId);
@@ -457,6 +461,25 @@ const JournalLogForm: React.FC = () => {
             rows={4}
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
+        </div>
+
+        <div className="mt-6 rounded-md border border-slate-200 bg-slate-50 p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!formData.trackingDataOnly}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  trackingDataOnly: e.target.checked,
+                }))
+              }
+            />
+            Tracking data only
+          </label>
+          <p className="mt-2 text-xs text-slate-600">
+            When enabled, this entry is for tracking only and will be excluded from financial reports.
+          </p>
         </div>
 
         <div className="mt-6 rounded-md border border-slate-200 bg-slate-50 p-4">

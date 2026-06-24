@@ -823,6 +823,14 @@ const DocumentFlows: React.FC = () => {
                         <label className="md:col-span-2 inline-flex items-center gap-2 text-[11px] text-slate-700">
                           <input
                             type="checkbox"
+                            checked={Boolean(config.trackingDataOnly)}
+                            onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'trackingDataOnly', e.target.checked)}
+                          />
+                          Mark as tracking data only (excluded from financial reports).
+                        </label>
+                        <label className="md:col-span-2 inline-flex items-center gap-2 text-[11px] text-slate-700">
+                          <input
+                            type="checkbox"
                             checked={Boolean(config.attachEmailAttachments)}
                             onChange={(e) => handleUpdateWorkflowStepConfigField(idx, 'attachEmailAttachments', e.target.checked)}
                           />

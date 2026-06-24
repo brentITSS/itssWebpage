@@ -37,6 +37,9 @@ public class JournalLog
     [Column("journalDescription")]
     public string? JournalDescription { get; set; }
 
+    [Column("trackingDataOnly")]
+    public bool TrackingDataOnly { get; set; }
+
     // Backward-compatible aliases used by existing service and UI mappings.
     [NotMapped]
     public decimal? Amount

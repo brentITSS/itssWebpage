@@ -111,7 +111,8 @@ public class JournalLogService : IJournalLogService
             TransactionDate = request.TransactionDate,
             // Store Amount/Description in computed properties (not persisted)
             Amount = request.Amount,
-            Description = request.Description
+            Description = request.Description,
+            TrackingDataOnly = request.TrackingDataOnly
         };
 
         journalLog = await _journalLogRepository.CreateAsync(journalLog);
@@ -153,6 +154,7 @@ public class JournalLogService : IJournalLogService
         // Update computed properties (not persisted to DB)
         if (request.Amount.HasValue) journalLog.Amount = request.Amount.Value;
         if (request.Description != null) journalLog.Description = request.Description;
+        if (request.TrackingDataOnly.HasValue) journalLog.TrackingDataOnly = request.TrackingDataOnly.Value;
 
         journalLog = await _journalLogRepository.UpdateAsync(journalLog);
         if (request.AddToCalendar.HasValue)
@@ -466,6 +468,7 @@ public class JournalLogService : IJournalLogService
             Description = journalLog.Description,
             TransactionDate = journalLog.TransactionDate ?? DateTime.UtcNow,
             CreatedDate = DateTime.UtcNow,
+            TrackingDataOnly = journalLog.TrackingDataOnly,
             Attachments = journalLog.Attachments.Select(a => new AttachmentDto
             {
                 AttachmentId = a.JournalLogAttachmentId,

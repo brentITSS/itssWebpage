@@ -12,6 +12,7 @@ public class CreateJournalLogRequest
     public DateTime TransactionDate { get; set; }
     public bool AddToCalendar { get; set; }
     public DateTime? CalendarDate { get; set; }
+    public bool TrackingDataOnly { get; set; }
 }
 
 public class UpdateJournalLogRequest
@@ -26,6 +27,7 @@ public class UpdateJournalLogRequest
     public DateTime? TransactionDate { get; set; }
     public bool? AddToCalendar { get; set; }
     public DateTime? CalendarDate { get; set; }
+    public bool? TrackingDataOnly { get; set; }
 }
 
 public class JournalLogResponseDto
@@ -48,6 +50,7 @@ public class JournalLogResponseDto
     public DateTime CreatedDate { get; set; }
     public bool HasCalendarAppointment { get; set; }
     public DateTime? CalendarDate { get; set; }
+    public bool TrackingDataOnly { get; set; }
     public List<AttachmentDto> Attachments { get; set; } = new();
 }
 

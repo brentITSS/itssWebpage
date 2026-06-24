@@ -50,6 +50,7 @@ export interface JournalLogResponseDto {
   createdDate: string;
   hasCalendarAppointment: boolean;
   calendarDate?: string;
+  trackingDataOnly: boolean;
   attachments: AttachmentDto[];
 }
 
@@ -64,6 +65,7 @@ export interface CreateJournalLogRequest {
   transactionDate: string;
   addToCalendar?: boolean;
   calendarDate?: string;
+  trackingDataOnly?: boolean;
 }
 
 export interface UpdateJournalLogRequest {
@@ -77,6 +79,7 @@ export interface UpdateJournalLogRequest {
   transactionDate?: string;
   addToCalendar?: boolean;
   calendarDate?: string;
+  trackingDataOnly?: boolean;
 }
 
 export interface JournalTypeDto {
